@@ -2,11 +2,13 @@ package com.example.medisync.ui.screens.patient
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.example.medisync.ui.screens.chat.ChatListScreen
 
 
 @OptIn(ExperimentalMaterial3Api::class)@Composable
@@ -16,8 +18,7 @@ fun PatientNavigationScreen(
     phone: String = "",
     userId: Int
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
-
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     // No Scaffold here — each tab manages its own
     when (selectedTab) {
         0 -> HomeContent(
@@ -30,33 +31,22 @@ fun PatientNavigationScreen(
         )
         1 -> AppointmentContent(
             navController = navController,
-            selectedTab,
-            onTabSelected = { selectedTab = it })
-        2 -> AiChatContent(
+            selectedTab = selectedTab,
+            onTabSelected = { selectedTab = it },
 
+            )
+        2 -> ChatListScreen(
+            navController = navController,
+            selectedTab = selectedTab,
+            onTabSelected = {selectedTab = it}
         )
         3 -> RecordsContent(
-
+            selectedTab = selectedTab,
+            onTabSelected = { selectedTab = it }
         )
     }
 }
 
-
-
-
-@Composable
-fun AiChatContent() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("AI Chat")
-    }
-}
-
-@Composable
-fun RecordsContent() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("Records")
-    }
-}
 
 
 // ── BOTTOM NAV ITEMS ──

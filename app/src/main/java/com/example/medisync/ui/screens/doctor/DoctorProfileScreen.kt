@@ -30,8 +30,7 @@ import com.example.medisync.ui.components.RadioButton
 import com.example.medisync.ui.theme.natureGreen
 import kotlinx.coroutines.launch
 
-private val ScreenBg    = Color(0xFFFAFBFC)
-private val CardBg      = Color.White
+
 private val ErrorRed    = Color(0xFFDC2626)
 
 @OptIn(ExperimentalMaterial3Api::class)

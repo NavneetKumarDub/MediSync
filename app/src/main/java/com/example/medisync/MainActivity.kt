@@ -1,19 +1,23 @@
 package com.example.medisync
 
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.medisync.ui.screens.doctor.DoctorProfileScreen
 import com.example.medisync.ui.screens.auth.LoginScreen
 import com.example.medisync.ui.screens.auth.OtpScreen
 import com.example.medisync.ui.screens.auth.RegisterScreen
 import com.example.medisync.ui.screens.patient.SearchScreen
 import com.example.medisync.ui.screens.auth.SelectRoleScreen
+import com.example.medisync.ui.screens.chat.ChatScreen
 import com.example.medisync.ui.screens.doctor.DoctorNavigationScreen
 import com.example.medisync.ui.screens.patient.PatientNavigationScreen
 import com.example.medisync.ui.screens.patient.SlotPickerScreen
@@ -106,6 +110,16 @@ class MainActivity : ComponentActivity() {
                             userId        = backStackEntry.arguments?.getString("userId")?.toIntOrNull() ?: 0
                         )
                     }
+
+                    composable("chat/{roomId}") { backStackEntry ->
+                        val roomId = backStackEntry.arguments?.getString("roomId")?.toIntOrNull() ?: 0
+
+                        ChatScreen(
+                            navController = navController,
+                            roomId = roomId
+                        )
+                    }
+
 
                 }
 

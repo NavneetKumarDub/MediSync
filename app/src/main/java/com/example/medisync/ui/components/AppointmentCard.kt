@@ -1,6 +1,8 @@
 package com.example.medisync.ui.components
 
+import android.R.attr.onClick
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -16,8 +18,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.medisync.ui.screens.patient.Appointment
-import com.example.medisync.ui.screens.patient.Status
+import com.example.medisync.networks.AppointmentItem
+
 
 // ─────────────────────────────────────────────
 //  Colors
@@ -41,46 +43,51 @@ private data class StatusConfig(
     val label : String,
     val color : Color
 )
+private fun statusConfig(status: String?) = when (status?.lowercase()) {
+    // If the database says "accepted" OR "upcoming", show the blue "Upcoming" badge
+    "accepted", "upcoming" -> StatusConfig("Upcoming",  ColorUpcoming)
 
-private fun statusConfig(status: Status) = when (status) {
-    Status.UPCOMING  -> StatusConfig("Upcoming",  ColorUpcoming)
-    Status.ONGOING   -> StatusConfig("Ongoing",   ColorOngoing)
-    Status.PAST      -> StatusConfig("Completed", ColorCompleted)
-    Status.CANCELLED -> StatusConfig("Cancelled", ColorCancelled)
-    Status.ONLINE    -> StatusConfig("Online",    ColorOngoing)
-    Status.OFFLINE   -> StatusConfig("Offline",   ColorCompleted)
+    // Catch pending appointments
+    "pending"              -> StatusConfig("Pending",   Color(0xFFFFA500))
+
+    // Ongoing/Online
+    "ongoing", "online"    -> StatusConfig("Ongoing",   ColorOngoing)
+
+    // Past/Completed
+    "completed", "past"    -> StatusConfig("Completed", ColorCompleted)
+
+    "cancelled"            -> StatusConfig("Cancelled", ColorCancelled)
+
+    // Give it a visible gray color so you can easily see if a new status slips through
+    else -> StatusConfig("Unknown", Color.LightGray)
 }
+
 
 // ─────────────────────────────────────────────
 //  Router
 // ─────────────────────────────────────────────
 @Composable
-fun AppointmentCard(appt: Appointment) {
-    CardShell(appt = appt)
+fun AppointmentCard(appt: AppointmentItem,onClick: () -> Unit) {
+    CardShell(appt = appt ,onClick = onClick)
 }
 
 // ─────────────────────────────────────────────
 //  CardShell — Option C layout
-//
-//  |strip|  [Avatar]   Dr. Anjali Sharma
-//                      ● Upcoming · Cardiology · Today 3:00 PM
-//
-//  — No border, no elevation
-//  — Card bg = screen bg (invisible box)
-//  — Thin bottom divider as only separator
-//  — Status shown inline under doctor name
 // ─────────────────────────────────────────────
 @Composable
-private fun CardShell(appt: Appointment) {
+private fun CardShell(appt: AppointmentItem,onClick:() -> Unit) {
     val cfg = statusConfig(appt.status)
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = Modifier
+        .fillMaxWidth()
+        .clickable{onClick()}
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(ScreenBg)
         ) {
-            // Left accent strip — status color, 3dp wide
+            // Left accent strip
             Box(
                 modifier = Modifier
                     .width(3.dp)
@@ -96,17 +103,17 @@ private fun CardShell(appt: Appointment) {
                 verticalAlignment     = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(13.dp)
             ) {
-                // Avatar — dominates left, anchors the card
-                Avatar(initials = appt.doctorName.getInitials())
+                // Avatar
+                Avatar(initials = appt.displayName.getInitials())
 
                 // Text block
                 Column(
                     modifier            = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
-                    // Doctor name — hero text
+                    // Doctor name
                     Text(
-                        text       = appt.doctorName,
+                        text       = appt.displayName ?: "Unknown User",
                         fontSize   = 16.sp,
                         fontWeight = FontWeight.SemiBold,
                         color      = TextHeading,
@@ -115,13 +122,11 @@ private fun CardShell(appt: Appointment) {
                         overflow   = TextOverflow.Ellipsis
                     )
 
-                    // Option C: ● Upcoming · Cardiology · Today 3:00 PM
-                    // All in one line — dot, status word colored, rest muted
+                    // Status line
                     Row(
                         verticalAlignment     = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
-                        // Filled colored dot
                         Box(
                             modifier = Modifier
                                 .size(7.dp)
@@ -129,7 +134,6 @@ private fun CardShell(appt: Appointment) {
                                 .background(cfg.color)
                         )
 
-                        // Status word in status color
                         Text(
                             text       = cfg.label,
                             fontSize   = 12.sp,
@@ -138,7 +142,6 @@ private fun CardShell(appt: Appointment) {
                             lineHeight = 15.sp
                         )
 
-                        // Separator dot
                         Text(
                             text       = "·",
                             fontSize   = 12.sp,
@@ -146,7 +149,6 @@ private fun CardShell(appt: Appointment) {
                             lineHeight = 15.sp
                         )
 
-                        // Clock icon — tiny visual cue for time
                         Icon(
                             imageVector        = Icons.Outlined.AccessTime,
                             contentDescription = null,
@@ -154,9 +156,12 @@ private fun CardShell(appt: Appointment) {
                             modifier           = Modifier.size(11.dp)
                         )
 
-                        // Specialty · Date Time — muted, single line
+                        // Specialty · Date Time
+                        val specialtyPart = appt.speciality?.substringBefore(" ·") ?: "General"
+                        val datePart = appt.date ?: "No Date"
+                        val timePart = appt.startTime ?: "N/A"
                         Text(
-                            text = "${appt.specialty.substringBefore(" ·")} · ${appt.time}",
+                            text = "$specialtyPart · $datePart · $timePart",
                             fontSize   = 12.sp,
                             fontWeight = FontWeight.Normal,
                             color      = TextSub,
@@ -170,20 +175,17 @@ private fun CardShell(appt: Appointment) {
             }
         }
 
-        // Thin bottom divider — only card separator
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 17.dp) // aligns with text, not strip
+                .padding(start = 17.dp)
                 .height(1.dp)
                 .background(Color(0xFFE4E7EC))
         )
     }
 }
 
-// ─────────────────────────────────────────────
-//  Avatar
-// ─────────────────────────────────────────────
+
 @Composable
 private fun Avatar(initials: String) {
     Box(
@@ -205,9 +207,15 @@ private fun Avatar(initials: String) {
 // ─────────────────────────────────────────────
 //  Initials helper
 // ─────────────────────────────────────────────
-private fun String.getInitials(): String =
-    this.removePrefix("Dr. ")
+
+private fun String?.getInitials(): String {
+    if (this.isNullOrBlank()) return "??"
+
+    return this.removePrefix("Dr. ")
+        .removePrefix("Dr ")
+        .trim()
         .split(" ")
         .take(2)
         .mapNotNull { it.firstOrNull()?.uppercaseChar() }
         .joinToString("")
+}

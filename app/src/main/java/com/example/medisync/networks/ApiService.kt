@@ -98,5 +98,40 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Body body: BookAppointmentRequest
     ): Response<BookAppointmentResponse>
+
+    @GET("api/appointments/patient")
+    suspend fun getPatientAppointments(
+        @Header("Authorization") token: String,
+    ): Response<AppointmentsResponse>
+
+    @GET("api/appointments/doctor")
+    suspend fun getDoctorAppointments(
+        @Header("Authorization") token: String,
+    ): Response<AppointmentsResponse>
+
+        @GET("api/chat/{roomId}/metadata")
+        suspend fun getRoomMetadata(
+            @Header("Authorization") token: String,
+            @Path("roomId") roomId: Int
+        ): Response<RoomMetadataResponse>
+
+    @POST("api/chat/room")
+    suspend fun getOrCreateChatRoom(
+        @Header("Authorization") token: String,
+        @Body request: GetOrCreateRoomRequest
+    ): Response<GetOrCreateRoomResponse>
+
+    @GET("api/chat/inbox")
+    suspend fun getInbox(
+        @Header("Authorization") token: String
+    ): Response<InboxResponse>
+
+    @GET("api/chat/room/{roomId}/messages")
+    suspend fun getRoomMessages(
+        @Header("Authorization") token: String,
+        @Path("roomId") roomId: Int
+    ): Response<MessageHistoryResponse>
+
+
 }
 

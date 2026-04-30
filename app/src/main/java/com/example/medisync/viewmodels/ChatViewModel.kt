@@ -1,23 +1,19 @@
-package com.example.medisync.ui.screens.chat
+package com.example.medisync.viewmodels
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.medisync.data.TokenManager
+import com.example.medisync.networks.RetrofitInstance
 import com.example.medisync.networks.WebSocketManager
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.*
+import java.time.Instant
 import java.util.UUID
 
-/**
- * Represents one chat message in the UI.
- *  - localId: UUID assigned on client, used as LazyColumn key (never changes)
- *  - serverId: DB id from server, null if still sending
- *  - isMine: true if this user sent it
- *  - isRead: flipped true when server confirms read (for sent messages)
- */
 data class ChatMessage(
     val localId: String = UUID.randomUUID().toString(),
     val serverId: Int? = null,
@@ -30,9 +26,10 @@ data class ChatMessage(
 
 data class ChatUiState(
     val messages: List<ChatMessage> = emptyList(),
+    val otherUserName: String = "Loading...",
     val isConnected: Boolean = false,
     val isReconnecting: Boolean = false,
-    val headerStatus: String = "",   // "Online", "Reconnecting…", etc.
+    val headerStatus: String = "",
     val error: String? = null,
 )
 
@@ -74,14 +71,65 @@ class ChatViewModel : ViewModel() {
     fun joinRoom(roomId: Int, context: Context) {
         currentRoomId = roomId
         viewModelScope.launch {
-            // Load saved userId so we know which messages are "mine"
+            // 1. Load current user ID so we know which bubbles are "mine"
             currentUserId = TokenManager.getUserId(context) ?: -1
 
-            // Make sure WS is connected
+            // 2. Fetch Metadata AND History via REST API (Parallel)
+            // This ensures the UI is populated before the socket even opens
+            fetchRoomMetadata(roomId, context)
+            fetchChatHistory(roomId, context)
+
+            // 3. Connect WebSocket for LIVE messages only
             WebSocketManager.connect(context)
 
-            // Send join request
+            // 4. Join the room (Server will now only send NEW messages)
             WebSocketManager.send("chat:join", mapOf("roomId" to roomId))
+        }
+    }
+
+    private fun fetchChatHistory(roomId: Int, context: Context) {
+        viewModelScope.launch {
+            try {
+                val token = TokenManager.getToken(context)
+                if (token != null) {
+                    val response = RetrofitInstance.api.getRoomMessages("Bearer $token", roomId)
+                    if (response.isSuccessful && response.body() != null) {
+                        // Map the API models to your ChatMessage UI model
+                        val history = response.body()!!.messages.map { apiMsg ->
+                            ChatMessage(
+                                serverId = apiMsg.id,
+                                text = apiMsg.text,
+                                senderId = apiMsg.senderId,
+                                timestamp = parseServerTimestamp(apiMsg.createdAt),
+                                isMine = apiMsg.senderId == currentUserId,
+                                isRead = false // Or map from API if available
+                            )
+                        }
+                        _uiState.update { it.copy(messages = history) }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("ChatViewModel", "Failed to fetch history via REST", e)
+            }
+        }
+    }
+    private fun fetchRoomMetadata(roomId: Int, context: Context) {
+        viewModelScope.launch {
+            try {
+                val token = TokenManager.getToken(context)
+                if (token != null) {
+                    val response = RetrofitInstance.api.getRoomMetadata("Bearer $token", roomId)
+                    if (response.isSuccessful) {
+                        val name = response.body()?.displayName ?: "User"
+                        _uiState.update { it.copy(otherUserName = name) }
+                    } else {
+                        _uiState.update { it.copy(otherUserName = "Chat") }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to fetch metadata", e)
+                _uiState.update { it.copy(otherUserName = "Chat") }
+            }
         }
     }
 
@@ -99,7 +147,8 @@ class ChatViewModel : ViewModel() {
 
         WebSocketManager.send("chat:message", mapOf(
             "roomId" to roomId,
-            "text" to text
+            "text" to text,
+            "localId" to localMsg.localId// SENDING localId TO SERVER
         ))
     }
 
@@ -118,30 +167,34 @@ class ChatViewModel : ViewModel() {
                 Log.d(TAG, "Joined room ${data["roomId"]?.jsonPrimitive?.content}")
             }
 
-            "chat:history" -> {
-                // Bulk load of past messages
-                val messages = data["messages"]?.jsonArray ?: return
-                val parsed = messages.mapNotNull { parseMessageFromHistory(it.jsonObject) }
-                _uiState.update { it.copy(messages = parsed) }
-            }
-
             "chat:message" -> {
-                // New message arrived (could be our own echoed back, or from other person)
                 val senderId = data["senderId"]?.jsonPrimitive?.int ?: return
                 val serverId = data["messageId"]?.jsonPrimitive?.int ?: return
                 val text = data["text"]?.jsonPrimitive?.content ?: return
                 val sentAtStr = data["sentAt"]?.jsonPrimitive?.content
+
+                // Use contentOrNull to safely handle if the server forgets to send it
+                val localIdFromServer = data["localId"]?.jsonPrimitive?.contentOrNull
 
                 val timestamp = parseServerTimestamp(sentAtStr)
 
                 _uiState.update { state ->
                     val isMine = senderId == currentUserId
 
-                    // If this is our echoed message, find the optimistic entry and update it
                     if (isMine) {
-                        val existingIndex = state.messages.indexOfLast {
-                            it.isMine && it.serverId == null && it.text == text
+                        // 1st Try: Match by the exact localId
+                        var existingIndex = state.messages.indexOfLast {
+                            it.localId == localIdFromServer
                         }
+
+                        // 2nd Try: If the backend didn't send localId, match by text that hasn't been confirmed yet
+                        if (existingIndex == -1) {
+                            existingIndex = state.messages.indexOfLast {
+                                it.isMine && it.serverId == null && it.text == text
+                            }
+                        }
+
+                        // If we found the temporary optimistic message, update it!
                         if (existingIndex >= 0) {
                             val updated = state.messages.toMutableList()
                             updated[existingIndex] = updated[existingIndex].copy(
@@ -152,7 +205,7 @@ class ChatViewModel : ViewModel() {
                         }
                     }
 
-                    // New message from other user (or ours from another device)
+                    // If it's not ours, or we somehow didn't find the original, add it as a new message
                     state.copy(
                         messages = state.messages + ChatMessage(
                             serverId = serverId,
@@ -193,12 +246,13 @@ class ChatViewModel : ViewModel() {
         )
     }
 
+    @SuppressLint("NewApi")
     private fun parseServerTimestamp(sentAt: String?): Long {
         if (sentAt == null) return System.currentTimeMillis()
         return try {
             // Postgres returns ISO timestamps like "2026-04-20T09:30:00.000Z"
             // Simple parse — fall back to current time on any error
-            java.time.Instant.parse(sentAt).toEpochMilli()
+            Instant.parse(sentAt).toEpochMilli()
         } catch (e: Exception) {
             System.currentTimeMillis()
         }

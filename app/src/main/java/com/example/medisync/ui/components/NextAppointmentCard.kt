@@ -18,7 +18,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.medisync.ui.screens.patient.Appointment
-import com.example.medisync.ui.screens.patient.Status
 import com.example.medisync.ui.theme.ShadowAmbient
 import com.example.medisync.ui.theme.ShadowSpot
 
@@ -207,7 +206,7 @@ fun NextAppointmentCardPreview() {
                 doctorName = "Dr. Anjali Sharma",
                 specialty = "Cardiology · General Checkup",
                 time = "3:00 pm",
-                status = Status.UPCOMING,
+                status = "upcoming",
                 date = "12 Apr 2026",
                 mode = "online",
             )

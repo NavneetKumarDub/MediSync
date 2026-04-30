@@ -14,12 +14,9 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,32 +32,33 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.example.medisync.viewmodels.ChatMessage
+import com.example.medisync.viewmodels.ChatViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
 // ── WhatsApp-style color palette with your blue accent ──
-private val ChatBg         = Color(0xFFE7F0F4)   // light blue-ish like WhatsApp cream but tinted to your theme
-private val MyBubble       = Color(0xFF2A9DF4)   // sent messages — blue accent
+private val ChatBg         = Color(0xFFE7F0F4)
+private val MyBubble       = Color(0xFF2A9DF4)
 private val MyBubbleText   = Color.White
 private val OtherBubble    = Color.White
 private val OtherBubbleText = Color(0xFF111B21)
 private val TimeTextMine   = Color.White.copy(alpha = 0.75f)
 private val TimeTextOther  = Color(0xFF667781)
-private val HeaderBg       = Color(0xFF2A9DF4)   // top bar blue
+private val HeaderBg       = Color(0xFF2A9DF4)
 private val HeaderText     = Color.White
 private val InputBarBg     = Color(0xFFF5F6F6)
 private val DateChipBg     = Color(0xFFD1E7F0)
 private val DateChipText   = Color(0xFF1F4D6B)
-private val ReadTick       = Color(0xFF53BDEB)   // blue tick when read
+private val ReadTick       = Color(0xFF53BDEB)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
     navController: NavController,
     roomId: Int,
-    otherUserName: String = "User",
-    otherUserSubtitle: String = "",
+    // Removed the hardcoded name parameters so the ViewModel acts as the single source of truth
     chatViewModel: ChatViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -83,8 +81,10 @@ fun ChatScreen(
         containerColor = ChatBg,
         topBar = {
             ChatTopBar(
-                name = otherUserName,
-                subtitle = uiState.headerStatus.ifBlank { otherUserSubtitle },
+                // 1. WIRED UP: The name now comes from the API via ViewModel
+                name = uiState.otherUserName,
+                // 2. WIRED UP: Status (e.g., "Online", "Connecting...") comes from WebSocket
+                subtitle = uiState.headerStatus,
                 onBack = { navController.popBackStack() },
                 onJoin = {
                     // navController.navigate("videoLobby/$roomId")
@@ -179,8 +179,13 @@ private fun ChatTopBar(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = name.split(" ").filter { it.isNotEmpty() }
-                            .take(2).joinToString("") { it.first().uppercase() },
+                        // Safely handles empty strings if the name hasn't loaded yet
+                        text = if (name.isNotBlank() && name != "Loading...") {
+                            name.split(" ").filter { it.isNotEmpty() }
+                                .take(2).joinToString("") { it.first().uppercase() }
+                        } else {
+                            ""
+                        },
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White

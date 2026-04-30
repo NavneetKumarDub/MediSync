@@ -145,30 +145,35 @@ data class AvailabilityResponse(
 )
 
 // ── Request ──────────────────────────────────────────────
+
 data class BookAppointmentRequest(
     @SerializedName("slotId") val slotId: Int
 )
 
-// ── Response from POST /api/appointments/book ────────────
 data class BookAppointmentResponse(
-    val appointment: AppointmentDto,
-    val doctor: DoctorSnapshot,
+    val appointment: ApptDetails?, // Make these nullable just in case
+    val doctor: DocDetails?,
     @SerializedName("roomId") val roomId: Int? = null
 )
 
-data class AppointmentDto(
+data class ApptDetails(
     val id: Int,
-    @SerializedName("scheduledAt") val scheduledAt: String,
-    val status: String,
-    val type: String,
-    val fee: Double
+    val status: String?,
+    val type: String?,
+    @SerializedName("created_at") val createdAt: String?,
+    @SerializedName("start_time") val startTime: String?,
+    val date: String?,
+
+    // CRITICAL FIX: Postgres numeric/decimal types often return as Strings.
+    // Change this to String? to prevent crashes. You can convert it to Double later if needed.
+    val fee: String?
 )
 
-data class DoctorSnapshot(
+data class DocDetails(
     val id: Int,
-    val name: String,
-    @SerializedName("profile_photo") val profilePhoto: String? = null,
-    val speciality: String? = null
+    val name: String?,
+    @SerializedName("profile_photo") val profilePhoto: String?,
+    val speciality: String?
 )
 
 data class PatientSnapshot(
@@ -180,7 +185,85 @@ data class PatientSnapshot(
 // ── WebSocket push payload (doctor side) ─────────────────
 // Matches: sendToUser(doctorId, 'appointment:new', { appointment, patient, roomId })
 data class IncomingAppointment(
-    val appointment: AppointmentDto,
+    val appointment: ApptDetails,
     val patient: PatientSnapshot,
     @SerializedName("roomId") val roomId: Int? = null
+)
+
+// ── Response from GET /api/appointments/patient ────────────
+data class AppointmentsResponse(
+    val appointments: List<AppointmentItem>
+)
+
+
+data class AppointmentItem(
+    @SerializedName("appointment_id", alternate = ["id"])
+    val appointmentId: Int,
+
+    @SerializedName("doctor_id")
+    val doctorId: Int? = null,
+
+    @SerializedName("patient_id")
+    val patientId: Int? = null,
+
+    @SerializedName("display_name", alternate = ["doctor_name", "patient_name", "name"])
+    val displayName: String? = null,
+
+    @SerializedName("speciality")
+    val speciality: String? = null,
+
+    @SerializedName("slot_date", alternate = ["date"])
+    val date: String?,
+
+    @SerializedName("start_time")
+    val startTime: String?,
+
+    @SerializedName("end_time")
+    val endTime: String?,
+
+    @SerializedName("status")
+    val status: String?,
+
+    @SerializedName("type")
+    val type: String?,
+
+    @SerializedName("room_id")
+    val roomId: Int? = null
+)
+
+data class RoomMetadataResponse(
+    @SerializedName("display_name") val displayName: String,
+    @SerializedName("other_role") val otherRole: String
+)
+
+data class GetOrCreateRoomResponse(
+    @SerializedName("roomId") val roomId: Int,
+    @SerializedName("isNew") val isNew: Boolean? // Nullable just to be safe
+)
+data class GetOrCreateRoomRequest(
+    @SerializedName("targetUserId") val targetUserId: Int
+)
+
+data class InboxResponse(
+    val chats: List<InboxChat>
+)
+
+data class InboxChat(
+    @SerializedName("roomId") val roomId: Int,
+    @SerializedName("userId") val userId: Int, // The OTHER person's ID
+    val name: String,
+    @SerializedName("profilePhoto") val profilePhoto: String?,
+    val speciality: String? // Will be null if the other person is a patient
+)
+
+// --- Message History Models ---
+data class MessageHistoryResponse(
+    val messages: List<ChatMessage>
+)
+
+data class ChatMessage(
+    val id: Int,
+    @SerializedName("senderId") val senderId: Int,
+    val text: String,
+    @SerializedName("createdAt") val createdAt: String
 )

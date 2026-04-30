@@ -1,5 +1,6 @@
 package com.example.medisync.ui.screens.patient
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -37,7 +38,11 @@ import com.example.medisync.networks.SlotItem
 import com.example.medisync.ui.components.SlotDateChip
 import com.example.medisync.ui.components.SlotGrid
 import com.example.medisync.ui.theme.*
+import com.google.gson.JsonSyntaxException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import java.io.IOException
+import java.net.SocketTimeoutException
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -153,10 +158,7 @@ fun SlotPickerScreen(
                     )
                     when {
                         res.isSuccessful -> {
-                            navController.navigate("patient_appointments") {
-                                popUpTo("patient_home") { inclusive = false }
-                                launchSingleTop = true
-                            }
+                            navController.popBackStack()
                         }
                         res.code() == 409 -> {
                             snackbarHostState.showSnackbar(
@@ -167,8 +169,33 @@ fun SlotPickerScreen(
                         }
                         else -> snackbarHostState.showSnackbar("Booking failed (${res.code()})")
                     }
-                } catch (_: Exception) {
-                    snackbarHostState.showSnackbar("Network error. Try again.")
+                } catch (e: Exception) {
+                    // We don't want to show an error for that!
+                    if (e is CancellationException) throw e
+
+                    // 2. Log the real error for YOU (the developer) to see in Logcat
+                    Log.e("BookingError", "Failed to book appointment", e)
+
+                    // 3. Show a friendly message to the USER based on the specific crash
+                    val errorMessage = when (e) {
+                        is SocketTimeoutException ->
+                            "The server is taking too long to respond. Please try again."
+
+                        is IOException ->
+                            "No internet connection. Please check your Wi-Fi or data."
+
+                        is JsonSyntaxException ->
+                            "App update required. (Data mismatch)"
+
+                        is IllegalArgumentException ->
+                            "Navigation error. Please restart the app."
+
+                        else ->
+                            "Something went wrong. Please try again." // Generic fallback
+                    }
+
+                    // Show the friendly message
+                    snackbarHostState.showSnackbar(errorMessage)
                 } finally {
                     isBooking = false
                 }
@@ -347,7 +374,7 @@ fun SlotPickerContent(
                                     .width(40.dp)
                                     .height(4.dp)
                                     .clip(RoundedCornerShape(2.dp))
-                                    .background(Color(0xFFE2E8F0))
+                                    .background(Color.Gray)
                                     .align(Alignment.CenterHorizontally)
                             )
 
@@ -380,8 +407,8 @@ fun SlotPickerContent(
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(14.dp))
                                     .background(
-                                        if (isBooking) SlotBluePrimary.copy(alpha = 0.7f)
-                                        else SlotBluePrimary
+                                        if (isBooking) natureGreen.copy(alpha = 0.7f)
+                                        else natureGreen
                                     )
                                     .clickable(
                                         enabled           = !isBooking,

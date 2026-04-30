@@ -1,9 +1,6 @@
-// ─────────────────────────────────────────────
-// AppointmentScreen.kt
-// ─────────────────────────────────────────────
-package com.example.medisync.ui.screens.patient
+package com.example.medisync.ui.screens.chat
 
-import android.net.Uri
+
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -17,7 +14,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,11 +31,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.medisync.R
-import com.example.medisync.networks.AppointmentItem
-import com.example.medisync.ui.components.AppointmentCard
+import com.example.medisync.data.TokenManager
+import com.example.medisync.networks.InboxChat
 import com.example.medisync.ui.components.BottomNavBar
 import com.example.medisync.ui.navigation.NavItems
-import com.example.medisync.viewmodels.AppointmentViewModel
+import com.example.medisync.viewmodels.ChatInboxViewModel
+import com.example.medisync.viewmodels.InboxUiState
 
 // ─────────────────────────────────────────────
 //  Design System
@@ -64,135 +62,109 @@ val ChipActiveText   = GreenText
 val ChipIdleBg       = Color(0xFFEEF0F3)
 val ChipIdleText     = TextSecondary
 
-// ─────────────────────────────────────────────
-//  Data
-// ─────────────────────────────────────────────
-
-data class Appointment(
-    val id          : Int,
-    val doctorName  : String,
-    val specialty   : String,
-    val date        : String,
-    val time        : String,
-    val mode        : String,
-    val status      : String,
-    val unreadCount : Int = 0
-)
-
-//val sampleAppointments = listOf(
-//    Appointment(1,  "Dr. Anjali Sharma",   "Cardiology · General Checkup",          "Today",       "3:00 PM",  "Online", Status.UPCOMING,  unreadCount = 1),
-//    Appointment(2,  "Dr. Rakesh Gupta",    "Dermatology · Online Consult",           "Today",       "12:47 PM", "Online", Status.ONGOING),
-//    Appointment(3,  "Dr. Arun Krishnan",   "ENT · Routine Hearing Test",             "Tomorrow",    "10:00 AM", "Clinic", Status.UPCOMING,  unreadCount = 2),
-//    Appointment(4,  "Dr. Vikram Nair",     "Ophthalmology · Eye Checkup",            "Tomorrow",    "8:00 AM",  "Online", Status.UPCOMING),
-//    Appointment(5,  "Dr. Sunita Rao",      "Endocrinology · Diabetes Review",        "14 Apr 2026", "11:30 AM", "Online", Status.UPCOMING),
-//    Appointment(6,  "Dr. Meera Iyer",      "Gynecology · Annual Screening",          "15 Apr 2026", "9:00 AM",  "Clinic", Status.UPCOMING),
-//    Appointment(7,  "Dr. Kavitha Reddy",   "Nutrition · Diet Planning",              "16 Apr 2026", "6:00 PM",  "Online", Status.UPCOMING),
-//    Appointment(8,  "Dr. Arjun Menon",     "Gastroenterology · IBS Review",          "17 Apr 2026", "1:00 PM",  "Online", Status.UPCOMING),
-//    Appointment(9,  "Dr. Pooja Nair",      "Physiotherapy · Knee Rehab",             "18 Apr 2026", "7:00 AM",  "Clinic", Status.UPCOMING),
-//    Appointment(10, "Dr. Priya Mehta",     "Neurology · Follow-up Visit",            "09 Apr 2026", "11:00 AM", "Clinic", Status.PAST),
-//    Appointment(11, "Dr. Naina Verma",     "Psychiatry · Mental Health Session",     "05 Apr 2026", "4:00 PM",  "Online", Status.PAST),
-//    Appointment(12, "Dr. Sanjay Kulkarni", "Cardiology · ECG Review",                "02 Apr 2026", "3:30 PM",  "Online", Status.PAST),
-//    Appointment(13, "Dr. Meera Iyer",      "Gynecology · Annual Screening",          "03 Apr 2026", "9:30 AM",  "Clinic", Status.PAST),
-//    Appointment(14, "Dr. Suresh Patel",    "Orthopedics · Bone Density Test",        "07 Apr 2026", "2:00 PM",  "Clinic", Status.CANCELLED),
-//    Appointment(15, "Dr. Ravi Shankar",    "Pulmonology · Breathing Assessment",     "01 Apr 2026", "10:00 AM", "Online", Status.CANCELLED),
-//)
-
-val filterTabs = listOf("All", "Upcoming", "Ongoing", "Past", "Cancelled", "Online", "Offline")
+val filterTabs = listOf("All", "Unread", "Doctors")
 
 // ─────────────────────────────────────────────
 //  Screen
 // ─────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppointmentContent(
+fun ChatListScreen(
     navController: NavController,
     selectedTab : Int,
     onTabSelected: (Int) -> Unit,
-    viewModel: AppointmentViewModel = viewModel()
+    viewModel: ChatInboxViewModel = viewModel()
 ) {
     val context = LocalContext.current
-    var activeFilter    by remember { mutableStateOf("All") }
+    var activeFilter by remember { mutableStateOf("All") }
 
+    // Read the UI State from the new ViewModel
+    val uiState by viewModel.uiState.collectAsState()
 
+    // Fetch the inbox data when the screen opens
     LaunchedEffect(Unit) {
-        viewModel.fetchPatientAppointments(context)
+        viewModel.fetchInbox(context)
     }
-    val appointments = viewModel.appointments
-    val isLoading = viewModel.isLoading
 
+    // Determine loading state and extract chat list
+    val isLoading = uiState is InboxUiState.Loading
+    val chats = if (uiState is InboxUiState.Success) {
+        (uiState as InboxUiState.Success).chats
+    } else {
+        emptyList()
+    }
 
-    val list = remember(activeFilter, appointments) {
-        if (activeFilter == "All") appointments
-        else appointments.filter {
-            it.status.equals(activeFilter, ignoreCase = true)
+    // Filter logic
+    val list = remember(activeFilter, chats) {
+        when (activeFilter) {
+            "All" -> chats
+            "Doctors" -> chats.filter { it.speciality != null }
+            // Add other filter conditions here if needed
+            else -> chats
         }
     }
+    var userRole by remember { mutableStateOf("patient") }
+
+    LaunchedEffect(Unit) {
+        userRole = TokenManager.getRole(context) ?: "patient"
+    }
+    // 2. Choose the correct navigation list
+    val navItems = if (userRole == "doctor") NavItems.doctor else NavItems.patient
 
     Scaffold(
         containerColor = ScreenBg,
-
-        // ── Top Bar — title only, no icons ────────
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text       = "Appointments",
+                        text       = "Messages", // Changed from Appointments
                         fontSize   = 22.sp,
                         fontWeight = FontWeight.Bold,
                         color      = TextPrimary
                     )
                 },
-                // No actions — search bar below handles search
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = TopBarBg
                 )
             )
         },
-
         bottomBar = {
             BottomNavBar(
-                navItems = NavItems.patient,
+                navItems = navItems,
                 selectedIndex  = selectedTab,
                 onItemSelected = onTabSelected
             )
         },
-
         floatingActionButton = {
             FloatingActionButton(
-                onClick        = { },
+                onClick        = { /* TODO: Open New Chat Screen */ },
                 shape          = CircleShape,
                 containerColor = GreenPrimary,
                 contentColor   = Color.White
             ) {
                 Icon(
                     painter            = painterResource(id = R.drawable.plus),
-                    contentDescription = "Book Appointment",
+                    contentDescription = "New Message",
                     modifier           = Modifier.size(24.dp)
                 )
             }
         }
-
     ) { innerPadding ->
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(ScreenBg)
                 .padding(innerPadding)
         ) {
-            // Thin line under white top bar
             HorizontalDivider(thickness = 1.dp, color = DividerColor)
             Spacer(Modifier.height(12.dp))
 
-            // Search bar — only search entry point
             SearchBar()
             Spacer(Modifier.height(10.dp))
 
-            // Filter chips
             FilterRow(active = activeFilter, onSelect = { activeFilter = it })
             Spacer(Modifier.height(4.dp))
 
-            // Card list — LazyColumn, no dividers between items
             if (isLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -200,8 +172,18 @@ fun AppointmentContent(
                 ) {
                     CircularProgressIndicator(color = GreenPrimary)
                 }
+            } else if (uiState is InboxUiState.Error) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = (uiState as InboxUiState.Error).message,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
             } else {
-                AppointmentList(list,navController)
+                ChatList(list, navController)
             }
         }
     }
@@ -230,7 +212,7 @@ fun SearchBar() {
             modifier           = Modifier.size(18.dp)
         )
         Text(
-            text       = "Search appointments...",
+            text       = "Search messages...",
             color      = TextHint,
             fontSize   = 14.sp,
             fontWeight = FontWeight.Normal
@@ -279,10 +261,10 @@ fun FilterRow(active: String, onSelect: (String) -> Unit) {
 }
 
 // ─────────────────────────────────────────────
-//  Appointment List — LazyColumn, no dividers
+//  Chat List
 // ─────────────────────────────────────────────
 @Composable
-fun AppointmentList(list: List<AppointmentItem>,navController: NavController) {
+fun ChatList(list: List<InboxChat>, navController: NavController) {
     if (list.isEmpty()) {
         Box(
             modifier         = Modifier.fillMaxSize(),
@@ -293,19 +275,19 @@ fun AppointmentList(list: List<AppointmentItem>,navController: NavController) {
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    imageVector        = Icons.Outlined.CalendarMonth,
+                    imageVector        = Icons.Outlined.ChatBubbleOutline,
                     contentDescription = null,
                     tint               = TextHint,
                     modifier           = Modifier.size(40.dp)
                 )
                 Text(
-                    text       = "No appointments found",
+                    text       = "No messages found",
                     color      = TextSecondary,
                     fontSize   = 15.sp,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text       = "Try a different filter",
+                    text       = "Start a new conversation",
                     color      = TextHint,
                     fontSize   = 13.sp,
                     fontWeight = FontWeight.Normal
@@ -315,13 +297,71 @@ fun AppointmentList(list: List<AppointmentItem>,navController: NavController) {
     } else {
         LazyColumn(
             modifier       = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 100.dp)
+            contentPadding = PaddingValues(bottom = 100.dp, top = 8.dp)
         ) {
-            items(list, key = { it.appointmentId }) { appt ->
-                AppointmentCard(
-                    appt = appt,
+            items(list, key = { it.roomId }) { chat ->
+                ChatItemCard(
+                    chat = chat,
                     onClick = {
-                        navController.navigate("chat/${appt.roomId}")                    })
+                        navController.navigate("chat/${chat.roomId}")
+                    }
+                )
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────
+//  Chat Item Card (Adapted to match your design system)
+// ─────────────────────────────────────────────
+@Composable
+fun ChatItemCard(chat: InboxChat, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = CardBg),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Profile Picture Placeholder
+            Surface(
+                modifier = Modifier.size(50.dp),
+                shape = CircleShape,
+                color = GreenLight
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = chat.name.take(1).uppercase(),
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = GreenText
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = chat.name,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = TextPrimary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = chat.speciality ?: "Patient",
+                    color = TextSecondary,
+                    fontSize = 14.sp
+                )
             }
         }
     }
@@ -332,6 +372,6 @@ fun AppointmentList(list: List<AppointmentItem>,navController: NavController) {
 // ─────────────────────────────────────────────
 @Preview(showBackground = true, backgroundColor = 0xFFF6F7F9)
 @Composable
-fun AppointmentPreview() {
-    AppointmentContent(navController = rememberNavController(),1,{})
+fun ChatListPreview() {
+    ChatListScreen(navController = rememberNavController(), 2, {})
 }
