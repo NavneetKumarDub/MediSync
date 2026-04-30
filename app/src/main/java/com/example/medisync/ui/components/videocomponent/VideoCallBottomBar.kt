@@ -1,0 +1,149 @@
+package com.example.medisync.ui.components.videocomponent
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CallEnd
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MicOff
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.VideocamOff
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+
+val bottomBarColor = Color(0xFF186A8F)
+
+@Composable
+fun VideoCallBottomBar(
+    isMicOn: Boolean,
+    isVideoOn: Boolean,
+    onMicToggle: () -> Unit,
+    onVideoToggle: () -> Unit,
+    onEndCall: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // We use a Box to add padding so the Card doesn't touch the absolute bottom of the screen
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp, start = 1.dp, end = 1.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            shape = RoundedCornerShape(32.dp), // Gives it that modern "pill" shape
+            colors = CardDefaults.cardColors(
+                containerColor = bottomBarColor // 60% transparent black
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .padding(horizontal = 20.dp, vertical = 18.dp),
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Mic Button
+                CallControlButton(
+                    icon = if (isMicOn) Icons.Default.Mic else Icons.Default.MicOff,
+                    isActive = isMicOn,
+                    onClick = onMicToggle,
+                    size = 45.dp
+                )
+
+                // End Call Button (Slightly larger and Red)
+                CallControlButton(
+                    icon = Icons.Default.CallEnd,
+                    isActive = false,
+                    isDestructive = true,
+                    size = 45.dp,
+                    onClick = onEndCall
+                )
+
+                // Video Button
+                CallControlButton(
+                    icon = if (isVideoOn) Icons.Default.Videocam else Icons.Default.VideocamOff,
+                    isActive = isVideoOn,
+                    onClick = onVideoToggle,
+                    size = 45.dp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun CallControlButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    isActive: Boolean,
+    isDestructive: Boolean = false,
+    size: Dp = 56.dp,
+    onClick: () -> Unit
+) {
+    val backgroundColor = when {
+        isDestructive -> Color.Red
+        isActive -> Color(0x44FFFFFF) // Faint white when active
+        else -> Color.White // Solid white when muted
+    }
+
+    val iconColor = when {
+        isDestructive -> Color.White
+        isActive -> Color.White
+        else -> Color.Black // Black icon when muted so it stands out on the white button
+    }
+
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(backgroundColor)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = iconColor,
+            modifier = Modifier.size(size / 2)
+        )
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun VideoCallBottomBarPreview() {
+    MaterialTheme {
+        // A dark box to simulate your video feed behind the controls
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.DarkGray),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(text = "Doctor's Video Feed Here", color = Color.LightGray)
+
+            // Your Bottom Bar floating at the bottom!
+            VideoCallBottomBar(
+                isMicOn = true,
+                isVideoOn = false, // Set to false to see the button turn solid white!
+                onMicToggle = {},
+                onVideoToggle = {},
+                onEndCall = {},
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
+        }
+    }
+}

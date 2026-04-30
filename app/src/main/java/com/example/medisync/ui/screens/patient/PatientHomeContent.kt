@@ -80,7 +80,7 @@ fun HomeContent(
                         doctorName = "Dr. Anjali Sharma",
                         specialty = "Cardiology · General Checkup",
                         time = "3:00 pm",
-                        status = Status.UPCOMING,
+                        status = "Upcoming",
                         date = "12 Apr 2026",
                         mode = "online",
                     )
