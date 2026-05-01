@@ -22,6 +22,7 @@ import com.example.medisync.ui.screens.doctor.DoctorNavigationScreen
 import com.example.medisync.ui.screens.patient.PatientNavigationScreen
 import com.example.medisync.ui.screens.patient.SlotPickerScreen
 import com.example.medisync.ui.screens.patient.PatientProfileScreen
+import com.example.medisync.ui.screens.video.VideoRoomPermissionGate
 import com.example.medisync.ui.theme.MediSyncTheme
 
 class MainActivity : ComponentActivity() {
@@ -117,6 +118,17 @@ class MainActivity : ComponentActivity() {
                         ChatScreen(
                             navController = navController,
                             roomId = roomId
+                        )
+                    }
+                    composable("video_room/{roomId}") { backStackEntry ->
+                        val roomId = backStackEntry.arguments?.getString("roomId")?.toIntOrNull() ?: 0
+
+                        VideoRoomPermissionGate(
+                            navController = navController,
+                            roomId = roomId,
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            }
                         )
                     }
 

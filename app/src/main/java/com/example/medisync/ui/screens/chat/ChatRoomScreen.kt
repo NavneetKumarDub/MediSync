@@ -87,7 +87,7 @@ fun ChatScreen(
                 subtitle = uiState.headerStatus,
                 onBack = { navController.popBackStack() },
                 onJoin = {
-                    // navController.navigate("videoLobby/$roomId")
+                     navController.navigate("video_room/$roomId")
                 }
             )
         },

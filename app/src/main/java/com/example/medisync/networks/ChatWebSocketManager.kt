@@ -10,7 +10,7 @@ import okhttp3.*
 import java.util.concurrent.TimeUnit
 import kotlin.math.min
 
-object WebSocketManager {
+object ChatWebSocketManager {
 
     private const val TAG = "WebSocketManager"
 
@@ -56,7 +56,7 @@ object WebSocketManager {
             }
 
             val request = Request.Builder()
-                .url("${RetrofitInstance.WS_URL}?token=$token")
+                .url("${RetrofitInstance.CHAT_WS_URL}?token=$token")
                 .build()
 
             webSocket = client.newWebSocket(request, listener(context))

@@ -1,7 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+    <!-- 1. Internet connection for WebRTC signaling and video streaming -->
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- 2. Access to the device's camera for the local video track -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- 3. Access to the device's microphone for the local audio track -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- Optional but highly recommended: Allows WebRTC to know if you switch from WiFi to Cellular -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <application
         android:usesCleartextTraffic="true"
         android:allowBackup="true"

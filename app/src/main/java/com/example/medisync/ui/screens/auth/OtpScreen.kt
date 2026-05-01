@@ -28,7 +28,7 @@ import androidx.navigation.NavController
 import com.example.medisync.data.TokenManager
 import com.example.medisync.networks.RetrofitInstance
 import com.example.medisync.networks.VerifyOtpRequest
-import com.example.medisync.networks.WebSocketManager
+import com.example.medisync.networks.ChatWebSocketManager
 import com.example.medisync.ui.theme.natureGreen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.PhoneAuthProvider
@@ -220,7 +220,7 @@ fun OtpScreen(
                                             TokenManager.saveToken(context, response.token)
                                             TokenManager.saveUserId(context, response.user.id)
                                             response.user.role?.let { TokenManager.saveRole(context, it) }
-                                            WebSocketManager.connect(context)
+                                            ChatWebSocketManager.connect(context)
 
                                             if (response.isNewUser || response.user.name == null) {
                                                 navController.navigate("selectRole/$phoneNumber")

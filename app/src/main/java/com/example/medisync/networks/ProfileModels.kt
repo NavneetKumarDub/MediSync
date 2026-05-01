@@ -267,3 +267,34 @@ data class ChatMessage(
     val text: String,
     @SerializedName("createdAt") val createdAt: String
 )
+
+//video call things
+data class VideoSignal(
+    val type: String,
+    val roomId: Int,
+    val id: String? = null,
+    val targetId: String? = null,
+    val sdp: SdpData? = null,
+    val candidate: CandidateData? = null
+)
+
+data class SdpData(
+    val type: String,
+    val sdp: String
+)
+
+data class CandidateData(
+    val candidate: String,
+    @SerializedName("sdpMLineIndex") val sdpMLineIndex: Int,
+    @SerializedName("sdpMid") val sdpMid: String
+)
+
+interface VideoSignalingListener {
+    fun onRoomJoined(socketId: String)
+    fun onUserJoined(userId: String)
+    fun onUserLeft(userId: String)
+    fun onOfferReceived(signal: VideoSignal)
+    fun onAnswerReceived(signal: VideoSignal)
+    fun onIceCandidateReceived(signal: VideoSignal)
+    fun onConnectionClosed()
+}

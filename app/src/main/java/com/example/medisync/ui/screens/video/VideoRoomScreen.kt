@@ -16,7 +16,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.medisync.ui.components.videocomponent.VideoCallBottomBar
@@ -24,133 +23,281 @@ import kotlinx.coroutines.delay
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import com.example.medisync.viewmodels.VideoCallViewModel
+import org.webrtc.RendererCommon
+import org.webrtc.SurfaceViewRenderer
+
+@Composable
+fun VideoRoomPermissionGate(
+    navController: NavController,
+    roomId: Int,
+    onNavigateBack: () -> Unit
+) {
+    val context = LocalContext.current
+
+    var hasPermissions by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED &&
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissionsMap ->
+        val cameraGranted = permissionsMap[Manifest.permission.CAMERA] == true
+        val micGranted = permissionsMap[Manifest.permission.RECORD_AUDIO] == true
+        hasPermissions = cameraGranted && micGranted
+    }
+
+    if (hasPermissions) {
+        VideoRoomScreen(
+            navController = navController,
+            roomId = roomId,
+            onHangUp = { navController.popBackStack() },
+            onBack = { navController.popBackStack() }
+        )
+    } else {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(32.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Camera & Microphone Access Required",
+                    style = MaterialTheme.typography.titleLarge,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "MediSync needs access to your camera and microphone to connect you with your doctor securely.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(32.dp))
+                Button(
+                    onClick = {
+                        permissionLauncher.launch(
+                            arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
+                        )
+                    }
+                ) {
+                    Text("Grant Permissions")
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                TextButton(onClick = onNavigateBack) {
+                    Text("Cancel and Go Back")
+                }
+            }
+        }
+    }
+}
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
-fun VideoRoomScreen() {
-    // 1. Connection & Media States
-    var isPeerConnected by remember { mutableStateOf(false) }
-    var isRemoteVideoOn by remember { mutableStateOf(false) }
-    var isLocalVideoOn by remember { mutableStateOf(true) }
-    var isMicOn by remember { mutableStateOf(true) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
+fun VideoRoomScreen(
+    navController: NavController,
+    roomId: Int = 0,
+    viewModel: VideoCallViewModel = viewModel(),
+    onBack: () -> Unit = {},
+    onHangUp: () -> Unit = {}
+) {
+    val context = LocalContext.current
+    val isPeerConnected by viewModel.isPeerConnected.collectAsState()
+    val isLocalVideoOn by viewModel.isLocalVideoOn.collectAsState()
+    val isMicOn by viewModel.isMicOn.collectAsState()
+    val remoteVideoTrack by viewModel.remoteVideoTrack.collectAsState()
+    val localPreviewTrack by viewModel.localPreviewTrack.collectAsState()
 
-    // 2. UI Visibility States
+    var offset by remember { mutableStateOf(Offset.Zero) }
     var isControlsVisible by remember { mutableStateOf(true) }
 
-    // 3. Auto-hide Timer Logic
+    LaunchedEffect(roomId) {
+        viewModel.connect(roomId)
+    }
+
     LaunchedEffect(isControlsVisible) {
         if (isControlsVisible) {
-            delay(6000) // Controls will stay for 4 seconds
+            delay(6000)
             isControlsVisible = false
         }
     }
 
-    // 1. Get screen dimensions and density
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
+
     val marginPx = with(density) { 16.dp.toPx() }
     val pipWidthPx = with(density) { 100.dp.toPx() }
     val pipHeightPx = with(density) { 150.dp.toPx() }
     val screenWidthPx = with(density) { configuration.screenWidthDp.dp.toPx() }
     val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
 
-// These are the "Fence" values
     val minX = -(screenWidthPx - pipWidthPx - (marginPx * 2))
     val maxX = 0f
     val minY = 0f
     val maxY = screenHeightPx - pipHeightPx - (marginPx * 2)
 
+    // Separate EGL contexts so renderers don't interfere with each other
+    val localRenderer = remember {
+        SurfaceViewRenderer(context).apply {
+            init(viewModel.localEglBaseContext, null)
+            setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
+            setEnableHardwareScaler(true)
+            setMirror(true)
+        }
+    }
 
-    // Import androidx.compose.ui.geometry.Rect
-    val constraints = Rect(
-        left = minX,
-        top = minY,
-        right = maxX,
-        bottom = maxY
-    )
+    val remoteRenderer = remember {
+        SurfaceViewRenderer(context).apply {
+            init(viewModel.eglBaseContext, null)
+            setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
+            setEnableHardwareScaler(true)
+            setMirror(false)
+        }
+    }
 
-    Scaffold(
-        containerColor = Color.Black
-    ) { _ -> // We ignore innerPadding to keep the video edge-to-edge
+    // Attach preview sink via update callback — fires on every recomposition
+    // No LaunchedEffect needed — update handles reattachment automatically
 
-        // MAIN STAGE
+    LaunchedEffect(remoteVideoTrack) {
+        remoteVideoTrack?.addSink(remoteRenderer)
+    }
+    LaunchedEffect(Unit) {
+        viewModel.setLocalRenderer(localRenderer)
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            localPreviewTrack?.removeSink(localRenderer)
+            remoteVideoTrack?.removeSink(remoteRenderer)
+            localRenderer.release()
+            remoteRenderer.release()
+        }
+    }
+
+    Scaffold(containerColor = Color.Black) { _ ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .clickable { isControlsVisible = !isControlsVisible }
         ) {
-            // LAYER 1: Background (Remote Video or Avatar)
+
+            // LAYER 1: Remote Video (background, fullscreen)
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                if (isPeerConnected && isRemoteVideoOn) {
-                    // Placeholder for WebRTC Remote SurfaceView
-                    Box(modifier = Modifier.fillMaxSize().background(Color.DarkGray))
-                } else {
-                    // Avatar Scenario
+                if (isPeerConnected && remoteVideoTrack != null) {
+                    AndroidView(
+                        factory = { remoteRenderer },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else if (isPeerConnected) {
                     Box(
-                        modifier = Modifier.size(120.dp).background(Color.Gray, shape = RoundedCornerShape(100.dp)),
+                        modifier = Modifier.fillMaxSize().background(Color(0xFF1A1A1A)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("Avatar", color = Color.White)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(
+                                modifier = Modifier
+                                    .size(100.dp)
+                                    .background(Color(0xFF2E7D32), shape = RoundedCornerShape(100.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("DR", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text("Camera Off", color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxSize().background(Color(0xFF1A1A1A)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(color = Color(0xFF2E7D32))
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                "Waiting for the other person to join...",
+                                color = Color.White,
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
             }
 
-            // LAYER 2: Floating Back Button (Top Left)
+            // LAYER 2: Floating Back Button
             AnimatedVisibility(
                 visible = isControlsVisible,
                 enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
                 exit = fadeOut() + slideOutVertically(targetOffsetY = { -it }),
-                modifier = Modifier.align(Alignment.TopStart).padding(top = 48.dp, start = 16.dp)
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(top = 48.dp, start = 16.dp)
             ) {
                 IconButton(
-                    onClick = { /* Handle Back Navigation */ },
+                    onClick = { onBack() },
                     modifier = Modifier.background(Color(0x66000000), shape = RoundedCornerShape(100.dp))
                 ) {
                     Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
                 }
             }
 
-            // LAYER 3: Local PiP (Top Right)
-            // This stays visible even when controls are hidden
+            // LAYER 3: Local PiP (Top Right, draggable)
             Card(
                 modifier = Modifier
-                    .align(Alignment.TopEnd) // Keep the starting position top-right
-                    .offset {
-                        // This physically moves the card based on the drag
-                        IntOffset(offset.x.roundToInt(), offset.y.roundToInt())
-                    }
+                    .align(Alignment.TopEnd)
+                    .offset { IntOffset(offset.x.roundToInt(), offset.y.roundToInt()) }
                     .padding(top = 48.dp, end = 16.dp)
                     .size(width = 100.dp, height = 150.dp)
                     .pointerInput(Unit) {
-                        // This listens for the actual drag gesture
                         detectDragGestures { change, dragAmount ->
-                            change.consume() // Stops the "tap" from leaking to the background video
+                            change.consume()
                             val newX = (offset.x + dragAmount.x).coerceIn(minX, maxX)
                             val newY = (offset.y + dragAmount.y).coerceIn(minY, maxY)
-
                             offset = Offset(newX, newY)
                         }
                     },
                 shape = RoundedCornerShape(12.dp),
                 elevation = CardDefaults.cardElevation(8.dp)
             ) {
-                if (isLocalVideoOn) {
-                    // Placeholder for Local SurfaceView
-                    Box(modifier = Modifier.fillMaxSize().background(Color.Gray))
-                } else {
-                    Box(modifier = Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
-                        Text("You", color = Color.White, style = MaterialTheme.typography.labelSmall)
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AndroidView(
+                        factory = { localRenderer },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    // Black overlay when camera is off
+                    if (!isLocalVideoOn) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("You", color = Color.White, style = MaterialTheme.typography.labelSmall)
+                        }
                     }
                 }
             }
@@ -165,9 +312,13 @@ fun VideoRoomScreen() {
                 VideoCallBottomBar(
                     isMicOn = isMicOn,
                     isVideoOn = isLocalVideoOn,
-                    onMicToggle = { isMicOn = !isMicOn },
-                    onVideoToggle = { isLocalVideoOn = !isLocalVideoOn },
-                    onEndCall = { /* Handle disconnect */ },
+                    onMicToggle = { viewModel.toggleMic() },
+                    onVideoToggle = { viewModel.toggleVideo() },
+                    onEndCall = {
+                        viewModel.endCall()
+                        onHangUp()
+                    },
+                    onFlipCamera = { viewModel.flipCamera() },
                     modifier = Modifier.background(Color.Transparent)
                 )
             }
@@ -175,13 +326,14 @@ fun VideoRoomScreen() {
     }
 }
 
-
-@Preview(showBackground = true, showSystemUi = true)
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun VideoRoomScreenPreview() {
     MaterialTheme {
-        // This will show you the full-screen layout with the
-        // floating PiP and the bottom bar in their initial states.
-        VideoRoomScreen()
+        VideoRoomScreen(
+            navController = rememberNavController(),
+            roomId = 0,
+            onHangUp = {}
+        )
     }
 }

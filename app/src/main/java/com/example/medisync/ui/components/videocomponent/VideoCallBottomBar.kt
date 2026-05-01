@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CallEnd
+import androidx.compose.material.icons.filled.FlipCameraAndroid
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Videocam
@@ -34,9 +35,9 @@ fun VideoCallBottomBar(
     onMicToggle: () -> Unit,
     onVideoToggle: () -> Unit,
     onEndCall: () -> Unit,
+    onFlipCamera: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // We use a Box to add padding so the Card doesn't touch the absolute bottom of the screen
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -44,15 +45,12 @@ fun VideoCallBottomBar(
         contentAlignment = Alignment.Center
     ) {
         Card(
-            shape = RoundedCornerShape(32.dp), // Gives it that modern "pill" shape
-            colors = CardDefaults.cardColors(
-                containerColor = bottomBarColor // 60% transparent black
-            ),
+            shape = RoundedCornerShape(32.dp),
+            colors = CardDefaults.cardColors(containerColor = bottomBarColor),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
             Row(
-                modifier = Modifier
-                    .padding(horizontal = 20.dp, vertical = 18.dp),
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
                 horizontalArrangement = Arrangement.spacedBy(20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -64,7 +62,7 @@ fun VideoCallBottomBar(
                     size = 45.dp
                 )
 
-                // End Call Button (Slightly larger and Red)
+                // End Call Button
                 CallControlButton(
                     icon = Icons.Default.CallEnd,
                     isActive = false,
@@ -78,6 +76,14 @@ fun VideoCallBottomBar(
                     icon = if (isVideoOn) Icons.Default.Videocam else Icons.Default.VideocamOff,
                     isActive = isVideoOn,
                     onClick = onVideoToggle,
+                    size = 45.dp
+                )
+
+                // Flip Camera Button
+                CallControlButton(
+                    icon = Icons.Default.FlipCameraAndroid,
+                    isActive = true,
+                    onClick = onFlipCamera,
                     size = 45.dp
                 )
             }
@@ -95,14 +101,14 @@ fun CallControlButton(
 ) {
     val backgroundColor = when {
         isDestructive -> Color.Red
-        isActive -> Color(0x44FFFFFF) // Faint white when active
-        else -> Color.White // Solid white when muted
+        isActive -> Color(0x44FFFFFF)
+        else -> Color.White
     }
 
     val iconColor = when {
         isDestructive -> Color.White
         isActive -> Color.White
-        else -> Color.Black // Black icon when muted so it stands out on the white button
+        else -> Color.Black
     }
 
     Box(
@@ -126,7 +132,6 @@ fun CallControlButton(
 @Composable
 fun VideoCallBottomBarPreview() {
     MaterialTheme {
-        // A dark box to simulate your video feed behind the controls
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -135,13 +140,13 @@ fun VideoCallBottomBarPreview() {
         ) {
             Text(text = "Doctor's Video Feed Here", color = Color.LightGray)
 
-            // Your Bottom Bar floating at the bottom!
             VideoCallBottomBar(
                 isMicOn = true,
-                isVideoOn = false, // Set to false to see the button turn solid white!
+                isVideoOn = false,
                 onMicToggle = {},
                 onVideoToggle = {},
                 onEndCall = {},
+                onFlipCamera = {},
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
         }

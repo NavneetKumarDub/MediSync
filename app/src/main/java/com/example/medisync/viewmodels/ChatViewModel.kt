@@ -7,7 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.medisync.data.TokenManager
 import com.example.medisync.networks.RetrofitInstance
-import com.example.medisync.networks.WebSocketManager
+import com.example.medisync.networks.ChatWebSocketManager
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.*
@@ -44,16 +44,16 @@ class ChatViewModel : ViewModel() {
     init {
         // Observe WebSocket connection state → update header
         viewModelScope.launch {
-            WebSocketManager.state.collect { state ->
+            ChatWebSocketManager.state.collect { state ->
                 _uiState.update {
                     it.copy(
-                        isConnected = state == WebSocketManager.State.CONNECTED,
-                        isReconnecting = state == WebSocketManager.State.RECONNECTING,
+                        isConnected = state == ChatWebSocketManager.State.CONNECTED,
+                        isReconnecting = state == ChatWebSocketManager.State.RECONNECTING,
                         headerStatus = when (state) {
-                            WebSocketManager.State.CONNECTED -> "Online"
-                            WebSocketManager.State.RECONNECTING -> "Reconnecting…"
-                            WebSocketManager.State.CONNECTING -> "Connecting…"
-                            WebSocketManager.State.DISCONNECTED -> ""
+                            ChatWebSocketManager.State.CONNECTED -> "Online"
+                            ChatWebSocketManager.State.RECONNECTING -> "Reconnecting…"
+                            ChatWebSocketManager.State.CONNECTING -> "Connecting…"
+                            ChatWebSocketManager.State.DISCONNECTED -> ""
                         }
                     )
                 }
@@ -62,7 +62,7 @@ class ChatViewModel : ViewModel() {
 
         // Observe chat:* events from the shared WebSocket
         viewModelScope.launch {
-            WebSocketManager.events
+            ChatWebSocketManager.events
                 .filter { it.type.startsWith("chat:") }
                 .collect { event -> handleChatEvent(event) }
         }
@@ -80,10 +80,10 @@ class ChatViewModel : ViewModel() {
             fetchChatHistory(roomId, context)
 
             // 3. Connect WebSocket for LIVE messages only
-            WebSocketManager.connect(context)
+            ChatWebSocketManager.connect(context)
 
             // 4. Join the room (Server will now only send NEW messages)
-            WebSocketManager.send("chat:join", mapOf("roomId" to roomId))
+            ChatWebSocketManager.send("chat:join", mapOf("roomId" to roomId))
         }
     }
 
@@ -145,7 +145,7 @@ class ChatViewModel : ViewModel() {
         )
         _uiState.update { it.copy(messages = it.messages + localMsg) }
 
-        WebSocketManager.send("chat:message", mapOf(
+        ChatWebSocketManager.send("chat:message", mapOf(
             "roomId" to roomId,
             "text" to text,
             "localId" to localMsg.localId// SENDING localId TO SERVER
@@ -153,13 +153,13 @@ class ChatViewModel : ViewModel() {
     }
 
     fun markAsRead(roomId: Int, messageId: Int) {
-        WebSocketManager.send("chat:read", mapOf(
+        ChatWebSocketManager.send("chat:read", mapOf(
             "roomId" to roomId,
             "messageId" to messageId
         ))
     }
 
-    private fun handleChatEvent(event: WebSocketManager.ServerEvent) {
+    private fun handleChatEvent(event: ChatWebSocketManager.ServerEvent) {
         val data = event.data as? JsonObject ?: return
 
         when (event.type) {
@@ -261,7 +261,7 @@ class ChatViewModel : ViewModel() {
     override fun onCleared() {
         super.onCleared()
         if (currentRoomId != -1) {
-            WebSocketManager.send("chat:leave", mapOf("roomId" to currentRoomId))
+            ChatWebSocketManager.send("chat:leave", mapOf("roomId" to currentRoomId))
         }
     }
 

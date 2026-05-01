@@ -14,7 +14,7 @@ class ChatRepository(context: Context) {
 
     // Your server IP — change this to your machine's local IP
     // For emulator use 10.0.2.2, for real device use your WiFi IP
-    private val wsClient = ChatWebSocket(RetrofitInstance.WS_URL)
+    private val wsClient = ChatWebSocket(RetrofitInstance.CHAT_WS_URL)
 
     val messages: SharedFlow<ServerMessage> = wsClient.messages
     val state:    SharedFlow<WsState>        = wsClient.state
