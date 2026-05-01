@@ -126,7 +126,11 @@ fun VideoRoomScreen(
     val isLocalVideoOn by viewModel.isLocalVideoOn.collectAsState()
     val isMicOn by viewModel.isMicOn.collectAsState()
     val remoteVideoTrack by viewModel.remoteVideoTrack.collectAsState()
-    val localPreviewTrack by viewModel.localPreviewTrack.collectAsState()
+
+    // FIXED: Observe localVideoTrack instead of the removed localPreviewTrack.
+    // A single VideoTrack can have multiple sinks — one sink renders in the PiP,
+    // another sink is used internally by the peer connection to send frames.
+    val localVideoTrack by viewModel.localVideoTrack.collectAsState()
 
     var offset by remember { mutableStateOf(Offset.Zero) }
     var isControlsVisible by remember { mutableStateOf(true) }
@@ -156,10 +160,12 @@ fun VideoRoomScreen(
     val minY = 0f
     val maxY = screenHeightPx - pipHeightPx - (marginPx * 2)
 
-    // Separate EGL contexts so renderers don't interfere with each other
+    // FIXED: Both renderers now use the same shared eglBaseContext from the ViewModel.
+    // Before, localRenderer used a separate localEglBaseContext which meant it was
+    // in a different GPU session and couldn't see the camera texture — blank PiP.
     val localRenderer = remember {
         SurfaceViewRenderer(context).apply {
-            init(viewModel.localEglBaseContext, null)
+            init(viewModel.eglBaseContext, null) // ← same context as remote renderer
             setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
             setEnableHardwareScaler(true)
             setMirror(true)
@@ -175,20 +181,39 @@ fun VideoRoomScreen(
         }
     }
 
-    // Attach preview sink via update callback — fires on every recomposition
-    // No LaunchedEffect needed — update handles reattachment automatically
+    // FIXED: Attach localVideoTrack (not localPreviewTrack) to the local renderer.
+    // We delay slightly to ensure the renderer is fully initialized before adding the sink.
+    LaunchedEffect(localVideoTrack) {
+        if (localVideoTrack != null) {
+            delay(300)
+            localVideoTrack?.removeSink(localRenderer)
+            localVideoTrack?.addSink(localRenderer)
+        }
+    }
 
     LaunchedEffect(remoteVideoTrack) {
         remoteVideoTrack?.addSink(remoteRenderer)
     }
-    LaunchedEffect(Unit) {
-        viewModel.setLocalRenderer(localRenderer)
-    }
 
+    // Re-attach local sink after peer connects (renegotiation can sometimes drop sinks)
+    LaunchedEffect(isPeerConnected) {
+        if (isPeerConnected) {
+            delay(300)
+            localVideoTrack?.removeSink(localRenderer)
+            localVideoTrack?.addSink(localRenderer)
+        }
+    }
     DisposableEffect(Unit) {
         onDispose {
-            localPreviewTrack?.removeSink(localRenderer)
+            // Step 1: remove sinks first — stops WebRTC pushing frames into renderers
+            localVideoTrack?.removeSink(localRenderer)
             remoteVideoTrack?.removeSink(remoteRenderer)
+
+            // Step 2: small breathing room for in-flight frames to drain
+            Thread.sleep(100)
+            localRenderer.clearImage()   // ← flush pending frame
+            remoteRenderer.clearImage()
+            // Step 3: now safe to release
             localRenderer.release()
             remoteRenderer.release()
         }
@@ -201,7 +226,7 @@ fun VideoRoomScreen(
                 .clickable { isControlsVisible = !isControlsVisible }
         ) {
 
-            // LAYER 1: Remote Video (background, fullscreen)
+            // LAYER 1: Remote Video
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -248,7 +273,7 @@ fun VideoRoomScreen(
                 }
             }
 
-            // LAYER 2: Floating Back Button
+            // LAYER 2: Back Button
             AnimatedVisibility(
                 visible = isControlsVisible,
                 enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
@@ -265,7 +290,7 @@ fun VideoRoomScreen(
                 }
             }
 
-            // LAYER 3: Local PiP (Top Right, draggable)
+            // LAYER 3: Local PiP
             Card(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -288,7 +313,6 @@ fun VideoRoomScreen(
                         factory = { localRenderer },
                         modifier = Modifier.fillMaxSize()
                     )
-                    // Black overlay when camera is off
                     if (!isLocalVideoOn) {
                         Box(
                             modifier = Modifier
@@ -302,7 +326,7 @@ fun VideoRoomScreen(
                 }
             }
 
-            // LAYER 4: Bottom Control Bar
+            // LAYER 4: Bottom Bar
             AnimatedVisibility(
                 visible = isControlsVisible,
                 enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
