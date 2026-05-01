@@ -202,6 +202,9 @@ class VideoCallViewModel(application: Application) : AndroidViewModel(applicatio
 
         localAudioTrack?.let { peerConnection?.addTrack(it) }
         _localVideoTrack.value?.let { peerConnection?.addTrack(it) }
+        val currentTrack = _localVideoTrack.value
+        _localVideoTrack.value = null
+        _localVideoTrack.value = currentTrack
     }
 
     // ─── WebRTC Offer / Answer / ICE ──────────────────────────────────────────
@@ -220,6 +223,8 @@ class VideoCallViewModel(application: Application) : AndroidViewModel(applicatio
                             roomId = currentRoomId,
                             targetId = targetId
                         )
+                        isNegotiating = false
+
                     }
                     override fun onSetFailure(error: String) { Log.e("VideoVM", "setLocalDesc failed: $error") }
                     override fun onCreateSuccess(sdp: SessionDescription) {}
@@ -373,6 +378,11 @@ class VideoCallViewModel(application: Application) : AndroidViewModel(applicatio
             override fun onCameraSwitchDone(isFrontCamera: Boolean) {}
             override fun onCameraSwitchError(errorDescription: String) {}
         })
+    }
+    fun reattachLocalSink() {
+        val currentTrack = _localVideoTrack.value
+        _localVideoTrack.value = null
+        _localVideoTrack.value = currentTrack
     }
 
     // ─── End Call ─────────────────────────────────────────────────────────────

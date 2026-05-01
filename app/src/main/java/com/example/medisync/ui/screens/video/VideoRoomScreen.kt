@@ -160,15 +160,13 @@ fun VideoRoomScreen(
     val minY = 0f
     val maxY = screenHeightPx - pipHeightPx - (marginPx * 2)
 
-    // FIXED: Both renderers now use the same shared eglBaseContext from the ViewModel.
-    // Before, localRenderer used a separate localEglBaseContext which meant it was
-    // in a different GPU session and couldn't see the camera texture — blank PiP.
     val localRenderer = remember {
         SurfaceViewRenderer(context).apply {
-            init(viewModel.eglBaseContext, null) // ← same context as remote renderer
+            init(viewModel.eglBaseContext, null)
             setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
             setEnableHardwareScaler(true)
             setMirror(true)
+            setZOrderMediaOverlay(true)  // ← add this
         }
     }
 
@@ -198,7 +196,13 @@ fun VideoRoomScreen(
     // Re-attach local sink after peer connects (renegotiation can sometimes drop sinks)
     LaunchedEffect(isPeerConnected) {
         if (isPeerConnected) {
-            delay(300)
+            delay(1500)
+            viewModel.reattachLocalSink()
+        }
+    }
+    LaunchedEffect(remoteVideoTrack) {
+        if (remoteVideoTrack != null) {
+            delay(500)
             localVideoTrack?.removeSink(localRenderer)
             localVideoTrack?.addSink(localRenderer)
         }
@@ -234,6 +238,7 @@ fun VideoRoomScreen(
                 if (isPeerConnected && remoteVideoTrack != null) {
                     AndroidView(
                         factory = { remoteRenderer },
+                        update = {},
                         modifier = Modifier.fillMaxSize()
                     )
                 } else if (isPeerConnected) {
@@ -311,6 +316,7 @@ fun VideoRoomScreen(
                 Box(modifier = Modifier.fillMaxSize()) {
                     AndroidView(
                         factory = { localRenderer },
+                        update = {},
                         modifier = Modifier.fillMaxSize()
                     )
                     if (!isLocalVideoOn) {
