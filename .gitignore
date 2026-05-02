@@ -1,4 +1,8 @@
-*.iml
+node_modules/
+server/node_modules/
+.env
+server/.env
+firebase-admin-key.json
 .gradle
 /local.properties
 /.idea/caches
@@ -13,3 +17,4 @@
 .externalNativeBuild
 .cxx
 local.properties
+server/firebase-admin-key.json
