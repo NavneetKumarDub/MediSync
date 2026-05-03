@@ -1,18 +1,17 @@
 package com.example.medisync.ui.components
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -21,14 +20,11 @@ import kotlin.math.roundToInt
 
 // ── COLORS ──
 private val SlotCardBackground = Color(0xFFFFFFFF)
-private val SlotCardBorder = Color(0xFFE5E7EB)
 private val SlotCardGreen = Color(0xFF2E7D32)
 private val SlotCardGray = Color(0xFF6B7280)
 private val SlotCardBlack = Color(0xFF1A1A2E)
 private val SlotCardDeleteBg = Color(0xFFDC2626)
-private val SlotCardIndexBg = Color(0xFFF0FDF4)
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SlotCard(
     index: Int,
@@ -36,98 +32,123 @@ fun SlotCard(
     endTime: String,
     duration: Int,
     mode: String,
+    fee: String,
+    isOpen: Boolean,
+    onSwipeOpen: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = {
-            if (it == SwipeToDismissBoxValue.EndToStart) {
-                onDelete()
-                true
-            } else false
-        }
-    )
+    var offsetX by remember { mutableStateOf(0f) }
+    val maxSlide = -200f
 
-    SwipeToDismissBox(
-        state = dismissState,
-        enableDismissFromStartToEnd = false,
-        enableDismissFromEndToStart = true,
-        backgroundContent = {
-            // ── DELETE BACKGROUND ──
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(SlotCardDeleteBg),
-                contentAlignment = Alignment.CenterEnd
-            ) {
-                Text(
-                    text = "delete",
-                    color = Color.White,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                    modifier = Modifier.padding(end = 20.dp)
-                )
-            }
-        }
+    // when isOpen changes from outside — update offsetX
+    LaunchedEffect(isOpen) {
+        offsetX = if (isOpen) maxSlide else 0f
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min)
+            .clip(RoundedCornerShape(12.dp))
     ) {
-        // ── SLOT CARD ──
+
+        // ── DELETE BACKGROUND ──
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(80.dp)
+                .background(SlotCardDeleteBg)
+                .align(Alignment.CenterEnd)
+                .clickable { onDelete() },
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Delete",
+                color = Color.White,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 13.sp
+            )
+        }
+
+        // ── CARD ──
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
+                .offset { IntOffset(offsetX.roundToInt(), 0) }
                 .background(SlotCardBackground)
-                .border(1.dp, SlotCardBorder, RoundedCornerShape(12.dp))
-                .padding(12.dp),
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            if (offsetX < maxSlide / 2) {
+                                offsetX = maxSlide
+                                onSwipeOpen()
+                            } else {
+                                offsetX = 0f
+                            }
+                        },
+                        onHorizontalDrag = { _, dragAmount ->
+                            offsetX = (offsetX + dragAmount).coerceIn(maxSlide, 0f)
+                        }
+                    )
+                }
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
 
             // ── INDEX ──
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .background(SlotCardIndexBg, RoundedCornerShape(8.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = index.toString(),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = SlotCardGreen
-                )
-            }
+            Text(
+                text = index.toString(),
+                fontSize = 14.sp,
+                color = SlotCardGray
+            )
 
-            // ── SLOT DETAILS ──
+            // ── DETAILS ──
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = "$startTime — $endTime",
-                    fontSize = 14.sp,
+                    text = "$startTime  –  $endTime",
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = SlotCardBlack
                 )
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "$duration min",
-                        fontSize = 12.sp,
-                        color = SlotCardGray
-                    )
-                    Text(
-                        text = "•",
-                        fontSize = 12.sp,
-                        color = SlotCardGray
-                    )
-                    Text(
+                    DetailChip(text = "$duration min")
+                    Text("·", color = SlotCardGray, fontSize = 12.sp)
+                    DetailChip(
                         text = mode,
-                        fontSize = 12.sp,
-                        color = if (mode == "Online") SlotCardGreen else SlotCardGray
+                        textColor = if (mode == "Online") SlotCardGreen else SlotCardGray
                     )
+                    Text("·", color = SlotCardGray, fontSize = 12.sp)
+                    DetailChip(text = "₹$fee")
                 }
             }
         }
+    }
+}
+
+
+// ── DETAIL CHIP ──
+@Composable
+fun DetailChip(
+    text: String,
+    textColor: Color = Color(0xFF6B7280)
+) {
+    Box(
+        modifier = Modifier
+            .background(Color(0xFFF3F4F6), RoundedCornerShape(6.dp))
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    ) {
+        Text(
+            text = text,
+            fontSize = 11.sp,
+            color = textColor,
+            fontWeight = FontWeight.Medium
+        )
     }
 }

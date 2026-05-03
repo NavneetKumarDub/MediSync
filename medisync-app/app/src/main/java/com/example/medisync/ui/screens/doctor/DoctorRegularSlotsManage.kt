@@ -1,384 +1,376 @@
 package com.example.medisync.ui.screens.doctor
 
-import android.annotation.SuppressLint
-import android.os.Build
-import android.widget.Toast
-import androidx.annotation.RequiresApi
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.time.LocalTime
-import java.time.format.DateTimeFormatter
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import com.example.medisync.ui.components.DurationSliderField
+import com.example.medisync.ui.components.HorizontalScrollSelector
+import com.example.medisync.ui.components.ModeSelector
+import com.example.medisync.ui.components.SlotCard
+import com.example.medisync.ui.components.TimePicker
+import com.example.medisync.ui.theme.natureGreen
 
+// ── COLORS ──
+private val PageBackground = Color(0xFFF9FAFB)
+private val SlotsBoxBackground = Color(0xFFE8EAED)
+private val BottomBarBackground = Color(0xFFFFFFFF)
+private val TopBarBackground = natureGreen
+private val GreenPrimary2 = natureGreen
+private val GrayText = Color(0xFF6B7280)
+private val BlackText = Color(0xFF1A1A2E)
+private val BorderColor = Color(0xFFE5E7EB)
 
-// --- 1. DATA MODELS & LOGIC ---
-
-data class ShiftTemplate(
-    val id: String = java.util.UUID.randomUUID().toString(),
-    val startTime: String, // format: "HH:mm" (24hr)
-    val durationMinutes: Long
-) {
-    val endTime: String
-        @SuppressLint("NewApi")
-        get() {
-            val parsed = LocalTime.parse(startTime)
-            return parsed.plusMinutes(durationMinutes).format(DateTimeFormatter.ofPattern("HH:mm"))
-        }
-
-    // Helper to display friendly 12-hour time in UI
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun getFormattedTimeRange(): String {
-        val start12 = LocalTime.parse(startTime).format(DateTimeFormatter.ofPattern("hh:mm a"))
-        val end12 = LocalTime.parse(endTime).format(DateTimeFormatter.ofPattern("hh:mm a"))
-        return "$start12 — $end12"
-    }
-}
-
-// The Overlap checking formula
-@RequiresApi(Build.VERSION_CODES.O)
-fun isOverlap(newShift: ShiftTemplate, existingShifts: List<ShiftTemplate>): Boolean {
-    val newStart = LocalTime.parse(newShift.startTime)
-    val newEnd = LocalTime.parse(newShift.endTime)
-
-    return existingShifts.any { existing ->
-        val existingStart = LocalTime.parse(existing.startTime)
-        val existingEnd = LocalTime.parse(existing.endTime)
-        newStart.isBefore(existingEnd) && newEnd.isAfter(existingStart)
-    }
-}
-
-val DaysOfWeek = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
-
-// --- 2. MAIN SCREEN COMPOSABLE ---
-
-@RequiresApi(Build.VERSION_CODES.O)
-@OptIn(ExperimentalMaterial3Api::class)
+// ── DATA CLASS ──
+data class Slot(
+    val id: Int,
+    val day: String,
+    val startTime: String,
+    val endTime: String,
+    val duration: Int,
+    val mode: String,
+    val fee: String
+)
 @Composable
-fun MasterScheduleScreen(onBack: () -> Unit) {
-    val context = LocalContext.current
+fun DoctorRegularSlotsManage(
+    navController: NavController,
+    userId: Int
+) {
+    // day selector
+    var openSlotId by remember { mutableStateOf<Int?>(null) }
+    val days = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+    var selectedDay by remember { mutableStateOf("Mon") }
 
-    // State (In production, this moves to your ViewModel)
-    var selectedDayIndex by remember { mutableIntStateOf(0) }
-    var weeklySchedule by remember { mutableStateOf(mapOf<String, List<ShiftTemplate>>()) }
+    // slots list
+//    var slots by remember { mutableStateOf(listOf<Slot>()) }
+    var slots by remember {
+        mutableStateOf(
+            listOf(
+                Slot(id = 1, day = "Mon", startTime = "09:00 AM", endTime = "09:30 AM", duration = 30, mode = "Online", fee = "500"),
+                Slot(id = 2, day = "Mon", startTime = "10:00 AM", endTime = "10:30 AM", duration = 30, mode = "Offline", fee = "700"),
+                Slot(id = 3, day = "Tue", startTime = "11:00 AM", endTime = "11:45 AM", duration = 45, mode = "Online", fee = "500"),
+                Slot(id = 4, day = "Wed", startTime = "02:00 PM", endTime = "02:30 PM", duration = 30, mode = "Offline", fee = "600"),
+                Slot(id = 5, day = "Fri", startTime = "09:00 AM", endTime = "09:15 AM", duration = 15, mode = "Online", fee = "300"),
+            )
+        )
+    }
 
-    // Bottom Control State
-    var inputHour by remember { mutableIntStateOf(9) }
-    var inputMinute by remember { mutableIntStateOf(0) }
-    var inputDuration by remember { mutableLongStateOf(30L) }
+    // input fields
+    var startTime by remember { mutableStateOf("") }
+    var duration by remember { mutableStateOf(30) }
+    var mode by remember { mutableStateOf("Online") }
+    var fee by remember { mutableStateOf("") }
 
-    val selectedDay = DaysOfWeek[selectedDayIndex]
-    val todayShifts = weeklySchedule[selectedDay]?.sortedBy { LocalTime.parse(it.startTime) } ?: emptyList()
+    // filter slots by selected day
+    val filteredSlots = slots.filter { it.day == selectedDay }
+
+    // total hours for selected day
+    val totalMinutes = filteredSlots.sumOf { it.duration }
+    val totalHours = totalMinutes / 60
 
     Scaffold(
-        containerColor = Color(0xFFF5F6F6),
+        // ── TOP BAR ──
         topBar = {
-            TopAppBar(
-                title = { Text("Weekly Schedule", fontWeight = FontWeight.SemiBold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(TopBarBackground)
+                    .statusBarsPadding()
+            ) {
+                // back + title + stats
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        }
+                        Text(
+                            text = "Regular Slots",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = BlackText
+                        )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
-            )
+
+                    // slots count + hours
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "${filteredSlots.size}",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = BlackText
+                            )
+                            Text(
+                                text = "slots",
+                                fontSize = 11.sp,
+                                color = GrayText
+                            )
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "$totalHours",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = BlackText
+                            )
+                            Text(
+                                text = "hr",
+                                fontSize = 11.sp,
+                                color = GrayText
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(1.dp))
+
+                // day selector
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    HorizontalScrollSelector(
+                        items = days,
+                        selectedItem = selectedDay,
+                        onItemSelected = { selectedDay = it }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(1.dp))
+            }
+        },
+
+        // ── BOTTOM BAR ──
+        bottomBar = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .imePadding()
+                    .background(BottomBarBackground)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(1.dp)
+            ) {
+                // row 1 — start time + mode
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(7.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    ModeSelector(
+                        selectedMode = mode,
+                        onModeSelected = { mode = it }
+                    )
+                    TimePicker(
+                        label = "Start Time",
+                        selectedTime = startTime,
+                        onTimeSelected = { startTime = it }
+                    )
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp)
+                            .width(90.dp)
+                            .border(1.dp, BorderColor, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 12.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (fee.isEmpty()) {
+                            Text("Fee (₹)", color = GrayText, fontSize = 12.sp)
+                        }
+                        BasicTextField(
+                            value = fee,
+                            onValueChange = { fee = it },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            textStyle = TextStyle(
+                                fontSize = 14.sp,
+                                color = BlackText
+                            )
+                        )
+                    }
+                }
+
+                // row 2 — duration slider
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier.weight(1f)
+                    ){
+                        DurationSliderField(
+                            label = "Duration",
+                            value = duration,
+                            min = 5,
+                            max = 120,
+                            step = 5,
+                            unit = "min",
+                            onValueChange = { duration = it }
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(50.dp)
+                            .background(GreenPrimary2, RoundedCornerShape(8.dp))
+                            .clickable {
+                                if (startTime.isNotEmpty()) {
+                                    val newSlot = Slot(
+                                        id = slots.size + 1,
+                                        day = selectedDay,
+                                        startTime = startTime,
+                                        endTime = calculateEndTime(startTime, duration),
+                                        duration = duration,
+                                        mode = mode,
+                                        fee = fee
+                                    )
+                                    slots = slots + newSlot
+                                    startTime = ""
+                                    fee = ""
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Add",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
         }
-    ) { padding ->
-        Column(
+
+    ) { paddingValues ->
+
+        // ── SLOTS LIST ──
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-        ) {
-            // Layer 1: Dashboard
-            DailyDashboard(selectedDay, todayShifts)
-
-            // Layer 2: Timeline Canvas
+                .background(PageBackground)
+                .padding(paddingValues)
+                .pointerInput(Unit) {
+                    detectTapGestures {
+                        openSlotId = null  // close all on tap
+                    }
+                }
+        ){
             LazyColumn(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                contentPadding = PaddingValues(vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .fillMaxSize()
+                    .background(PageBackground)
+                    .padding(8.dp),
+                verticalArrangement = Arrangement.Top
             ) {
-                if (todayShifts.isEmpty()) {
+                if (filteredSlots.isEmpty()) {
                     item {
                         Box(
-                            modifier = Modifier.fillParentMaxSize(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "No shifts scheduled for $selectedDay.\nAdd your working hours below.",
-                                color = Color.Gray,
-                                textAlign = TextAlign.Center,
-                                lineHeight = 24.sp
+                                text = "No slots for $selectedDay",
+                                color = GrayText,
+                                fontSize = 14.sp
                             )
                         }
                     }
                 } else {
-                    items(todayShifts, key = { it.id }) { shift ->
-                        ShiftCard(
-                            shift = shift,
+                    itemsIndexed(
+                        items = filteredSlots,
+                        key = { _, slot -> slot.id }
+                    ) { index, slot ->
+                        SlotCard(
+                            index = index + 1,
+                            startTime = slot.startTime,
+                            endTime = slot.endTime,
+                            duration = slot.duration,
+                            mode = slot.mode,
+                            fee = slot.fee,
+                            isOpen = openSlotId == slot.id,      // ← pass open state
+                            onSwipeOpen = { openSlotId = slot.id },
                             onDelete = {
-                                val currentList = weeklySchedule[selectedDay]?.toMutableList() ?: mutableListOf()
-                                currentList.remove(shift)
-                                weeklySchedule = weeklySchedule.toMutableMap().apply { put(selectedDay, currentList) }
+                                slots = slots.filter { it.id != slot.id }
                             }
                         )
                     }
                 }
             }
-
-            // Layer 3: Control Center
-            ControlCenter(
-                selectedDay = selectedDay,
-                inputHour = inputHour,
-                inputMinute = inputMinute,
-                inputDuration = inputDuration,
-                onNextDay = {
-                    selectedDayIndex = (selectedDayIndex + 1) % DaysOfWeek.size
-                },
-                onTimeChange = { h, m -> inputHour = h; inputMinute = m },
-                onDurationChange = { newDuration -> inputDuration = newDuration.coerceAtLeast(15L) },
-                onAddShift = {
-                    val formattedStart = String.format("%02d:%02d", inputHour, inputMinute)
-                    val newShift = ShiftTemplate(startTime = formattedStart, durationMinutes = inputDuration)
-
-                    if (isOverlap(newShift, todayShifts)) {
-                        Toast.makeText(context, "Overlap detected! Please choose a different time.", Toast.LENGTH_SHORT).show()
-                    } else {
-                        val currentList = weeklySchedule[selectedDay]?.toMutableList() ?: mutableListOf()
-                        currentList.add(newShift)
-                        weeklySchedule = weeklySchedule.toMutableMap().apply { put(selectedDay, currentList) }
-                    }
-                }
-            )
-        }
-    }
-}
-
-// --- 3. UI COMPONENTS ---
-
-@Composable
-fun DailyDashboard(day: String, shifts: List<ShiftTemplate>) {
-    val totalMinutes = shifts.sumOf { it.durationMinutes }
-    val totalHours = totalMinutes / 60.0
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(20.dp).fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(day, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color(0xFF111B21))
-            Column(horizontalAlignment = Alignment.End) {
-                Text("${shifts.size} Shifts", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                Text(
-                    text = if (totalHours > 0) String.format("Total Load: %.1f hrs", totalHours) else "Total Load: 0 hrs",
-                    fontSize = 14.sp,
-                    color = Color.Gray
-                )
-            }
-        }
-    }
-}
-
-@RequiresApi(Build.VERSION_CODES.O)
-@Composable
-fun ShiftCard(shift: ShiftTemplate, onDelete: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Blue indicator stripe
-            Box(
-                modifier = Modifier
-                    .width(4.dp)
-                    .height(48.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(Color(0xFF2A9DF4))
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = shift.getFormattedTimeRange(),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF111B21)
-                )
-                Text(
-                    text = "${shift.durationMinutes}-min slots",
-                    fontSize = 14.sp,
-                    color = Color.Gray
-                )
-            }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = Color(0xFFE53935))
-            }
-        }
-    }
-}
-
-@Composable
-fun ControlCenter(
-    selectedDay: String,
-    inputHour: Int,
-    inputMinute: Int,
-    inputDuration: Long,
-    onNextDay: () -> Unit,
-    onTimeChange: (Int, Int) -> Unit,
-    onDurationChange: (Long) -> Unit,
-    onAddShift: () -> Unit
-) {
-    Surface(
-        color = Color.White,
-        shadowElevation = 16.dp,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .padding(20.dp)
-                .navigationBarsPadding()
-        ) {
-            // Row 1: Day Navigator
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(selectedDay, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2A9DF4))
-                TextButton(onClick = onNextDay) {
-                    Text("Next Day", fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Row 2: Input Pods
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                // Time Pod (Mocked interaction for now - would open TimePickerDialog)
-                Card(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable {
-                            // TODO: Launch Material 3 TimePicker here
-                            // For quick demo, we just advance hour by 1
-                            onTimeChange((inputHour + 1) % 24, inputMinute)
-                        },
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE7F0F4))
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Start Time", fontSize = 12.sp, color = Color.Gray)
-                        val amPm = if (inputHour >= 12) "PM" else "AM"
-                        val displayHour = if (inputHour % 12 == 0) 12 else inputHour % 12
-                        Text(
-                            text = String.format("%02d:%02d %s", displayHour, inputMinute, amPm),
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF111B21)
-                        )
-                    }
-                }
-
-                // Duration Pod with Stepper
-                Card(
-                    modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE7F0F4))
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text("Slot Duration", fontSize = 12.sp, color = Color.Gray)
-                            Text(
-                                text = "${inputDuration}m",
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF111B21)
-                            )
-                        }
-                        Column {
-                            IconButton(onClick = { onDurationChange(inputDuration + 15) }, modifier = Modifier.size(24.dp)) {
-                                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Increase")
-                            }
-                            IconButton(onClick = { onDurationChange(inputDuration - 15) }, modifier = Modifier.size(24.dp)) {
-                                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Decrease")
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Row 3: Action Button
-            Button(
-                onClick = onAddShift,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A9DF4)),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = null, tint = Color.White)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Add Shift", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            }
-
         }
     }
 }
 
 
+// ── AUTO CALCULATE END TIME ──
+fun calculateEndTime(startTime: String, durationMinutes: Int): String {
+    try {
+        val parts = startTime.split(":")
+        val amPm = parts[1].split(" ")
+        var hour = parts[0].toInt()
+        var minute = amPm[0].toInt()
+        val period = amPm[1]
 
-@RequiresApi(Build.VERSION_CODES.O)
-@Preview(
-    showBackground = true,
-    name = "Master Schedule - Light Mode",
-    device = "id:pixel_7_pro" // Renders it on a modern phone screen size
-)
+        // convert to 24hr
+        if (period == "PM" && hour != 12) hour += 12
+        if (period == "AM" && hour == 12) hour = 0
+
+        // add duration
+        val totalMinutes = hour * 60 + minute + durationMinutes
+        var endHour = (totalMinutes / 60) % 24
+        val endMinute = totalMinutes % 60
+
+        // convert back to 12hr
+        val endPeriod = if (endHour >= 12) "PM" else "AM"
+        if (endHour > 12) endHour -= 12
+        if (endHour == 0) endHour = 12
+
+        return "${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')} $endPeriod"
+    } catch (e: Exception) {
+        return ""
+    }
+}
+
+
+@Preview(showBackground = true)
 @Composable
-fun MasterScheduleScreenPreview() {
-    // If you have a custom theme like MediSyncTheme, wrap it here!
-    // MediSyncTheme {
-    MasterScheduleScreen(
-        onBack = { /* Preview doesn't need to navigate */ }
+fun DoctorSlotsPreview() {
+    DoctorRegularSlotsManage(
+        navController = rememberNavController(),
+        userId = 1
     )
-    // }
 }

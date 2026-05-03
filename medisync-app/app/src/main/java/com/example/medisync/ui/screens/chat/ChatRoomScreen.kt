@@ -58,7 +58,6 @@ private val ReadTick       = Color(0xFF53BDEB)
 fun ChatScreen(
     navController: NavController,
     roomId: Int,
-    // Removed the hardcoded name parameters so the ViewModel acts as the single source of truth
     chatViewModel: ChatViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -97,6 +96,7 @@ fun ChatScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .imePadding()
                             .background(Color(0xFFFFA726))
                             .padding(6.dp),
                         contentAlignment = Alignment.Center

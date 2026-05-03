@@ -13,14 +13,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.medisync.ui.theme.natureGreen
 
 // ── COLORS ──
-private val ScrollChipSelected = Color(0xFF2E7D32)
-private val ScrollChipUnselected = Color(0xFFFFFFFF)
-private val ScrollChipSelectedText = Color(0xFFFFFFFF)
-private val ScrollChipUnselectedText = Color(0xFF6B7280)
-private val ScrollChipBorder = Color(0xFFE5E7EB)
-private val ScrollChipSelectedBorder = Color(0xFF2E7D32)
+private val ScrollChipSelected = Color.White
+private val ScrollChipUnselected = natureGreen
+private val ScrollChipSelectedText = Color(0xFF02608A)
+private val ScrollChipUnselectedText = Color(0xFFCBEAF8)
+private val ScrollChipBorder = natureGreen
+private val ScrollChipSelectedBorder = Color.White
 
 @Composable
 fun HorizontalScrollSelector(
