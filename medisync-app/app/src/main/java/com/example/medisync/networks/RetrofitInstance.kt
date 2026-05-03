@@ -16,20 +16,20 @@ object RetrofitInstance{
 //    const val CHAT_WS_URL = "ws://10.32.173.175:3000/chat"
 //    const val VIDEO_WS_URL = "ws://10.32.173.175:3000/video"
 
-//    const val BASE_URL = "http://192.168.1.8:3000"
+    const val BASE_URL = "http://192.168.1.8:3000"
+
+    const val CHAT_WS_URL = "ws://192.168.1.8:3000/chat"
+
+    const val VIDEO_WS_URL = "ws://192.168.1.8:3000/video"
+
+
+//    const val BASE_URL = "https://gfnfmq1w-3000.inc1.devtunnels.ms/"
 //
-//    const val CHAT_WS_URL = "ws://192.168.1.8:3000/chat"
+//    // 2. WebSockets MUST use WSS (WebSocket Secure) to pass through the HTTPS tunnel
+//    const val CHAT_WS_URL = "wss://gfnfmq1w-3000.inc1.devtunnels.ms/chat"
 //
-//    const val VIDEO_WS_URL = "ws://192.168.1.8:3000/video"
-
-
-    const val BASE_URL = "https://gfnfmq1w-3000.inc1.devtunnels.ms/"
-
-    // 2. WebSockets MUST use WSS (WebSocket Secure) to pass through the HTTPS tunnel
-    const val CHAT_WS_URL = "wss://gfnfmq1w-3000.inc1.devtunnels.ms/chat"
-
-    // 3. The Video Signaling URL also uses WSS
-    const val VIDEO_WS_URL = "wss://gfnfmq1w-3000.inc1.devtunnels.ms/video"
+//    // 3. The Video Signaling URL also uses WSS
+//    const val VIDEO_WS_URL = "wss://gfnfmq1w-3000.inc1.devtunnels.ms/video"
 
     val api: ApiService by lazy{
         Retrofit.Builder()
