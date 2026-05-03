@@ -104,7 +104,11 @@ create table if not exists doctor_availability
     start_time            time,
     end_time              time,
     slot_duration_minutes integer default 15,
+    consultation_type     VARCHAR(20) NOT NULL DEFAULT 'Offline',
+    consultation_fee      NUMERIC(10, 2) NOT NULL DEFAULT 0,
     is_active             boolean default true
+    created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
 );
 
 create table if not exists appointments
@@ -159,16 +163,15 @@ create table if not exists appointment_slots (
     unique(doctor_id, date, start_time)
 );
 
-create table if not exists doctor_slot_settings (
-    id                    serial primary key,
-    user_id               integer references users on delete cascade,
-    day_of_week           varchar(20) not null,
-    start_time            time not null,
-    end_time              time not null,
-    slot_duration_minutes integer default 15,
-    consultation_fee      numeric(10,2) not null,  -- ← price for this slot
-    is_active             boolean default true,
-    created_at            timestamp default now(),
-
-    unique(user_id, day_of_week, start_time)
+CREATE TABLE if not exists doctor_slot_settings (
+    id                    SERIAL PRIMARY KEY,
+    user_id               INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    day_of_week           VARCHAR(20) NOT NULL,
+    start_time            TIME NOT NULL,
+    end_time              TIME NOT NULL,
+    slot_duration_minutes INTEGER NOT NULL,
+    consultation_fee      NUMERIC(10, 2) NOT NULL DEFAULT 0,
+    consultation_type     VARCHAR(20) NOT NULL DEFAULT 'Offline',
+    is_active             BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

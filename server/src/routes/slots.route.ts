@@ -2,17 +2,21 @@ import { Router } from 'express'
 import {
     getDoctorAvailableDates,
     getDoctorSlots,
-    getDoctorAvailability
+    addRegularSlot,
+    deleteRegularSlot,
+    getRegularSlots,
 } from '../controllers/slots.controller'
+import { authMiddleware } from '../middlewares/auth.middleware';
 
 const router = Router()
 
-// Get available dates for a doctor
+router.use(authMiddleware);
+
 router.get('/:doctorId/dates', getDoctorAvailableDates)
-
-// Get slots for a specific date
 router.get('/:doctorId/slots', getDoctorSlots)
-router.get('/:doctorId/availability', getDoctorAvailability)  // ← add
 
+router.post('/regular', addRegularSlot)
+router.delete('/regular/:slotId', deleteRegularSlot)
+router.get('/regular', getRegularSlots)
 
 export default router
