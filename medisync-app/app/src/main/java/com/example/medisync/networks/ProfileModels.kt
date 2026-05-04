@@ -108,13 +108,19 @@ data class DoctorDetail(
     @SerializedName("consultation_fee")  val consultationFee : Double? = null,
     @SerializedName("consultation_type") val consultationType: String? = null,
     @SerializedName("languages")         val languages       : String? = null,
+    @SerializedName("license_number")    val licenseNumber   : String? = null,
     @SerializedName("about")             val about           : String? = null,
     @SerializedName("gender")            val gender          : String? = null,
+    @SerializedName("email")             val email           : String? = null,
+    @SerializedName("dob")               val dob             : String? = null,
+    @SerializedName("marital_status")    val maritalStatus   : String? = null,
     @SerializedName("profile_photo")     val profilePhoto    : String? = null,
     @SerializedName("clinic_name")       val clinicName      : String? = null,
     @SerializedName("address")           val address         : String? = null,
     @SerializedName("city")              val city            : String? = null,
-    @SerializedName("pincode")           val pincode         : String? = null
+    @SerializedName("pincode")           val pincode         : String? = null,
+    @SerializedName("lat")               val lat             : Double? = null,
+    @SerializedName("lng")               val lng             : Double? = null
 )
 
 
@@ -333,3 +339,46 @@ data class DeleteSlotResponse(
     val success: Boolean,
     val message: String
 )
+
+data class PersonalProfileResponse(
+    val data: PersonalProfileData?
+)
+
+data class PersonalProfileData(
+    val user_id: Int? = null,
+    val name: String? = null,
+    val email: String? = null,
+    val gender: String? = null,
+    val dob: String? = null,
+    val blood_group: String? = null,
+    val marital_status: String? = null,
+    val height: String? = null,
+    val weight: String? = null,
+    val emergency_contact: String? = null
+)
+
+data class MedicalProfileResponse(
+    val data: MedicalProfileData?
+)
+
+data class MedicalProfileData(
+    val allergies: String? = null,
+    val current_medications: String? = null,
+    val past_medications: String? = null,
+    val chronic_diseases: String? = null,
+    val injuries: String? = null,
+    val surgeries: String? = null
+)
+
+data class LifestyleProfileResponse(
+    val data: LifestyleProfileData?
+)
+
+data class LifestyleProfileData(
+    val smoking: String? = null,
+    val alcohol: String? = null,
+    val activity_level: String? = null,
+    val food_preference: String? = null,
+    val occupation: String? = null
+)
+

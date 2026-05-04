@@ -53,6 +53,6 @@ fun DoctorHomePreview() {
         navController = rememberNavController(),
         name = "Sharma",
         phone = "9122349557",
-        userId = 1
+        userId = 3
     )
 }

@@ -19,11 +19,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.medisync.data.TokenManager
 import com.example.medisync.networks.AvailabilitySlot
 import com.example.medisync.networks.DoctorDetail
 import com.example.medisync.networks.RetrofitInstance
@@ -58,11 +60,7 @@ private val previewDoctor = DoctorDetail(
     pincode          = "560001"
 )
 
-private val previewAvailability = listOf(
-    AvailabilitySlot("Monday",    "09:00", "13:00", 15),
-    AvailabilitySlot("Wednesday", "14:00", "18:00", 15),
-    AvailabilitySlot("Friday",    "09:00", "12:00", 30),
-)
+
 
 // ── Main Screen ───────────────────────────────
 @Composable
@@ -70,6 +68,7 @@ fun DoctorProfileScreen(
     doctorId     : Int,
     navController: NavController
 ) {
+    val context = LocalContext.current
     var doctor       by remember { mutableStateOf<DoctorDetail?>(null) }
     var availability by remember { mutableStateOf<List<AvailabilitySlot>>(emptyList()) }
     var isLoading    by remember { mutableStateOf(true) }
@@ -77,17 +76,23 @@ fun DoctorProfileScreen(
 
     LaunchedEffect(doctorId) {
         try {
+            val token = "Bearer ${TokenManager.getToken(context)}"
             val profileRes = RetrofitInstance.api.getDoctorProfile(doctorId)
-            doctor         = profileRes.doctor
-            val availRes   = RetrofitInstance.api.getDoctorAvailability(doctorId)
-            availability   = availRes.availability
-        } catch (e: Exception) {
-            error = "Could not load doctor profile"
-            Log.e("DoctorProfile", "Error: ${e.message}")
-        }
-        isLoading = false
-    }
+            if (profileRes.isSuccessful) {
+                doctor = profileRes.body()?.doctor
+            } else {
+                error = "Failed to load doctor details"
+            }
 
+
+        } catch (e: Exception) {
+            error = "Could not connect to server"
+            Log.e("DoctorProfile", "Error: ${e.message}")
+        } finally {
+
+            isLoading = false
+        }
+    }
     when {
         isLoading -> Box(
             modifier         = Modifier.fillMaxSize().background(ScreenBg),
@@ -117,7 +122,6 @@ fun DoctorProfileScreen(
 
         doctor != null -> DoctorProfileContent(
             doctor       = doctor!!,
-            availability = availability,
             onBackClick  = { navController.popBackStack() },
             onBookClick  = { id ->
                 val encodedName = Uri.encode(doctor!!.doctorName)
@@ -132,7 +136,6 @@ fun DoctorProfileScreen(
 @Composable
 fun DoctorProfileContent(
     doctor      : DoctorDetail,
-    availability: List<AvailabilitySlot>,
     onBackClick : () -> Unit,
     onBookClick : (Int) -> Unit
 ) {
@@ -299,7 +302,7 @@ fun DoctorProfileContent(
                 }
             }
 
-            // Details
+
             Section(title = "Details") {
                 Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     doctor.qualification?.let {
@@ -335,23 +338,11 @@ fun DoctorProfileContent(
                 }
             }
 
-            // Availability
-            Section(title = "Availability") {
-                if (availability.isEmpty()) {
-                    Text(text = "No availability set yet", fontSize = 14.sp, color = TextHint)
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        availability.forEach { slot -> DoctorAvailabilityRow(slot = slot) }
-                    }
-                }
-            }
-
             Spacer(Modifier.height(8.dp))
         }
     }
 }
 
-// ── Flat section (no card) ─────────────────────
 @Composable
 private fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column {
@@ -368,7 +359,6 @@ private fun Section(title: String, content: @Composable ColumnScope.() -> Unit) 
     }
 }
 
-// ── Hero meta row ──────────────────────────────
 @Composable
 private fun HeroMeta(icon: ImageVector, text: String) {
     Row(
@@ -413,7 +403,6 @@ private fun ConsultChip(type: String) {
 fun DoctorProfilePreview() {
     DoctorProfileContent(
         doctor       = previewDoctor,
-        availability = previewAvailability,
         onBackClick  = { },
         onBookClick  = { }
     )

@@ -1,6 +1,9 @@
 package com.example.medisync.ui.screens.patient
 
+import android.net.http.HttpException
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresExtension
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -45,6 +48,8 @@ import java.io.IOException
 import java.net.SocketTimeoutException
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.collections.emptyList
+
 
 // ── Formatters ─────────────────────────────────
 fun formatTime(time: String): String = try {
@@ -80,6 +85,7 @@ private val previewDates = listOf(
 )
 
 // ── Stateful screen ────────────────────────────
+@RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SlotPickerScreen(
@@ -99,32 +105,52 @@ fun SlotPickerScreen(
     var isLoadingSlots by remember { mutableStateOf(false) }
     var isBooking      by remember { mutableStateOf(false) }
 
-    LaunchedEffect(doctorId) {
-        try {
-            val response   = RetrofitInstance.api.getDoctorAvailableDates(doctorId)
-            availableDates = response.dates
-            if (response.dates.isNotEmpty()) selectedDate = response.dates.first()
-        } catch (_: Exception) {
-            snackbarHostState.showSnackbar("Could not load dates")
-        }
-        isLoadingDates = false
-    }
 
-    LaunchedEffect(selectedDate) {
-        val date = selectedDate ?: return@LaunchedEffect
-        isLoadingSlots = true
-        selectedSlot   = null
-        try {
-            slots = RetrofitInstance.api.getDoctorSlots(doctorId, date).slots
-        } catch (_: Exception) {
-            snackbarHostState.showSnackbar("Could not load slots")
-        }
-        isLoadingSlots = false
-    }
+            LaunchedEffect(doctorId) {
+                try {
+                    val token = "Bearer ${TokenManager.getToken(context)}"
+                    val response = RetrofitInstance.api.getDoctorAvailableDates(token, doctorId)
+
+                    val datesList = response.dates
+                    availableDates = datesList
+
+                    if (datesList.isNotEmpty()) {
+                        selectedDate = datesList.first()
+                    }
+
+                } catch (e: HttpException) {
+                    snackbarHostState.showSnackbar("Server error")
+                } catch (e: Exception) {
+                    snackbarHostState.showSnackbar("Network error: Could not load dates")
+                } finally {
+                    isLoadingDates = false
+                }
+            }
+
+
+            LaunchedEffect(selectedDate) {
+                val date = selectedDate ?: return@LaunchedEffect
+                isLoadingSlots = true
+                selectedSlot = null
+
+                try {
+                    val token = "Bearer ${TokenManager.getToken(context)}"
+                    val response = RetrofitInstance.api.getDoctorSlots(token, doctorId, date)
+
+                    slots = response.slots ?: emptyList()
+                } catch (e: HttpException) {
+                    snackbarHostState.showSnackbar("Server error ")
+                } catch (e: Exception) {
+                    snackbarHostState.showSnackbar("Network error: Could not load slots")
+                } finally {
+                    isLoadingSlots = false
+                }
+            }
 
     suspend fun refreshSlots() {
         val date = selectedDate ?: return
-        runCatching { RetrofitInstance.api.getDoctorSlots(doctorId, date) }
+        val token = "Bearer ${TokenManager.getToken(context)}"
+        runCatching { RetrofitInstance.api.getDoctorSlots(token,doctorId, date) }
             .onSuccess { slots = it.slots }
     }
 
@@ -170,13 +196,10 @@ fun SlotPickerScreen(
                         else -> snackbarHostState.showSnackbar("Booking failed (${res.code()})")
                     }
                 } catch (e: Exception) {
-                    // We don't want to show an error for that!
                     if (e is CancellationException) throw e
 
-                    // 2. Log the real error for YOU (the developer) to see in Logcat
                     Log.e("BookingError", "Failed to book appointment", e)
 
-                    // 3. Show a friendly message to the USER based on the specific crash
                     val errorMessage = when (e) {
                         is SocketTimeoutException ->
                             "The server is taking too long to respond. Please try again."
@@ -191,10 +214,9 @@ fun SlotPickerScreen(
                             "Navigation error. Please restart the app."
 
                         else ->
-                            "Something went wrong. Please try again." // Generic fallback
+                            "Something went wrong. Please try again."
                     }
 
-                    // Show the friendly message
                     snackbarHostState.showSnackbar(errorMessage)
                 } finally {
                     isBooking = false

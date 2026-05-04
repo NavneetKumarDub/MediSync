@@ -9,6 +9,8 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,8 +32,7 @@ import com.example.medisync.ui.components.RadioButton
 import com.example.medisync.ui.theme.natureGreen
 import kotlinx.coroutines.launch
 
-
-private val ErrorRed    = Color(0xFFDC2626)
+private val ErrorRed = Color(0xFFDC2626)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,6 +70,44 @@ fun DoctorProfileScreen(
     var address    by remember { mutableStateOf("") }
     var city       by remember { mutableStateOf("") }
     var pincode    by remember { mutableStateOf("") }
+
+    // ── FETCH EXISTING PROFILE DATA ───────────
+    LaunchedEffect(key1 = userId) {
+        try {
+            val response = RetrofitInstance.api.getDoctorProfile(userId)
+
+            if (response.isSuccessful) {
+                response.body()?.doctor?.let { profile ->
+                    // Populate Personal
+                    email         = profile.email ?: ""
+                    gender        = profile.gender ?: ""
+                    dob           = profile.dob ?: ""
+                    maritalStatus = profile.maritalStatus ?: ""
+                    about         = profile.about ?: ""
+
+                    // Populate Professional
+                    licenseNumber    = profile.licenseNumber ?: ""
+                    speciality       = profile.speciality ?: ""
+                    subSpeciality    = profile.subSpeciality ?: ""
+                    qualification    = profile.qualification ?: ""
+                    experienceYears  = profile.experienceYears?.toString() ?: ""
+                    languages        = profile.languages ?: ""
+                    consultationFee  = profile.consultationFee?.toString() ?: ""
+                    consultationType = profile.consultationType ?: ""
+
+                    // Populate Clinic
+                    clinicName = profile.clinicName ?: ""
+                    address    = profile.address ?: ""
+                    city       = profile.city ?: ""
+                    pincode    = profile.pincode ?: ""
+                }
+            } else {
+                errorMessage = "Failed to load profile data."
+            }
+        } catch (e: Exception) {
+            errorMessage = "Network error: ${e.message}"
+        }
+    }
 
     Scaffold(
         containerColor = ScreenBg,
@@ -183,7 +222,7 @@ fun DoctorProfileScreen(
                                             qualification     = qualification,
                                             experience_years  = experienceYears.toIntOrNull() ?: 0,
                                             languages         = languages,
-                                            consultation_fee  = consultationFee,
+                                            consultation_fee  = consultationFee.toDoubleOrNull()?.toString() ?: "0.0",
                                             consultation_type = consultationType
                                         )
                                     )

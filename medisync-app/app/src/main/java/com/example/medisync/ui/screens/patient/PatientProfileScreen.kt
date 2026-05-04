@@ -31,7 +31,7 @@ import com.example.medisync.ui.components.StepperField
 import com.example.medisync.ui.theme.natureGreen
 import kotlinx.coroutines.launch
 
-private val ErrorRed    = Color(0xFFDC2626)
+private val ErrorRed = Color(0xFFDC2626)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +46,7 @@ fun PatientProfileScreen(
     val scope         = rememberCoroutineScope()
     var errorMessage by remember { mutableStateOf("") }
     var isSaving     by remember { mutableStateOf(false) }
+    var isLoading    by remember { mutableStateOf(true) }
 
     // Personal fields
     var myName           by remember { mutableStateOf(name) }
@@ -73,10 +74,52 @@ fun PatientProfileScreen(
     var foodPreference by remember { mutableStateOf("") }
     var occupation     by remember { mutableStateOf("") }
 
+    // Fetch all profiles on screen open
+    LaunchedEffect(userId) {
+        try {
+            val personalResponse  = RetrofitInstance.api.getPersonalProfile(userId)
+            val medicalResponse   = RetrofitInstance.api.getMedicalProfile(userId)
+            val lifestyleResponse = RetrofitInstance.api.getLifestyleProfile(userId)
+
+            personalResponse.data?.let { p ->
+                myName           = p.name             ?: name
+                email            = p.email            ?: ""
+                gender           = p.gender           ?: ""
+                dob              = p.dob              ?: ""
+                bloodGroup       = p.blood_group      ?: ""
+                maritalStatus    = p.marital_status   ?: ""
+                height           = p.height?.toIntOrNull() ?: 0
+                weight           = p.weight?.toIntOrNull() ?: 0
+                emergencyContact = p.emergency_contact ?: ""
+            }
+
+            medicalResponse.data?.let { m ->
+                allergies          = m.allergies           ?: ""
+                currentMedications = m.current_medications ?: ""
+                pastMedications    = m.past_medications    ?: ""
+                chronicDiseases    = m.chronic_diseases    ?: ""
+                injuries           = m.injuries            ?: ""
+                surgeries          = m.surgeries           ?: ""
+            }
+
+            lifestyleResponse.data?.let { l ->
+                smoking        = l.smoking        ?: ""
+                alcohol        = l.alcohol        ?: ""
+                activityLevel  = l.activity_level ?: ""
+                foodPreference = l.food_preference ?: ""
+                occupation     = l.occupation     ?: ""
+            }
+
+        } catch (e: Exception) {
+            errorMessage = "Failed to load profile"
+        } finally {
+            isLoading = false
+        }
+    }
+
     Scaffold(
         containerColor = ScreenBg,
         topBar = {
-            // ── Green rounded block (HomeTopBar style) ──
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -110,7 +153,6 @@ fun PatientProfileScreen(
 
                 Spacer(Modifier.height(8.dp))
 
-                // Tabs on green bg
                 TabRow(
                     selectedTabIndex = selectedTab,
                     containerColor   = natureGreen,
@@ -211,7 +253,7 @@ fun PatientProfileScreen(
                                 }
                             }
                         },
-                        enabled = !isSaving,
+                        enabled = !isSaving && !isLoading,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(54.dp),
@@ -221,7 +263,7 @@ fun PatientProfileScreen(
                             disabledContainerColor = natureGreen.copy(alpha = 0.4f)
                         )
                     ) {
-                        if (isSaving) {
+                        if (isSaving || isLoading) {
                             CircularProgressIndicator(
                                 color       = Color.White,
                                 strokeWidth = 2.dp,
@@ -241,40 +283,51 @@ fun PatientProfileScreen(
         }
     ) { paddingValues ->
 
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            when (selectedTab) {
-                0 -> {
-                    item { ProfileRow(label = "Name",              value = myName,          placeholder = "add name",               onValueChange = { myName = it }) }
-                    item { ProfileRow(label = "Contact Number",    value = phoneNumber,     editable = false) }
-                    item { ProfileRow(label = "Email Id",          value = email,           placeholder = "add email",              onValueChange = { email = it }) }
-                    item { RadioButton(label = "Gender",           options = listOf("Male","Female","Other"), selectedOption = gender, onOptionSelected = { gender = it }) }
-                    item { DatePicker(label = "Date of Birth",     value = dob,             placeholder = "yyyy mm dd",             onValueChange = { dob = it }) }
-                    item { DropdownField(label = "Blood Group",    options = listOf("A+","A-","B+","B-","AB+","AB-","O+","O-"), selectedOption = bloodGroup, onOptionSelected = { bloodGroup = it }, paddingX = 300.dp) }
-                    item { RadioButton(label = "Marital Status",   options = listOf("yes","no"), selectedOption = maritalStatus, onOptionSelected = { maritalStatus = it }) }
-                    item { StepperField(label = "Height", min = 0, max = 500, unit = "cm", value = height, onValueChange = { height = it }) }
-                    item { ProfileRow(label = "Emergency Contact", value = emergencyContact, placeholder = "add emergency details", onValueChange = { emergencyContact = it }) }
-                }
-                1 -> {
-                    item { ProfileRow(label = "Allergies",            value = allergies,           placeholder = "add allergies",   onValueChange = { allergies = it }) }
-                    item { ProfileRow(label = "Current Medications",  value = currentMedications,  placeholder = "add medications", onValueChange = { currentMedications = it }) }
-                    item { ProfileRow(label = "Past Medications",     value = pastMedications,     placeholder = "add medications", onValueChange = { pastMedications = it }) }
-                    item { ProfileRow(label = "Chronic Diseases",     value = chronicDiseases,     placeholder = "add diseases",    onValueChange = { chronicDiseases = it }) }
-                    item { ProfileRow(label = "Injuries",             value = injuries,            placeholder = "add incident",    onValueChange = { injuries = it }) }
-                    item { ProfileRow(label = "Surgeries",            value = surgeries,           placeholder = "add surgeries",   onValueChange = { surgeries = it }) }
-                }
-                2 -> {
-                    item { DropdownField(label = "Alcohol consumption", options = listOf("Non-drinking", "Occasional", "Regular"), selectedOption = alcohol, onOptionSelected = { alcohol = it }, paddingX = 300.dp) }
-                    item { DropdownField(label = "Smoking Habits",      options = listOf("Non-smoker", "Occasional", "Regular"),  selectedOption = smoking, onOptionSelected = { smoking = it }, paddingX = 300.dp) }
-                    item { RadioButton(label = "Activity Level",        options = listOf("low", "Moderate", "High"),              selectedOption = activityLevel,  onOptionSelected = { activityLevel = it }) }
-                    item { RadioButton(label = "Food Preference",       options = listOf("veg", "non-veg", "vegan"),              selectedOption = foodPreference, onOptionSelected = { foodPreference = it }) }
-                    item { ProfileRow(label = "Occupation",             value = occupation, placeholder = "add occupation", onValueChange = { occupation = it }) }
-                }
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = natureGreen)
             }
-            item { Spacer(Modifier.height(8.dp)) }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                when (selectedTab) {
+                    0 -> {
+                        item { ProfileRow(label = "Name",              value = myName,          placeholder = "add name",               onValueChange = { myName = it }) }
+                        item { ProfileRow(label = "Contact Number",    value = phoneNumber,     editable = false) }
+                        item { ProfileRow(label = "Email Id",          value = email,           placeholder = "add email",              onValueChange = { email = it }) }
+                        item { RadioButton(label = "Gender",           options = listOf("Male","Female","Other"), selectedOption = gender, onOptionSelected = { gender = it }) }
+                        item { DatePicker(label = "Date of Birth",     value = dob,             placeholder = "yyyy mm dd",             onValueChange = { dob = it }) }
+                        item { DropdownField(label = "Blood Group",    options = listOf("A+","A-","B+","B-","AB+","AB-","O+","O-"), selectedOption = bloodGroup, onOptionSelected = { bloodGroup = it }, paddingX = 300.dp) }
+                        item { RadioButton(label = "Marital Status",   options = listOf("yes","no"), selectedOption = maritalStatus, onOptionSelected = { maritalStatus = it }) }
+                        item { StepperField(label = "Height", min = 0, max = 500, unit = "cm", value = height, onValueChange = { height = it }) }
+                        item { ProfileRow(label = "Emergency Contact", value = emergencyContact, placeholder = "add emergency details", onValueChange = { emergencyContact = it }) }
+                    }
+                    1 -> {
+                        item { ProfileRow(label = "Allergies",            value = allergies,           placeholder = "add allergies",   onValueChange = { allergies = it }) }
+                        item { ProfileRow(label = "Current Medications",  value = currentMedications,  placeholder = "add medications", onValueChange = { currentMedications = it }) }
+                        item { ProfileRow(label = "Past Medications",     value = pastMedications,     placeholder = "add medications", onValueChange = { pastMedications = it }) }
+                        item { ProfileRow(label = "Chronic Diseases",     value = chronicDiseases,     placeholder = "add diseases",    onValueChange = { chronicDiseases = it }) }
+                        item { ProfileRow(label = "Injuries",             value = injuries,            placeholder = "add incident",    onValueChange = { injuries = it }) }
+                        item { ProfileRow(label = "Surgeries",            value = surgeries,           placeholder = "add surgeries",   onValueChange = { surgeries = it }) }
+                    }
+                    2 -> {
+                        item { DropdownField(label = "Alcohol consumption", options = listOf("Non-drinking", "Occasional", "Regular"), selectedOption = alcohol, onOptionSelected = { alcohol = it }, paddingX = 300.dp) }
+                        item { DropdownField(label = "Smoking Habits",      options = listOf("Non-smoker", "Occasional", "Regular"),  selectedOption = smoking, onOptionSelected = { smoking = it }, paddingX = 300.dp) }
+                        item { RadioButton(label = "Activity Level",        options = listOf("low", "Moderate", "High"),              selectedOption = activityLevel,  onOptionSelected = { activityLevel = it }) }
+                        item { RadioButton(label = "Food Preference",       options = listOf("veg", "non-veg", "vegan"),              selectedOption = foodPreference, onOptionSelected = { foodPreference = it }) }
+                        item { ProfileRow(label = "Occupation",             value = occupation, placeholder = "add occupation", onValueChange = { occupation = it }) }
+                    }
+                }
+                item { Spacer(Modifier.height(8.dp)) }
+            }
         }
     }
 }

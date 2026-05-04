@@ -67,18 +67,17 @@ interface ApiService {
         @Query("languages")            languages       : String? = null
     ): SearchResponse
 
-    @GET("api/doctor/profile/{doctorId}")
-    suspend fun getDoctorProfile(
-        @Path("doctorId") doctorId: Int
-    ): DoctorProfileResponse
+
 
     @GET("api/slots/{doctorId}/dates")
     suspend fun getDoctorAvailableDates(
+        @Header("Authorization") token: String,
         @Path("doctorId") doctorId: Int
     ): AvailableDatesResponse
 
     @GET("api/slots/{doctorId}/slots")
     suspend fun getDoctorSlots(
+        @Header("Authorization") token: String,
         @Path("doctorId") doctorId : Int,
         @Query("date")    date     : String
     ): SlotsResponse
@@ -153,5 +152,25 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Path("slotId") slotId: Int
     ): DeleteSlotResponse
+
+    @GET("api/patient/personal/{userId}")
+    suspend fun getPersonalProfile(
+        @Path("userId") userId: Int
+    ): PersonalProfileResponse
+
+    @GET("api/patient/medical/{userId}")
+    suspend fun getMedicalProfile(
+        @Path("userId") userId: Int
+    ): MedicalProfileResponse
+
+    @GET("api/patient/lifestyle/{userId}")
+    suspend fun getLifestyleProfile(
+        @Path("userId") userId: Int
+    ): LifestyleProfileResponse
+
+    @GET("api/doctor/profile/{doctorId}")
+    suspend fun getDoctorProfile(
+        @Path("doctorId") doctorId: Int
+    ): Response<DoctorProfileResponse>
 }
 
