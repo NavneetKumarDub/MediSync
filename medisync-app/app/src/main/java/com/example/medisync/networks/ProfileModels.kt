@@ -298,3 +298,38 @@ interface VideoSignalingListener {
     fun onIceCandidateReceived(signal: VideoSignal)
     fun onConnectionClosed()
 }
+
+data class AddSlotRequest(
+    val day_of_week: String,
+    val start_time: String,
+    val end_time: String,
+    val slot_duration_minutes: Int,
+    val consultation_fee: Int,
+    val consultation_type: String
+)
+
+data class RegularSlotItem(
+    val id: Int,
+    val day_of_week: String,
+    val start_time: String,
+    val end_time: String,
+    val slot_duration_minutes: Int,
+    val consultation_fee: String,
+    val consultation_type: String
+)
+
+data class RegularSlotsResponse(
+    val success: Boolean,
+    val slots: List<RegularSlotItem>
+)
+
+data class AddSlotResponse(
+    val success: Boolean,
+    val message: String,
+    val slot: RegularSlotItem?
+)
+
+data class DeleteSlotResponse(
+    val success: Boolean,
+    val message: String
+)

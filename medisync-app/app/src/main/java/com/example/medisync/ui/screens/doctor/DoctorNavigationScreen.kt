@@ -1,11 +1,8 @@
 package com.example.medisync.ui.screens.doctor
 
-import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
@@ -40,11 +37,11 @@ fun DoctorNavigationScreen(
             selectedTab = selectedTab,
             onTabSelected = { selectedTab = it }
         )
-        3 -> DoctorDashboardContent(
+        3 -> DoctorScheduleScreen(
             navController = navController,
-            userId = userId,
             selectedTab = selectedTab,
-            onTabSelected = { selectedTab = it }
+            onTabSelected = { selectedTab = it },
+            userId = userId
         )
     }
 }

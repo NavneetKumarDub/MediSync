@@ -20,7 +20,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.launch
 
-// ── COLORS ──
 private val Black      = Color(0xFF1A1A1A)
 private val LightGray  = Color(0xFFF3F4F6)
 private val MediumGray = Color(0xFF6B7280)
@@ -33,7 +32,6 @@ fun TimePicker(
 ) {
     var showDialog by remember { mutableStateOf(false) }
 
-    // ── TRIGGER BUTTON — black, 110×40dp, white text ──
     Box(
         modifier = Modifier
             .width(110.dp)
@@ -74,26 +72,24 @@ private fun TimePickerDialog(
     val hours   = (1..12).toList()
     val minutes = (0..59).toList()
 
-    val hourListState   = rememberLazyListState(initialFirstVisibleItemIndex = selectedHour - 1)
-    val minuteListState = rememberLazyListState(initialFirstVisibleItemIndex = selectedMinute)
+    val hourListState   = rememberLazyListState(initialFirstVisibleItemIndex = (selectedHour - 1).coerceAtLeast(0))
+    val minuteListState = rememberLazyListState(initialFirstVisibleItemIndex = selectedMinute.coerceAtLeast(0))
 
     val scope = rememberCoroutineScope()
 
-    // Sync state when scroll settles
-    // In TimePickerDialog, fix both LaunchedEffects:
-
     LaunchedEffect(hourListState.isScrollInProgress) {
         if (!hourListState.isScrollInProgress) {
-            // +1 because firstVisibleItemIndex is the item ABOVE center
-            val index = (hourListState.firstVisibleItemIndex + 1).coerceIn(0, hours.size - 1)
+            val index = hourListState.firstVisibleItemIndex.coerceIn(0, hours.size - 1)
             selectedHour = hours[index]
+            scope.launch { hourListState.animateScrollToItem(index) }
         }
     }
 
     LaunchedEffect(minuteListState.isScrollInProgress) {
         if (!minuteListState.isScrollInProgress) {
-            val index = (minuteListState.firstVisibleItemIndex + 1).coerceIn(0, minutes.size - 1)
+            val index = minuteListState.firstVisibleItemIndex.coerceIn(0, minutes.size - 1)
             selectedMinute = minutes[index]
+            scope.launch { minuteListState.animateScrollToItem(index) }
         }
     }
 
@@ -108,7 +104,6 @@ private fun TimePickerDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-
                 Text(
                     text = "Select Time",
                     fontSize = 16.sp,
@@ -144,7 +139,6 @@ private fun TimePickerDialog(
                         }
                     )
 
-                    // AM / PM
                     Column(
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -164,7 +158,7 @@ private fun TimePickerDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                     TextButton(onClick = {
                         val period = if (isAm) "AM" else "PM"
-                        val time   = "${selectedHour.toString().padStart(2, '0')}:${selectedMinute.toString().padStart(2, '0')} $period"
+                        val time = "${selectedHour.toString().padStart(2, '0')}:${selectedMinute.toString().padStart(2, '0')} $period"
                         onConfirm(time)
                     }) {
                         Text("OK", color = Black, fontWeight = FontWeight.SemiBold)
@@ -175,8 +169,6 @@ private fun TimePickerDialog(
     }
 }
 
-// ── DRUM ROLL ──
-// Z-order (bottom → top): highlight → top fade → bottom fade → LazyColumn (text always on top)
 @Composable
 private fun <T> DrumRoll(
     items: List<T>,
@@ -190,8 +182,6 @@ private fun <T> DrumRoll(
             .width(56.dp)
             .height(150.dp)
     ) {
-
-        // 1️⃣ HIGHLIGHT — drawn first so it sits behind everything
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
@@ -201,7 +191,6 @@ private fun <T> DrumRoll(
                 .background(LightGray)
         )
 
-        // 2️⃣ TOP FADE — behind text
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -214,7 +203,6 @@ private fun <T> DrumRoll(
                 )
         )
 
-        // 3️⃣ BOTTOM FADE — behind text
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -227,12 +215,11 @@ private fun <T> DrumRoll(
                 )
         )
 
-        // 4️⃣ LAZY COLUMN — drawn last so text is always on top of everything
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            contentPadding = PaddingValues(vertical = 48.dp)
+            contentPadding = PaddingValues(vertical = 51.dp)
         ) {
             items(items.size) { index ->
                 val isSelected = index == selectedIndex
@@ -255,7 +242,6 @@ private fun <T> DrumRoll(
     }
 }
 
-// ── AM/PM BUTTON ──
 @Composable
 private fun AmPmButton(
     label: String,

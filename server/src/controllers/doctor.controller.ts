@@ -207,7 +207,7 @@ export const searchDoctors = async (req: Request, res: Response) => {
 
 // Get single doctor public profile
 export const getDoctorProfile = async (req: Request, res: Response) => {
-    console.log("Inside getdoctorprofile")
+    console.log("Inside get doctor profile controller : ",req.params);
     const { doctorId } = req.params
     try {
         const result = await db.query(`
@@ -218,30 +218,36 @@ export const getDoctorProfile = async (req: Request, res: Response) => {
                 dp.sub_speciality,
                 dp.qualification,
                 dp.experience_years,
-                dp.languages,
                 dp.consultation_fee,
                 dp.consultation_type,
+                dp.languages,
+                dp.license_number,
                 dper.about,
                 dper.gender,
+                dper.email,
+                dper.dob,
+                dper.marital_status,
                 dper.profile_photo,
                 dc.clinic_name,
                 dc.address,
                 dc.city,
-                dc.pincode
+                dc.pincode,
+                dc.lat,
+                dc.lng
             FROM users u
             LEFT JOIN doctor_professional dp   ON u.id = dp.user_id
             LEFT JOIN doctor_personal     dper ON u.id = dper.user_id
             LEFT JOIN doctor_clinic       dc   ON u.id = dc.user_id
             WHERE u.id = $1 AND u.role = 'doctor'
         `, [doctorId])
-        console.log("doctorProfile : ",result)
+
         if (result.rows.length === 0) {
             return res.status(404).json({ message: 'Doctor not found' })
         }
 
         res.json({ doctor: result.rows[0] })
     } catch (error) {
-        console.log("error : ",error)
+        console.log("error : ", error)
         res.status(500).json({ message: 'Server error' })
     }
 }

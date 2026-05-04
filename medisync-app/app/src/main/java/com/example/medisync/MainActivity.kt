@@ -19,6 +19,8 @@ import com.example.medisync.ui.screens.patient.SearchScreen
 import com.example.medisync.ui.screens.auth.SelectRoleScreen
 import com.example.medisync.ui.screens.chat.ChatScreen
 import com.example.medisync.ui.screens.doctor.DoctorNavigationScreen
+import com.example.medisync.ui.screens.doctor.DoctorRegularSlotsManage
+import com.example.medisync.ui.screens.doctor.DoctorScheduleScreen
 import com.example.medisync.ui.screens.patient.PatientNavigationScreen
 import com.example.medisync.ui.screens.patient.SlotPickerScreen
 import com.example.medisync.ui.screens.patient.PatientProfileScreen
@@ -129,6 +131,21 @@ class MainActivity : ComponentActivity() {
                             onNavigateBack = {
                                 navController.popBackStack()
                             }
+                        )
+                    }
+                    composable("doctorSchedule/{selectedTab}/{userId}") { backStackEntry ->
+                        DoctorScheduleScreen(
+                            navController = navController,
+                            selectedTab = backStackEntry.arguments?.getString("selectedTab")?.toIntOrNull() ?: 0,
+                            onTabSelected = { },
+                            userId = backStackEntry.arguments?.getString("userId")?.toIntOrNull() ?: 0
+                        )
+                    }
+
+                    composable("doctorWeeklyTemplate/{userId}") { backStackEntry ->
+                        DoctorRegularSlotsManage(
+                            navController = navController,
+                            userId = backStackEntry.arguments?.getString("userId")?.toIntOrNull() ?: 0
                         )
                     }
 

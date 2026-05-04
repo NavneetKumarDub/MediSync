@@ -85,5 +85,6 @@ dependencies {
     // JSON parsing (typed, replaces Gson usage in WebSocket code)
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation("io.getstream:stream-webrtc-android:1.3.10")
+    implementation("androidx.compose.ui:ui-text-google-fonts:1.6.0")
 
 }

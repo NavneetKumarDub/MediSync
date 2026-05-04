@@ -25,8 +25,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.medisync.ui.theme.natureGreen
 
-val bottomBarColor = Color(0xFF186A8F)
+val bottomBarColor = natureGreen
 
 @Composable
 fun VideoCallBottomBar(
@@ -101,7 +102,7 @@ fun CallControlButton(
 ) {
     val backgroundColor = when {
         isDestructive -> Color.Red
-        isActive -> Color(0x44FFFFFF)
+        isActive -> Color(0xF73AC1FC)
         else -> Color.White
     }
 

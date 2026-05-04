@@ -13,7 +13,6 @@ export const bookAppointment = async (req: Request, res: Response) => {
     try {
         await client.query('BEGIN');
 
-        // 1. Claim slot atomically
         const slotRes = await client.query(
             `UPDATE appointment_slots
                 SET status = 'booked'
@@ -29,7 +28,6 @@ export const bookAppointment = async (req: Request, res: Response) => {
         const slot = slotRes.rows[0];
         const doctorId = slot.doctor_id;
 
-        // 2. Get consultation type
         const docRes = await client.query(
             `SELECT consultation_type FROM doctor_professional WHERE user_id = $1`,
             [doctorId]
@@ -52,15 +50,16 @@ export const bookAppointment = async (req: Request, res: Response) => {
             [appointment.id, slotId]
         );
 
-        // 5. Create chat room
         const roomRes = await client.query(
             `INSERT INTO chat_rooms (appointment_id, patient_id, doctor_id)
-             VALUES ($1, $2, $3) RETURNING id`,
+             VALUES ($1, $2, $3) 
+             ON CONFLICT (patient_id, doctor_id) 
+             DO UPDATE SET appointment_id = EXCLUDED.appointment_id 
+             RETURNING id`,
             [appointment.id, patientId, doctorId]
         );
         const roomId = roomRes.rows[0].id;
 
-        // 6. Get Snapshots
         const patientRes = await client.query(
             `SELECT u.id, u.name, pp.profile_photo FROM users u 
              LEFT JOIN patient_personal pp ON pp.user_id = u.id WHERE u.id = $1`,
@@ -78,7 +77,6 @@ export const bookAppointment = async (req: Request, res: Response) => {
 
         await client.query('COMMIT');
 
-        // 7. WS Notification (Using slot.start_time since appointment table doesn't have it)
         try {
             await sendToUser(doctorId, 'appointment:new', {
                 appointment: {
@@ -98,7 +96,7 @@ export const bookAppointment = async (req: Request, res: Response) => {
         res.status(201).json({
             appointment: { 
                 ...appointment, 
-                start_time: slot.start_time, // Include time for the Android UI
+                start_time: slot.start_time, 
                 date: slot.date,
                 fee: slot.consultation_fee 
             },

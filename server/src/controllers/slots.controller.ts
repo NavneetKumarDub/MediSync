@@ -4,6 +4,7 @@ import db from '../config/db'
 // ── Get available dates (next 30 days that have slots) ──
 export const getDoctorAvailableDates = async (req: Request, res: Response) => {
     const { doctorId } = req.params
+    console.log("Inside get doctor available dates controller : ",doctorId)
 
     try {
         const result = await db.query(

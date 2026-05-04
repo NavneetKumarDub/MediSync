@@ -2,6 +2,7 @@ package com.example.medisync.networks
 
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
@@ -132,6 +133,25 @@ interface ApiService {
         @Path("roomId") roomId: Int
     ): Response<MessageHistoryResponse>
 
+    // Get slots for a day
+    @GET("api/slots/regular")
+    suspend fun getRegularSlots(
+        @Header("Authorization") token: String,
+        @Query("day") day: String
+    ): RegularSlotsResponse
 
+    // Add slot
+    @POST("api/slots/regular")
+    suspend fun addRegularSlot(
+        @Header("Authorization") token: String,
+        @Body request: AddSlotRequest
+    ): AddSlotResponse
+
+    // Delete slot
+    @DELETE("api/slots/regular/{slotId}")
+    suspend fun deleteRegularSlot(
+        @Header("Authorization") token: String,
+        @Path("slotId") slotId: Int
+    ): DeleteSlotResponse
 }
 
