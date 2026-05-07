@@ -137,7 +137,6 @@ fun SearchScreen(navController: NavController) {
             Column(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // Green header
                 SearchInputBar(
                     query          = query,
                     onQueryChange  = { query = it },
@@ -145,7 +144,6 @@ fun SearchScreen(navController: NavController) {
                     focusRequester = focusRequester
                 )
 
-                // Filter row
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()

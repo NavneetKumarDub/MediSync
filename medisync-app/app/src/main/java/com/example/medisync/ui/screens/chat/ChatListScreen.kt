@@ -1,6 +1,5 @@
 package com.example.medisync.ui.screens.chat
 
-
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -8,7 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,55 +37,46 @@ import com.example.medisync.ui.navigation.NavItems
 import com.example.medisync.viewmodels.ChatInboxViewModel
 import com.example.medisync.viewmodels.InboxUiState
 
-// ─────────────────────────────────────────────
-//  Design System
-// ─────────────────────────────────────────────
-val ScreenBg         = Color(0xFFF6F7F9)
-val CardBg           = Color(0xFFFFFFFF)
-val TopBarBg         = Color(0xFFFFFFFF)
-val DividerColor     = Color(0xFFE4E7EC)
-val SearchBg         = Color(0xFFEEF0F3)
+val MediScreenNeutralBg = Color(0xFFF6F7F9)
+val MediCardWhite = Color(0xFFFFFFFF)
+val MediTopBarWhite = Color(0xFFFFFFFF)
+val MediDividerGray = Color(0xFFE4E7EC)
+val MediSearchGray = Color(0xFFEEF0F3)
 
-val TextPrimary      = Color(0xFF111827)
-val TextSecondary    = Color(0xFF6B7280)
-val TextHint         = Color(0xFF9CA3AF)
+val MediTextDark = Color(0xFF111827)
+val MediTextMuted = Color(0xFF6B7280)
+val MediTextPlaceholder = Color(0xFF9CA3AF)
 
-val GreenPrimary     = Color(0xFF27AE7A)
-val GreenLight       = Color(0xFFE6F7F0)
-val GreenText        = Color(0xFF1A8C61)
-val GreenBorder      = Color(0xFFB2DFD0)
+val MediSkyBluePrimary = Color(0xFF03A9F4)
+val MediSkyBlueSoftBg = Color(0xFFE1F5FE)
+val MediSkyBlueText = Color(0xFF0288D1)
+val MediSkyBlueBorder = Color(0xFFB3E5FC)
 
-val ChipActiveBg     = GreenLight
-val ChipActiveBorder = GreenBorder
-val ChipActiveText   = GreenText
-val ChipIdleBg       = Color(0xFFEEF0F3)
-val ChipIdleText     = TextSecondary
+val MediChipActiveBg = MediSkyBlueSoftBg
+val MediChipActiveBorder = MediSkyBlueBorder
+val MediChipActiveText = MediSkyBlueText
+val MediChipIdleBg = Color(0xFFEEF0F3)
+val MediChipIdleText = MediTextMuted
 
 val filterTabs = listOf("All", "Unread", "Doctors")
 
-// ─────────────────────────────────────────────
-//  Screen
-// ─────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatListScreen(
     navController: NavController,
-    selectedTab : Int,
+    selectedTab: Int,
     onTabSelected: (Int) -> Unit,
     viewModel: ChatInboxViewModel = viewModel()
 ) {
     val context = LocalContext.current
     var activeFilter by remember { mutableStateOf("All") }
 
-    // Read the UI State from the new ViewModel
     val uiState by viewModel.uiState.collectAsState()
 
-    // Fetch the inbox data when the screen opens
     LaunchedEffect(Unit) {
         viewModel.fetchInbox(context)
     }
 
-    // Determine loading state and extract chat list
     val isLoading = uiState is InboxUiState.Loading
     val chats = if (uiState is InboxUiState.Success) {
         (uiState as InboxUiState.Success).chats
@@ -94,12 +84,10 @@ fun ChatListScreen(
         emptyList()
     }
 
-    // Filter logic
     val list = remember(activeFilter, chats) {
         when (activeFilter) {
             "All" -> chats
             "Doctors" -> chats.filter { it.speciality != null }
-            // Add other filter conditions here if needed
             else -> chats
         }
     }
@@ -108,69 +96,54 @@ fun ChatListScreen(
     LaunchedEffect(Unit) {
         userRole = TokenManager.getRole(context) ?: "patient"
     }
-    // 2. Choose the correct navigation list
     val navItems = if (userRole == "doctor") NavItems.doctor else NavItems.patient
 
     Scaffold(
-        containerColor = ScreenBg,
+        containerColor = MediScreenNeutralBg,
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text       = "Messages", // Changed from Appointments
-                        fontSize   = 22.sp,
+                        text = "Messages",
+                        fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
-                        color      = TextPrimary
+                        color = MediTextDark
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = TopBarBg
+                    containerColor = MediTopBarWhite
                 )
             )
         },
         bottomBar = {
             BottomNavBar(
                 navItems = navItems,
-                selectedIndex  = selectedTab,
+                selectedIndex = selectedTab,
                 onItemSelected = onTabSelected
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick        = { /* TODO: Open New Chat Screen */ },
-                shape          = CircleShape,
-                containerColor = GreenPrimary,
-                contentColor   = Color.White
-            ) {
-                Icon(
-                    painter            = painterResource(id = R.drawable.plus),
-                    contentDescription = "New Message",
-                    modifier           = Modifier.size(24.dp)
-                )
-            }
         }
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(ScreenBg)
+                .background(MediScreenNeutralBg)
                 .padding(innerPadding)
         ) {
-            HorizontalDivider(thickness = 1.dp, color = DividerColor)
+            HorizontalDivider(thickness = 1.dp, color = MediDividerGray)
             Spacer(Modifier.height(12.dp))
 
             SearchBar()
             Spacer(Modifier.height(10.dp))
 
             FilterRow(active = activeFilter, onSelect = { activeFilter = it })
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(12.dp))
 
             if (isLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = GreenPrimary)
+                    CircularProgressIndicator(color = MediSkyBluePrimary)
                 }
             } else if (uiState is InboxUiState.Error) {
                 Box(
@@ -189,9 +162,6 @@ fun ChatListScreen(
     }
 }
 
-// ─────────────────────────────────────────────
-//  Search Bar
-// ─────────────────────────────────────────────
 @Composable
 fun SearchBar() {
     Row(
@@ -199,30 +169,27 @@ fun SearchBar() {
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(CardBg)
-            .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
+            .background(MediCardWhite)
+            .border(1.dp, MediDividerGray, RoundedCornerShape(12.dp))
             .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment     = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Icon(
-            imageVector        = Icons.Default.Search,
+            imageVector = Icons.Default.Search,
             contentDescription = null,
-            tint               = TextHint,
-            modifier           = Modifier.size(18.dp)
+            tint = MediTextPlaceholder,
+            modifier = Modifier.size(18.dp)
         )
         Text(
-            text       = "Search messages...",
-            color      = TextHint,
-            fontSize   = 14.sp,
+            text = "Search messages...",
+            color = MediTextPlaceholder,
+            fontSize = 14.sp,
             fontWeight = FontWeight.Normal
         )
     }
 }
 
-// ─────────────────────────────────────────────
-//  Filter Chips
-// ─────────────────────────────────────────────
 @Composable
 fun FilterRow(active: String, onSelect: (String) -> Unit) {
     Row(
@@ -237,11 +204,11 @@ fun FilterRow(active: String, onSelect: (String) -> Unit) {
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
-                    .background(if (isActive) ChipActiveBg else ChipIdleBg)
+                    .background(if (isActive) MediChipActiveBg else MediChipIdleBg)
                     .then(
                         if (isActive) Modifier.border(
                             width = 1.dp,
-                            color = ChipActiveBorder,
+                            color = MediChipActiveBorder,
                             shape = RoundedCornerShape(20.dp)
                         ) else Modifier
                     )
@@ -250,24 +217,21 @@ fun FilterRow(active: String, onSelect: (String) -> Unit) {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text       = tab,
-                    fontSize   = 13.sp,
+                    text = tab,
+                    fontSize = 13.sp,
                     fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
-                    color      = if (isActive) ChipActiveText else ChipIdleText
+                    color = if (isActive) MediChipActiveText else MediChipIdleText
                 )
             }
         }
     }
 }
 
-// ─────────────────────────────────────────────
-//  Chat List
-// ─────────────────────────────────────────────
 @Composable
 fun ChatList(list: List<InboxChat>, navController: NavController) {
     if (list.isEmpty()) {
         Box(
-            modifier         = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             Column(
@@ -275,31 +239,31 @@ fun ChatList(list: List<InboxChat>, navController: NavController) {
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    imageVector        = Icons.Outlined.ChatBubbleOutline,
+                    imageVector = Icons.Outlined.ChatBubbleOutline,
                     contentDescription = null,
-                    tint               = TextHint,
-                    modifier           = Modifier.size(40.dp)
+                    tint = MediTextPlaceholder,
+                    modifier = Modifier.size(40.dp)
                 )
                 Text(
-                    text       = "No messages found",
-                    color      = TextSecondary,
-                    fontSize   = 15.sp,
+                    text = "No messages found",
+                    color = MediTextMuted,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text       = "Start a new conversation",
-                    color      = TextHint,
-                    fontSize   = 13.sp,
+                    text = "Start a new conversation",
+                    color = MediTextPlaceholder,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Normal
                 )
             }
         }
     } else {
         LazyColumn(
-            modifier       = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 100.dp, top = 8.dp)
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 100.dp)
         ) {
-            items(list, key = { it.roomId }) { chat ->
+            itemsIndexed(list, key = { _, chat -> chat.roomId }) { index, chat ->
                 ChatItemCard(
                     chat = chat,
                     onClick = {
@@ -311,65 +275,50 @@ fun ChatList(list: List<InboxChat>, navController: NavController) {
     }
 }
 
-// ─────────────────────────────────────────────
-//  Chat Item Card (Adapted to match your design system)
-// ─────────────────────────────────────────────
 @Composable
 fun ChatItemCard(chat: InboxChat, onClick: () -> Unit) {
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = CardBg),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        shape = RoundedCornerShape(12.dp)
+            .background(MediCardWhite)
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+        Surface(
+            modifier = Modifier.size(50.dp),
+            shape = CircleShape,
+            color = MediSkyBlueSoftBg
         ) {
-            // Profile Picture Placeholder
-            Surface(
-                modifier = Modifier.size(50.dp),
-                shape = CircleShape,
-                color = GreenLight
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = chat.name.take(1).uppercase(),
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = GreenText
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
+            Box(contentAlignment = Alignment.Center) {
                 Text(
-                    text = chat.name,
+                    text = chat.name.take(1).uppercase(),
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = TextPrimary
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = chat.speciality ?: "Patient",
-                    color = TextSecondary,
-                    fontSize = 14.sp
+                    color = MediSkyBlueText
                 )
             }
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = chat.name,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = MediTextDark
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = chat.speciality ?: "Patient",
+                color = MediTextMuted,
+                fontSize = 14.sp
+            )
         }
     }
 }
 
-// ─────────────────────────────────────────────
-//  Preview
-// ─────────────────────────────────────────────
 @Preview(showBackground = true, backgroundColor = 0xFFF6F7F9)
 @Composable
 fun ChatListPreview() {

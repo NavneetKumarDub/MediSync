@@ -382,3 +382,44 @@ data class LifestyleProfileData(
     val occupation: String? = null
 )
 
+data class CreateCustomSlotRequest(
+    val date: String,
+    val start_time: String,
+    val end_time: String,
+    val consultation_fee: Int,
+    val consultation_type: String,
+    val slot_duration_minutes: Int
+)
+
+data class CustomSlotItem(
+    val id: Int,
+    val date: String,
+    val start_time: String,
+    val end_time: String,
+    val consultation_fee: String,
+    val consultation_type: String,
+    val slot_duration_minutes: Int,
+    val status: String
+)
+
+data class CreateCustomSlotResponse(
+    val success: Boolean,
+    val message: String,
+    val slot: CustomSlotItem?
+)
+
+data class DeleteCustomSlotResponse(
+    val success: Boolean,
+    val message: String
+)
+
+data class GetSlotsByDateResponse(
+    val success: Boolean,
+    val slots: List<CustomSlotItem>
+)
+
+data class GetDatesWithSlotsResponse(
+    val success: Boolean,
+    val dates: List<String>
+)
+

@@ -10,14 +10,31 @@ import com.example.medisync.data.TokenManager
 import com.example.medisync.networks.AppointmentItem
 import com.example.medisync.networks.RetrofitInstance
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
+
+fun formatIsoDate(isoString: String?): String {
+    if (isoString.isNullOrEmpty()) return "Upcoming"
+    return try {
+        val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+        parser.timeZone = TimeZone.getTimeZone("UTC")
+        val parsedDate = parser.parse(isoString)
+
+        val formatter = SimpleDateFormat("EEE, dd MMM yyyy", Locale.getDefault())
+        formatter.timeZone = TimeZone.getDefault()
+
+        parsedDate?.let { formatter.format(it).uppercase() } ?: "Upcoming"
+    } catch (e: Exception) {
+        isoString.substringBefore("T")
+    }
+}
 
 class AppointmentViewModel : ViewModel() {
 
-    // Holds your list of real appointments
     var appointments by mutableStateOf<List<AppointmentItem>>(emptyList())
         private set
 
-    // Tracks if the app is currently waiting for the server
     var isLoading by mutableStateOf(false)
         private set
 
@@ -33,7 +50,6 @@ class AppointmentViewModel : ViewModel() {
                     }
                 }
             } catch (e: Exception) {
-                // Handle errors like no internet here later
             } finally {
                 isLoading = false
             }
@@ -52,7 +68,6 @@ class AppointmentViewModel : ViewModel() {
                     }
                 }
             } catch (e: Exception) {
-                // Handle errors like no internet here later
             } finally {
                 isLoading = false
             }

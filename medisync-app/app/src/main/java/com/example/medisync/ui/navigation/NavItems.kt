@@ -12,7 +12,7 @@ object NavItems {
 
     val doctor = listOf(
         NavItem("Home", R.drawable.homefilled, R.drawable.homeunfilled),
-        NavItem("Schedule", R.drawable.bookingfilled, R.drawable.bookingunfilled),
+        NavItem("Appointment", R.drawable.bookingfilled, R.drawable.bookingunfilled),
         NavItem("Chat", R.drawable.aifilled, R.drawable.aiunfilled),
         NavItem("Slots", R.drawable.slotsettingfilled, R.drawable.slotsettingunfilled),
     )

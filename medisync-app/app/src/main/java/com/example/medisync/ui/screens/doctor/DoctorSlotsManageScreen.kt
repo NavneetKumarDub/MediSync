@@ -93,7 +93,7 @@ fun DoctorScheduleScreen(
             ScheduleOptionCard(
                 title = "Custom Schedule",
                 onClick = {
-                    // TODO: navigate to custom schedule screen
+                    navController.navigate("CustomEditSlot/$userId")
                 }
             )
 

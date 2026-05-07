@@ -1,177 +1,176 @@
-create table if not exists users
+CREATE TABLE IF NOT EXISTS users
 (
-    id         serial
-        primary key,
-    phone      varchar(10) not null
-        unique,
-    name       varchar(100),
-    role       varchar(10),
-    status     varchar(20) default 'active'::character varying,
-    created_at timestamp   default now()
+    id         SERIAL PRIMARY KEY,
+    phone      VARCHAR(10)  NOT NULL UNIQUE,
+    name       VARCHAR(100),
+    role       VARCHAR(10),
+    status     VARCHAR(20)  DEFAULT 'active',
+    created_at TIMESTAMP    DEFAULT NOW()
 );
 
-create table if not exists patient_personal
+CREATE TABLE IF NOT EXISTS patient_personal
 (
-    id                serial
-        primary key,
-    user_id           integer
-        references users
-            on delete cascade,
-    email             varchar(100),
-    gender            varchar(10),
-    dob               varchar(20),
-    blood_group       varchar(5),
-    marital_status    varchar(20),
-    height            varchar(10),
-    weight            varchar(10),
-    emergency_contact varchar(10),
-    profile_photo     text
+    id                SERIAL PRIMARY KEY,
+    user_id           INTEGER REFERENCES users ON DELETE CASCADE,
+    email             VARCHAR(100),
+    gender            VARCHAR(10),
+    dob               VARCHAR(20),
+    blood_group       VARCHAR(5),
+    marital_status    VARCHAR(20),
+    height            VARCHAR(10),
+    weight            VARCHAR(10),
+    emergency_contact VARCHAR(10),
+    profile_photo     TEXT
 );
 
-create table if not exists patient_medical
+CREATE TABLE IF NOT EXISTS patient_medical
 (
-    id                  serial
-        primary key,
-    user_id             integer
-        references users
-            on delete cascade,
-    allergies           text,
-    current_medications text,
-    past_medications    text,
-    chronic_diseases    text,
-    injuries            text,
-    surgeries           text
+    id                  SERIAL PRIMARY KEY,
+    user_id             INTEGER REFERENCES users ON DELETE CASCADE,
+    allergies           TEXT,
+    current_medications TEXT,
+    past_medications    TEXT,
+    chronic_diseases    TEXT,
+    injuries            TEXT,
+    surgeries           TEXT
 );
 
-create table if not exists patient_lifestyle
+CREATE TABLE IF NOT EXISTS patient_lifestyle
 (
-    id              serial
-        primary key,
-    user_id         integer
-        unique
-        references users
-            on delete cascade,
-    smoking         varchar(50),
-    alcohol         varchar(50),
-    activity_level  varchar(50),
-    food_preference varchar(50),
-    occupation      varchar(100)
+    id              SERIAL PRIMARY KEY,
+    user_id         INTEGER UNIQUE REFERENCES users ON DELETE CASCADE,
+    smoking         VARCHAR(50),
+    alcohol         VARCHAR(50),
+    activity_level  VARCHAR(50),
+    food_preference VARCHAR(50),
+    occupation      VARCHAR(100)
 );
 
-create table if not exists doctor_personal
+CREATE TABLE IF NOT EXISTS doctor_personal
 (
-    id             serial primary key,
-    user_id        integer references users on delete cascade,
-    email          varchar(100),
-    gender         varchar(10),
-    dob            varchar(20),
-    marital_status varchar(20),
-    profile_photo  text,
-    about          text
+    id             SERIAL PRIMARY KEY,
+    user_id        INTEGER REFERENCES users ON DELETE CASCADE,
+    email          VARCHAR(100),
+    gender         VARCHAR(10),
+    dob            VARCHAR(20),
+    marital_status VARCHAR(20),
+    profile_photo  TEXT,
+    about          TEXT
 );
 
-create table if not exists doctor_professional
+CREATE TABLE IF NOT EXISTS doctor_professional
 (
-    id                  serial primary key,
-    user_id             integer references users on delete cascade,
-    license_number      varchar(50) unique not null,
-    speciality          varchar(100),
-    sub_speciality      varchar(100),
-    qualification       varchar(200),
-    experience_years    integer,
-    languages           text,
-    consultation_fee    numeric(10, 2),
-    consultation_type   varchar(20) default 'both'  -- ← new: 'online' | 'offline' | 'both'
+    id                SERIAL PRIMARY KEY,
+    user_id           INTEGER REFERENCES users ON DELETE CASCADE,
+    license_number    VARCHAR(50) UNIQUE NOT NULL,
+    speciality        VARCHAR(100),
+    sub_speciality    VARCHAR(100),
+    qualification     VARCHAR(200),
+    experience_years  INTEGER,
+    languages         TEXT,
+    consultation_fee  NUMERIC(10, 2),
+    consultation_type VARCHAR(20) DEFAULT 'both'
 );
 
-create table if not exists doctor_clinic
+CREATE TABLE IF NOT EXISTS doctor_clinic
 (
-    id          serial primary key,
-    user_id     integer references users on delete cascade,
-    clinic_name varchar(200),
-    address     text,
-    city        varchar(100),
-    pincode     varchar(10),
-    lat         numeric(10, 7),
-    lng         numeric(10, 7)
+    id          SERIAL PRIMARY KEY,
+    user_id     INTEGER REFERENCES users ON DELETE CASCADE,
+    clinic_name VARCHAR(200),
+    address     TEXT,
+    city        VARCHAR(100),
+    pincode     VARCHAR(10),
+    lat         NUMERIC(10, 7),
+    lng         NUMERIC(10, 7)
 );
 
-create table if not exists doctor_availability
+CREATE TABLE IF NOT EXISTS doctor_availability
 (
-    id                    serial primary key,
-    user_id               integer references users on delete cascade,
-    day_of_week           varchar(10),
-    start_time            time,
-    end_time              time,
-    slot_duration_minutes integer default 15,
-    consultation_type     VARCHAR(20) NOT NULL DEFAULT 'Offline',
+    id                    SERIAL PRIMARY KEY,
+    user_id               INTEGER REFERENCES users ON DELETE CASCADE,
+    day_of_week           VARCHAR(10),
+    start_time            TIME,
+    end_time              TIME,
+    slot_duration_minutes INTEGER       DEFAULT 15,
+    consultation_type     VARCHAR(20)   NOT NULL DEFAULT 'Offline',
     consultation_fee      NUMERIC(10, 2) NOT NULL DEFAULT 0,
-    is_active             boolean default true
-    created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-
+    is_active             BOOLEAN       DEFAULT TRUE,
+    created_at            TIMESTAMP     DEFAULT CURRENT_TIMESTAMP
 );
 
-create table if not exists appointments
+CREATE INDEX IF NOT EXISTS idx_doctor_availability_user_id
+    ON doctor_availability (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_doctor_availability_user_day
+    ON doctor_availability (user_id, day_of_week);
+
+CREATE TABLE IF NOT EXISTS doctor_schedule_settings
 (
-    id           serial primary key,
-    patient_id   integer references users on delete cascade,
-    doctor_id    integer references users on delete cascade,
-    slot_id      integer references appointment_slots on delete cascade,
-    status       varchar(20) default 'accepted',
-    type         varchar(20) ,
-    created_at   timestamp   default now()
+    id           SERIAL PRIMARY KEY,
+    user_id      INTEGER REFERENCES users ON DELETE CASCADE UNIQUE,
+    window_days  INTEGER     DEFAULT 30,
+    booking_mode VARCHAR(20) DEFAULT 'auto',
+    created_at   TIMESTAMP   DEFAULT NOW()
+);  
+
+CREATE TABLE IF NOT EXISTS appointment_slots
+(
+    id                    SERIAL PRIMARY KEY,
+    doctor_id             INTEGER REFERENCES users ON DELETE CASCADE,
+    date                  DATE           NOT NULL,
+    start_time            TIME           NOT NULL,
+    end_time              TIME           NOT NULL,
+    consultation_fee      NUMERIC(10, 2) NOT NULL,
+    slot_duration_minutes INTEGER,
+    is_active             BOOLEAN        DEFAULT TRUE,
+    consultation_type     VARCHAR(20)    DEFAULT 'Offline',
+    status                VARCHAR(20)    DEFAULT 'available',
+    appointment_id        INTEGER REFERENCES appointments,
+    created_at            TIMESTAMP      DEFAULT NOW(),
+    UNIQUE (doctor_id, date, start_time)
 );
 
-CREATE TABLE if not exists chat_rooms (
-    id SERIAL PRIMARY KEY,
-    patient_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    doctor_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    appointment_id INT REFERENCES appointments(id) ON DELETE SET NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+CREATE TABLE IF NOT EXISTS appointments
+(
+    id         SERIAL PRIMARY KEY,
+    patient_id INTEGER REFERENCES users ON DELETE CASCADE,
+    doctor_id  INTEGER REFERENCES users ON DELETE CASCADE,
+    slot_id    INTEGER REFERENCES appointment_slots ON DELETE CASCADE,
+    status     VARCHAR(20) DEFAULT 'accepted',
+    type       VARCHAR(20),
+    created_at TIMESTAMP   DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS chat_rooms
+(
+    id             SERIAL PRIMARY KEY,
+    patient_id     INTEGER   NOT NULL REFERENCES users ON DELETE CASCADE,
+    doctor_id      INTEGER   NOT NULL REFERENCES users ON DELETE CASCADE,
+    appointment_id INTEGER REFERENCES appointments ON DELETE SET NULL,
+    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT unique_patient_doctor UNIQUE (patient_id, doctor_id)
 );
 
-create table if not exists chat_messages
+CREATE TABLE IF NOT EXISTS chat_messages
 (
-    id        serial primary key,
-    room_id   integer references chat_rooms on delete cascade,
-    sender_id integer references users,
-    message   text    not null,
-    is_read   boolean default false,
-    sent_at   timestamp default now()
+    id        SERIAL PRIMARY KEY,
+    room_id   INTEGER REFERENCES chat_rooms ON DELETE CASCADE,
+    sender_id INTEGER REFERENCES users,
+    message   TEXT    NOT NULL,
+    is_read   BOOLEAN   DEFAULT FALSE,
+    sent_at   TIMESTAMP DEFAULT NOW()
 );
 
-create table if not exists doctor_schedule_settings (
-    id           serial primary key,
-    user_id      integer references users on delete cascade unique,
-    window_days  integer default 30,
-    booking_mode varchar(20) default 'auto',
-    created_at   timestamp default now()
-);
-
-create table if not exists appointment_slots (
-    id               serial primary key,
-    doctor_id        integer references users on delete cascade,
-    date             date not null,
-    start_time       time not null,
-    end_time         time not null,
-    consultation_fee numeric(10,2) not null,  -- ← copied from slot settings
-    status           varchar(20) default 'available',
-    appointment_id   integer references appointments,
-    created_at       timestamp default now(),
-
-    unique(doctor_id, date, start_time)
-);
-
-CREATE TABLE if not exists doctor_slot_settings (
+CREATE TABLE IF NOT EXISTS doctor_slot_settings
+(
     id                    SERIAL PRIMARY KEY,
-    user_id               INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    day_of_week           VARCHAR(20) NOT NULL,
-    start_time            TIME NOT NULL,
-    end_time              TIME NOT NULL,
-    slot_duration_minutes INTEGER NOT NULL,
+    user_id               INTEGER        NOT NULL REFERENCES users ON DELETE CASCADE,
+    day_of_week           VARCHAR(20)    NOT NULL,
+    start_time            TIME           NOT NULL,
+    end_time              TIME           NOT NULL,
+    slot_duration_minutes INTEGER        NOT NULL,
     consultation_fee      NUMERIC(10, 2) NOT NULL DEFAULT 0,
-    consultation_type     VARCHAR(20) NOT NULL DEFAULT 'Offline',
-    is_active             BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    consultation_type     VARCHAR(20)    NOT NULL DEFAULT 'Offline',
+    is_active             BOOLEAN        NOT NULL DEFAULT TRUE,
+    created_at            TIMESTAMP               DEFAULT CURRENT_TIMESTAMP
 );

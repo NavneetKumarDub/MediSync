@@ -51,7 +51,6 @@ import java.util.*
 import kotlin.collections.emptyList
 
 
-// ── Formatters ─────────────────────────────────
 fun formatTime(time: String): String = try {
     val parsed = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).parse(time)
     SimpleDateFormat("h:mm a", Locale.getDefault()).format(parsed!!)
@@ -65,7 +64,6 @@ private fun formatDateDisplay(dateStr: String?): String {
     } catch (_: Exception) { dateStr }
 }
 
-// ── Preview data ───────────────────────────────
 private val previewSlots = listOf(
     SlotItem(1,  "09:00:00", "09:15:00", "500.00", "available"),
     SlotItem(2,  "09:15:00", "09:30:00", "500.00", "booked"),
@@ -84,7 +82,6 @@ private val previewDates = listOf(
     "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-25"
 )
 
-// ── Stateful screen ────────────────────────────
 @RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -226,7 +223,6 @@ fun SlotPickerScreen(
     )
 }
 
-// ── Section header (no emoji, neutral grey pill) ──
 @Composable
 private fun SlotSectionHeader(
     title         : String,
@@ -275,7 +271,6 @@ private fun SlotSectionHeader(
     }
 }
 
-// ── Info pill for bottom bar ───────────────────
 @Composable
 private fun InfoPill(icon: ImageVector, text: String) {
     Row(
@@ -297,7 +292,6 @@ private fun InfoPill(icon: ImageVector, text: String) {
     }
 }
 
-// ── Stateless content ──────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SlotPickerContent(
@@ -544,7 +538,7 @@ fun SlotPickerContent(
                     SlotGrid(slots = eveningSlots, selectedSlot = selectedSlot, onSelect = onSlotSelected)
                 }
 
-                Spacer(Modifier.height(200.dp)) // clearance for bottom sheet
+                Spacer(Modifier.height(200.dp))
             }
         }
     }

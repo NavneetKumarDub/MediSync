@@ -138,7 +138,7 @@ fun DoctorRegularSlotsManage(
                             Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
                         }
                         Text(
-                            text = "Regular Slots",
+                            text = "Weekly Template",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = Color.White

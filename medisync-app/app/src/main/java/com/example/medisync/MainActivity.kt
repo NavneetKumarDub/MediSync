@@ -1,10 +1,12 @@
 package com.example.medisync
 
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -18,6 +20,7 @@ import com.example.medisync.ui.screens.auth.RegisterScreen
 import com.example.medisync.ui.screens.patient.SearchScreen
 import com.example.medisync.ui.screens.auth.SelectRoleScreen
 import com.example.medisync.ui.screens.chat.ChatScreen
+import com.example.medisync.ui.screens.doctor.DoctorCustomScheduleScreen
 import com.example.medisync.ui.screens.doctor.DoctorNavigationScreen
 import com.example.medisync.ui.screens.doctor.DoctorRegularSlotsManage
 import com.example.medisync.ui.screens.doctor.DoctorScheduleScreen
@@ -28,6 +31,7 @@ import com.example.medisync.ui.screens.video.VideoRoomPermissionGate
 import com.example.medisync.ui.theme.MediSyncTheme
 
 class MainActivity : ComponentActivity() {
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -144,6 +148,12 @@ class MainActivity : ComponentActivity() {
 
                     composable("doctorWeeklyTemplate/{userId}") { backStackEntry ->
                         DoctorRegularSlotsManage(
+                            navController = navController,
+                            userId = backStackEntry.arguments?.getString("userId")?.toIntOrNull() ?: 0
+                        )
+                    }
+                    composable("CustomEditSlot/{userId}"){backStackEntry ->
+                        DoctorCustomScheduleScreen(
                             navController = navController,
                             userId = backStackEntry.arguments?.getString("userId")?.toIntOrNull() ?: 0
                         )

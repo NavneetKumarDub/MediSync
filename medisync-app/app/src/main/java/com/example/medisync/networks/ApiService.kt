@@ -172,5 +172,31 @@ interface ApiService {
     suspend fun getDoctorProfile(
         @Path("doctorId") doctorId: Int
     ): Response<DoctorProfileResponse>
+
+
+    @POST("api/slots/custom")
+    suspend fun createCustomSlot(
+        @Header("Authorization") token: String,
+        @Body request: CreateCustomSlotRequest
+    ): CreateCustomSlotResponse
+
+    @DELETE("api/slots/custom/{slotId}")
+    suspend fun deleteCustomSlot(
+        @Header("Authorization") token: String,
+        @Path("slotId") slotId: Int
+    ): DeleteCustomSlotResponse
+
+    @GET("api/slots/custom")
+    suspend fun getSlotsByDate(
+        @Header("Authorization") token: String,
+        @Query("date") date: String
+    ): GetSlotsByDateResponse
+
+    @GET("api/slots/custom/dates")
+    suspend fun getDatesWithSlots(
+        @Header("Authorization") token: String,
+        @Query("month") month: Int,
+        @Query("year") year: Int
+    ): GetDatesWithSlotsResponse
 }
 

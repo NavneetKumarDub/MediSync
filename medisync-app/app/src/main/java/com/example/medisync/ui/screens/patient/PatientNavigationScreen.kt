@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.example.medisync.appointment.AppointmentListScreen
 import com.example.medisync.ui.screens.chat.ChatListScreen
 
 
@@ -29,12 +30,11 @@ fun PatientNavigationScreen(
             selectedTab = selectedTab,
             onTabSelected = { selectedTab = it }
         )
-        1 -> AppointmentContent(
+        1 -> AppointmentListScreen(
             navController = navController,
             selectedTab = selectedTab,
-            onTabSelected = { selectedTab = it },
-
-            )
+            onTabSelected = {selectedTab = it}
+        )
         2 -> ChatListScreen(
             navController = navController,
             selectedTab = selectedTab,

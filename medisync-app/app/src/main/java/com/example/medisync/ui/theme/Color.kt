@@ -20,7 +20,7 @@ val DarkGray = Color(0xFF343C3C)
 
 val WhatGreen = Color(0xFF062308)
 
-val CapsuleGreen = Color(0xFF07497E)
+val CapsuleGreen = Color(0xFF0A5B9B)
 
 val Iconselectedcolor = Color(0xFF96D2EE)
 

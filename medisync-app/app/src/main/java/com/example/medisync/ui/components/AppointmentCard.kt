@@ -219,3 +219,4 @@ private fun String?.getInitials(): String {
         .mapNotNull { it.firstOrNull()?.uppercaseChar() }
         .joinToString("")
 }
+

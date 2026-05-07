@@ -6,6 +6,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.example.medisync.appointment.AppointmentListScreen
 import com.example.medisync.ui.screens.chat.ChatListScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,10 +28,10 @@ fun DoctorNavigationScreen(
             selectedTab = selectedTab,
             onTabSelected = { selectedTab = it }
         )
-        1 -> DoctorScheduleContent(
+        1 ->  AppointmentListScreen(
             navController = navController,
-            selectedTab,
-            onTabSelected = { selectedTab = it }
+            selectedTab = selectedTab,
+            onTabSelected = {selectedTab = it}
         )
         2 -> ChatListScreen(
             navController = navController,
