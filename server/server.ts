@@ -12,6 +12,7 @@ import userRoutes from './src/routes/user.route'
 import authRoutes from './src/routes/auth.route'
 import chatRoutes from './src/routes/chat.route'
 
+import { startSlotGeneratorJob, generateSlotsForNextDay } from './src/jobs/slot.generator'
 
 dotenv.config()
 
@@ -33,7 +34,10 @@ app.get('/', (req, res) => {
 })
 
 db.query('SELECT NOW()')
-    .then(() => console.log('Database connected '))
+    .then(() => {
+        console.log('Database connected ')
+        startSlotGeneratorJob()
+    })
     .catch((err) => console.log('Database error:', err))
 
 
