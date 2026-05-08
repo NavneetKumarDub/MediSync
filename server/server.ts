@@ -11,6 +11,9 @@ import slotsRoutes from './src/routes/slots.route'
 import userRoutes from './src/routes/user.route'
 import authRoutes from './src/routes/auth.route'
 import chatRoutes from './src/routes/chat.route'
+import { initMinIO } from './src/config/minio'
+import uploadRoutes from './src/routes/upload.route'
+
 
 import { startSlotGeneratorJob, generateSlotsForNextDay } from './src/jobs/slot.generator'
 
@@ -27,6 +30,8 @@ app.use('/api/doctor', doctorRoutes);
 app.use('/api/patient',patientRoutes);
 app.use('/api/appointments', appointmentRoutes)
 app.use('/api/chat', chatRoutes)
+app.use('/api/upload', uploadRoutes)
+
 
 
 app.get('/', (req, res) => {
@@ -35,6 +40,7 @@ app.get('/', (req, res) => {
 
 db.query('SELECT NOW()')
     .then(() => {
+        initMinIO()
         console.log('Database connected ')
         startSlotGeneratorJob()
     })

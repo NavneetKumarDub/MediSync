@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS users
     phone      VARCHAR(10)  NOT NULL UNIQUE,
     name       VARCHAR(100),
     role       VARCHAR(10),
+    profile_photo_key VARCHAR(500),
     status     VARCHAR(20)  DEFAULT 'active',
     created_at TIMESTAMP    DEFAULT NOW()
 );
