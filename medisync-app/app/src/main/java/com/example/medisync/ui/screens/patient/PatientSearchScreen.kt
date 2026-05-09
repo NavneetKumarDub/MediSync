@@ -16,12 +16,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.example.medisync.data.TokenManager
 import com.example.medisync.networks.DoctorSearchResult
 import com.example.medisync.networks.RetrofitInstance
 import com.example.medisync.networks.SearchFilters
@@ -64,7 +66,7 @@ val sampleDoctors = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(navController: NavController) {
-
+    val context = LocalContext.current
     var query          by remember { mutableStateOf("") }
     var filters        by remember { mutableStateOf(SearchFilters()) }
     var results        by remember { mutableStateOf(sampleDoctors) }
@@ -86,7 +88,10 @@ fun SearchScreen(navController: NavController) {
         errorMessage = null
         delay(500)
         try {
+            val token = "Bearer ${TokenManager.getToken(context) ?: ""}"
+
             val response = RetrofitInstance.api.searchDoctors(
+                token,
                 query            = query,
                 consultationType = filters.consultationType,
                 minExperience    = filters.minExperience,

@@ -65,6 +65,7 @@ interface ApiService {
 
     @GET("api/doctor/search")
     suspend fun searchDoctors(
+        @Header("Authorization") token: String,
         @Query("q")                    query           : String  = "",
         @Query("consultation_type")    consultationType: String? = null,
         @Query("min_experience")       minExperience   : Int?    = null,
