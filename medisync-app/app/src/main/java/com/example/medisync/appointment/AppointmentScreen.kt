@@ -1,53 +1,86 @@
 package com.example.medisync.appointment
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.*
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
+import com.example.medisync.R
 import com.example.medisync.data.TokenManager
+import com.example.medisync.networks.AppointmentItem
+import com.example.medisync.ui.components.AppointmentCard
 import com.example.medisync.ui.components.BottomNavBar
+import com.example.medisync.ui.components.SearchBar
 import com.example.medisync.ui.navigation.NavItems
 import com.example.medisync.ui.theme.natureGreen
 import com.example.medisync.viewmodels.AppointmentViewModel
-import com.example.medisync.viewmodels.formatIsoDate
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
+import java.util.Locale
 
-val ScreenBg = Color(0xFFF6F7F9)
-val CardBg = Color(0xFFFFFFFF)
-val TopBarBg = Color(0xFFFFFFFF)
-val TextPrimary = Color(0xFF111827)
-val TextSecondary = Color(0xFF6B7280)
-val NatureGreen = natureGreen
 
-data class AppointmentCardUiModel(
-    val id: String,
-    val name: String,
-    val subtitle: String,
-    val dateGroup: String,
-    val time: String,
-    val type: String,
-    val status: String
-)
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+
+private val MediTextMuted = Color(0xFF6B7280)
+private val MediChipActiveBg = natureGreen.copy(alpha = 0.1f)
+private val MediChipActiveBorder = natureGreen.copy(alpha = 0.3f)
+private val MediChipActiveText = natureGreen
+private val MediChipIdleBg = Color(0xFFF3F4F6)
+private val MediChipIdleText = MediTextMuted
+private val filterTabs = listOf("All", "Upcoming", "Past", "Online", "Offline")
+
+@RequiresApi(Build.VERSION_CODES.O)
+fun getSmartDateLabel(rawDate: String?): String {
+    if (rawDate.isNullOrBlank()) return "No Date"
+    return try {
+        val date = LocalDate.parse(rawDate)
+        val today = LocalDate.now()
+        val diff = ChronoUnit.DAYS.between(today, date)
+
+        when (diff) {
+            0L -> "Today"
+            1L -> "Tomorrow"
+            -1L -> "Yesterday"
+            else -> {
+                val pattern = if (date.year == today.year) "d MMM" else "d MMM yyyy"
+                date.format(DateTimeFormatter.ofPattern(pattern, Locale.ENGLISH))
+            }
+        }
+    } catch (e: Exception) {
+        rawDate
+    }
+}
+
+// ─────────────────────────────────────────────
+//  Main Screen
+// ─────────────────────────────────────────────
+@RequiresApi(Build.VERSION_CODES.O)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppointmentListScreen(
     navController: NavController,
@@ -56,242 +89,206 @@ fun AppointmentListScreen(
     viewModel: AppointmentViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val today = LocalDate.now()
+
+    // Role & State
     var userRole by remember { mutableStateOf("patient") }
+    var activeFilter by remember { mutableStateOf("All") }
+
+    // Popup State
+    var showAvatarDialog by remember { mutableStateOf(false) }
+    var selectedAvatarUrl by remember { mutableStateOf<String?>(null) }
+    var selectedAvatarName by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         userRole = TokenManager.getRole(context) ?: "patient"
-        if (userRole == "doctor") {
-            viewModel.fetchDoctorAppointments(context)
-        } else {
-            viewModel.fetchPatientAppointments(context)
-        }
+        if (userRole == "doctor") viewModel.fetchDoctorAppointments(context)
+        else viewModel.fetchPatientAppointments(context)
     }
 
+    val appointments = viewModel.appointments
     val navItems = if (userRole == "doctor") NavItems.doctor else NavItems.patient
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Upcoming", "History")
 
-    val mappedAppointments = viewModel.appointments.map { item ->
-        AppointmentCardUiModel(
-            id = item.appointmentId.toString(),
-            name = item.displayName ?: "Unknown",
-            subtitle = item.speciality ?: if (userRole == "doctor") "Patient" else "Speciality",
-            dateGroup = formatIsoDate(item.date),
-            time = item.startTime ?: "00:00",
-            type = item.type ?: "online",
-            status = item.status ?: "pending"
-        )
-    }
+    // Sorting & Filtering Logic
+    val filteredList = remember(activeFilter, appointments) {
+        val upcoming = appointments.filter {
+            val d = try { LocalDate.parse(it.date) } catch(e: Exception) { today }
+            !d.isBefore(today)
+        }.sortedBy { it.date }
 
-    val filteredAppointments = mappedAppointments
-        .filter { model ->
-            val isHistorical = model.status.lowercase() == "completed" || model.status.lowercase() == "cancelled"
-            if (selectedTabIndex == 0) !isHistorical else isHistorical
-        }
-        .groupBy { it.dateGroup }
+        val past = appointments.filter {
+            val d = try { LocalDate.parse(it.date) } catch(e: Exception) { today }
+            d.isBefore(today)
+        }.sortedByDescending { it.date }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text("Appointments", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                },
-                actions = {
-                    IconButton(onClick = { }) {
-                        Icon(Icons.Rounded.Search, contentDescription = "Search", tint = TextPrimary)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = TopBarBg)
-            )
-        },
-        bottomBar = {
-            BottomNavBar(
-                navItems = navItems,
-                selectedIndex = selectedTab,
-                onItemSelected = onTabSelected
-            )
-        },
-        containerColor = ScreenBg
-    ) { paddingValues ->
-        Column(modifier = Modifier.padding(paddingValues)) {
-            TabRow(
-                selectedTabIndex = selectedTabIndex,
-                containerColor = TopBarBg,
-                indicator = { tabPositions ->
-                    TabRowDefaults.SecondaryIndicator(
-                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
-                        color = NatureGreen
-                    )
-                }
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index },
-                        text = {
-                            Text(
-                                text = title,
-                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
-                                color = if (selectedTabIndex == index) NatureGreen else TextSecondary
-                            )
-                        }
-                    )
-                }
-            }
-
-            if (viewModel.isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = NatureGreen)
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 24.dp)
-                ) {
-                    if (filteredAppointments.isEmpty()) {
-                        item {
-                            Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("No appointments found", color = TextSecondary)
-                            }
-                        }
-                    }
-
-                    filteredAppointments.forEach { (dateHeader, appointmentsForDate) ->
-                        stickyHeader {
-                            Text(
-                                text = dateHeader,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                color = TextSecondary,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(ScreenBg)
-                                    .padding(horizontal = 16.dp, vertical = 6.dp)
-                            )
-                        }
-
-                        items(appointmentsForDate, key = { it.id }) { appointment ->
-                            CompactAppointmentCard(
-                                model = appointment,
-                                onClick = { }
-                            )
-                        }
-                    }
-                }
-            }
+        when (activeFilter) {
+            "Upcoming" -> upcoming
+            "Past" -> past
+            "Online" -> (upcoming + past).filter { it.type?.contains("video", true) == true }
+            "Offline" -> (upcoming + past).filter { it.type?.contains("video", true) == false }
+            else -> upcoming + past
         }
     }
-}
 
-@Composable
-fun CompactAppointmentCard(
-    model: AppointmentCardUiModel,
-    onClick: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(CardBg)
-            .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                modifier = Modifier.size(40.dp),
-                shape = CircleShape,
-                color = NatureGreen.copy(alpha = 0.15f)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = model.name.take(1).uppercase(),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = NatureGreen
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = model.name,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            containerColor = Color.White,
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "Appointments",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = natureGreen
+                        )                            },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = model.subtitle,
-                        fontSize = 13.sp,
-                        color = TextSecondary
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "•",
-                        fontSize = 13.sp,
-                        color = TextSecondary
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Icon(
-                        imageVector = if (model.type.lowercase() == "online") Icons.Rounded.Videocam else Icons.Rounded.LocalHospital,
-                        contentDescription = null,
-                        tint = TextSecondary,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = if (model.type.lowercase() == "online") "Video Call" else "In-Clinic",
-                        fontSize = 13.sp,
-                        color = TextSecondary
+            },
+            bottomBar = {
+                BottomNavBar(navItems = navItems, selectedIndex = selectedTab, onItemSelected = onTabSelected)
+            }
+        ) { paddingValues ->
+            Column(modifier = Modifier.padding(paddingValues)) {
+
+                Spacer(Modifier.height(8.dp))
+                SearchBar()
+                Spacer(Modifier.height(12.dp))
+                FilterRow(active = activeFilter, onSelect = { activeFilter = it })
+                Spacer(Modifier.height(8.dp))
+
+
+                if (viewModel.isLoading) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = natureGreen)
+                    }
+                } else {
+                    AppointmentLazyList(
+                        list = filteredList,
+                        onAvatarClick = { name, url ->
+                            selectedAvatarName = name
+                            selectedAvatarUrl = url
+                            showAvatarDialog = true
+                        },
+                        onCardClick = { /* Navigate */ }
                     )
                 }
             }
+        }
 
-            Text(
-                text = model.time,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = TextPrimary
+        // 4. Avatar Popup Overlay (Using your exact Box/Card structure)
+        if (showAvatarDialog) {
+            AvatarPopup(
+                name = selectedAvatarName,
+                url = selectedAvatarUrl,
+                onDismiss = { showAvatarDialog = false }
             )
         }
     }
 }
 
-@Preview(showBackground = true)
+
+
 @Composable
-fun PreviewCompactAppointmentCard() {
-    Column(
+fun FilterRow(active: String, onSelect: (String) -> Unit) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(ScreenBg)
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        CompactAppointmentCard(
-            model = AppointmentCardUiModel(
-                id = "1",
-                name = "Dr. Ravi Sharma",
-                subtitle = "Cardiologist",
-                dateGroup = "TODAY, 20 MAY",
-                time = "10:00 AM",
-                type = "online",
-                status = "confirmed"
-            ),
-            onClick = {}
-        )
-        CompactAppointmentCard(
-            model = AppointmentCardUiModel(
-                id = "2",
-                name = "Rahul Kumar",
-                subtitle = "Patient",
-                dateGroup = "TODAY, 20 MAY",
-                time = "02:30 PM",
-                type = "in_person",
-                status = "pending"
-            ),
-            onClick = {}
-        )
+        filterTabs.forEach { tab ->
+            val isActive = tab == active
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(24.dp)) // WhatsApp style pill shape
+                    .background(if (isActive) MediChipActiveBg else MediChipIdleBg)
+                    .then(
+                        if (isActive) Modifier.border(
+                            width = 1.dp,
+                            color = MediChipActiveBorder, // Border only on active
+                            shape = RoundedCornerShape(24.dp)
+                        ) else Modifier // No border on idle tabs
+                    )
+                    .clickable { onSelect(tab) }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = tab,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = if (isActive) MediChipActiveText else MediChipIdleText
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AppointmentLazyList(
+    list: List<AppointmentItem>,
+    onAvatarClick: (String, String?) -> Unit,
+    onCardClick: (AppointmentItem) -> Unit
+) {
+    if (list.isEmpty()) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("No appointments found", color = Color.Gray)
+        }
+    } else {
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            items(list, key = { it.appointmentId }) { appt ->
+                AppointmentCard(
+                    appt = appt,
+                    onAvatarClick = onAvatarClick,
+                    onClick = { onCardClick(appt) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AvatarPopup(name: String, url: String?, onDismiss: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.6f))
+            .clickable { onDismiss() },
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.65f)
+                .wrapContentHeight()
+                .offset(y = (-80).dp)
+                .clickable(enabled = false) { },
+            shape = RoundedCornerShape(4.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E))
+        ) {
+            Column {
+                Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f)) {
+                    if (url != null) {
+                        AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                    } else {
+                        Box(Modifier.fillMaxSize().background(Color(0xFFE1F5FE)), contentAlignment = Alignment.Center) {
+                            Text(name.take(1).uppercase(), fontSize = 100.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF0288D1))
+                        }
+                    }
+                    Box(Modifier.fillMaxWidth().background(Color.Black.copy(alpha = 0.25f)).align(Alignment.TopCenter).padding(horizontal = 12.dp, vertical = 6.dp)) {
+                        Text(name, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth().background(Color.White).padding(vertical = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Outlined.Visibility, null, tint = natureGreen, modifier = Modifier.size(24.dp).clickable { onDismiss() })
+                    Icon(Icons.Default.Info, null, tint = natureGreen, modifier = Modifier.size(24.dp).clickable { onDismiss() })
+                }
+            }
+        }
     }
 }

@@ -313,11 +313,19 @@ fun AppointmentList(list: List<AppointmentItem>,navController: NavController) {
             modifier       = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {
+
             items(list, key = { it.appointmentId }) { appt ->
                 AppointmentCard(
                     appt = appt,
+                    onAvatarClick = { name, url ->
+                        // This is where you'll eventually trigger the popup
+                        println("Avatar clicked: $name")
+                    },
                     onClick = {
-                        navController.navigate("chat/${appt.roomId}")                    })
+                        // This is where you'll eventually navigate
+                        println("Card clicked")
+                    }
+                )
             }
         }
     }

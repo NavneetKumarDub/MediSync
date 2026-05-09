@@ -29,7 +29,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
@@ -58,6 +57,10 @@ import okhttp3.RequestBody.Companion.toRequestBody
 
 private val ErrorRed = Color(0xFFDC2626)
 private val AvtarColor = Color(0xFF3E505D)
+private val ScreenBg1 = Color(0xFFF6F7F9)
+private val CardBg1 = Color(0xFFFFFFFF)
+private val MediSkyBlueSoftBg = Color(0xFFE1F5FE)
+private val MediSkyBlueText = Color(0xFF0288D1)
 
 suspend fun uploadImageToMinIO(
     context: Context,
@@ -198,385 +201,389 @@ fun PatientProfileScreen(
         }
     }
 
-    if (showPhotoDialog) {
-        Dialog(onDismissRequest = { showPhotoDialog = false }) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth(0.85f)
-                    .wrapContentHeight(),
-                shape = RoundedCornerShape(4.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.Black),
-                elevation = CardDefaults.cardElevation(defaultElevation = 24.dp)
-            ) {
-                Column {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(1f)
-                            .background(AvtarColor)
-                    ) {
-                        val dialogImageModel = profilePhotoUri ?: profilePhotoUrl
-                        if (dialogImageModel != null) {
-                            AsyncImage(
-                                model = dialogImageModel,
-                                contentDescription = "Profile Photo",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = "Placeholder",
-                                modifier = Modifier
-                                    .size(100.dp)
-                                    .align(Alignment.Center),
-                                tint = Color.Gray
-                            )
-                        }
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color(0xFF1E1E1E))
-                            .padding(vertical = 6.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable {
-                                    profilePhotoUri = null
-                                    profilePhotoUrl = null
-                                    shouldDeletePhoto = true
-                                    showPhotoDialog = false
-                                }
-                                .padding(4.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Delete,
-                                contentDescription = "Remove",
-                                tint = natureGreen,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { photoPickerLauncher.launch("image/*") }
-                                .padding(4.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Edit,
-                                contentDescription = "Edit",
-                                tint = natureGreen,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Scaffold(
-        containerColor = ScreenBg,
-        topBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .graphicsLayer {
-                        shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
-                        clip  = true
-                    }
-                    .background(natureGreen)
-                    .statusBarsPadding()
-                    .padding(start = 8.dp, end = 16.dp, top = 8.dp)
-            ) {
-                Row(
-                    modifier              = Modifier.fillMaxWidth(),
-                    verticalAlignment     = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            imageVector        = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            tint               = Color.White
-                        )
-                    }
-                    Text(
-                        text       = "My Profile",
-                        fontSize   = 20.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color      = Color.White
-                    )
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                TabRow(
-                    selectedTabIndex = selectedTab,
-                    containerColor   = natureGreen,
-                    contentColor     = Color.White,
-                    indicator = { tabPositions ->
-                        TabRowDefaults.SecondaryIndicator(
-                            modifier = Modifier
-                                .tabIndicatorOffset(tabPositions[selectedTab])
-                                .padding(horizontal = 24.dp),
-                            height = 3.dp,
-                            color  = Color.White
-                        )
-                    },
-                    divider = {}
-                ) {
-                    tabs.forEachIndexed { index, title ->
-                        Tab(
-                            selected = selectedTab == index,
-                            onClick  = { selectedTab = index },
-                            selectedContentColor   = Color.White,
-                            unselectedContentColor = Color.White.copy(alpha = 0.65f),
-                            text = {
-                                Text(
-                                    text       = title,
-                                    fontWeight = if (selectedTab == index) FontWeight.SemiBold else FontWeight.Normal,
-                                    fontSize   = 14.sp
-                                )
-                            }
-                        )
-                    }
-                }
-            }
-        },
-        bottomBar = {
-            Surface(color = CardBg, shadowElevation = 8.dp) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            containerColor = ScreenBg1,
+            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+            topBar = {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .graphicsLayer {
+                            shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
+                            clip  = true
+                        }
+                        .background(natureGreen)
+                        .statusBarsPadding()
+                        .padding(start = 8.dp, end = 16.dp, top = 8.dp)
                 ) {
-                    if (errorMessage.isNotEmpty()) {
+                    Row(
+                        modifier              = Modifier.fillMaxWidth(),
+                        verticalAlignment     = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(
+                                imageVector        = Icons.Default.ArrowBack,
+                                contentDescription = "Back",
+                                tint               = Color.White
+                            )
+                        }
                         Text(
-                            text     = errorMessage,
-                            color    = ErrorRed,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(bottom = 8.dp)
+                            text       = "My Profile",
+                            fontSize   = 20.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color      = Color.White
                         )
                     }
 
-                    Button(
-                        onClick = {
-                            if (isSaving) return@Button
-                            scope.launch {
-                                isSaving     = true
-                                errorMessage = ""
-                                try {
-                                    val token = "Bearer ${TokenManager.getToken(context) ?: ""}"
+                    Spacer(Modifier.height(8.dp))
 
-                                    if (shouldDeletePhoto && profilePhotoUri == null) {
-                                        val token = "Bearer ${TokenManager.getToken(context) ?: ""}"
-                                        RetrofitInstance.api.deleteProfilePhoto(token, userId)
-                                        userViewModel.updateProfilePhotoUrl(null)
-                                        shouldDeletePhoto = false
-                                    }
-
-                                    if (profilePhotoUri != null) {
-                                        val mimeType = context.contentResolver
-                                            .getType(profilePhotoUri!!) ?: "image/jpeg"
-                                        val extension = mimeType.split("/").lastOrNull() ?: "jpg"
-                                        val fileName = "avatar_${System.currentTimeMillis()}.$extension"
-
-                                        val presignedResponse = RetrofitInstance.api.getPresignedUploadUrl(
-                                            token,
-                                            PresignedUrlRequest(
-                                                userId   = userId,
-                                                fileName = fileName,
-                                                fileType = mimeType
-                                            )
-                                        )
-
-                                        val uploaded = uploadImageToMinIO(
-                                            context   = context,
-                                            uri       = profilePhotoUri!!,
-                                            uploadUrl = presignedResponse.uploadUrl,
-                                            mimeType  = mimeType
-                                        )
-
-                                        if (uploaded) {
-                                            RetrofitInstance.api.confirmProfilePhotoUpload(
-                                                token,
-                                                ConfirmUploadRequest(
-                                                    userId = userId,
-                                                    key    = presignedResponse.key
-                                                )
-                                            )
-                                            userViewModel.refreshProfilePhoto()
-                                        } else {
-                                            errorMessage = "Photo upload failed"
-                                            isSaving = false
-                                            return@launch
-                                        }
-                                    }
-
-                                    RetrofitInstance.api.updatePersonalProfile(
-                                        token,
-                                        userId  = userId,
-                                        request = PersonalProfileRequest(
-                                            email             = email,
-                                            gender            = gender,
-                                            blood_group       = bloodGroup,
-                                            dob               = dob,
-                                            name              = myName,
-                                            marital_status    = maritalStatus,
-                                            height            = height.toString(),
-                                            weight            = weight.toString(),
-                                            emergency_contact = emergencyContact
-                                        )
-                                    )
-                                    RetrofitInstance.api.updateMedicalProfile(
-                                        token,
-                                        userId  = userId,
-                                        request = MedicalProfileRequest(
-                                            allergies           = allergies,
-                                            current_medications = currentMedications,
-                                            past_medications    = pastMedications,
-                                            chronic_diseases    = chronicDiseases,
-                                            injuries            = injuries,
-                                            surgeries           = surgeries
-                                        )
-                                    )
-                                    RetrofitInstance.api.updateLifestyleProfile(
-                                        token,
-                                        userId  = userId,
-                                        request = LifestyleProfileRequest(
-                                            smoking         = smoking,
-                                            alcohol         = alcohol,
-                                            activity_level  = activityLevel,
-                                            food_preference = foodPreference,
-                                            occupation      = occupation,
-                                        )
-                                    )
-                                    navController.popBackStack()
-                                } catch (e: Exception) {
-                                    errorMessage = e.message ?: "Failed to save"
-                                } finally {
-                                    isSaving = false
-                                }
-                            }
-                        },
-                        enabled = !isSaving && !isLoading,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(54.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor         = natureGreen,
-                            disabledContainerColor = natureGreen.copy(alpha = 0.4f)
-                        )
-                    ) {
-                        if (isSaving || isLoading) {
-                            CircularProgressIndicator(
-                                color       = Color.White,
-                                strokeWidth = 2.dp,
-                                modifier    = Modifier.size(22.dp)
+                    TabRow(
+                        selectedTabIndex = selectedTab,
+                        containerColor   = natureGreen,
+                        contentColor     = Color.White,
+                        indicator = { tabPositions ->
+                            TabRowDefaults.SecondaryIndicator(
+                                modifier = Modifier
+                                    .tabIndicatorOffset(tabPositions[selectedTab])
+                                    .padding(horizontal = 24.dp),
+                                height = 3.dp,
+                                color  = Color.White
                             )
-                        } else {
-                            Text(
-                                text       = "Save",
-                                fontSize   = 15.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color      = Color.White
+                        },
+                        divider = {}
+                    ) {
+                        tabs.forEachIndexed { index, title ->
+                            Tab(
+                                selected = selectedTab == index,
+                                onClick  = { selectedTab = index },
+                                selectedContentColor   = Color.White,
+                                unselectedContentColor = Color.White.copy(alpha = 0.65f),
+                                text = {
+                                    Text(
+                                        text       = title,
+                                        fontWeight = if (selectedTab == index) FontWeight.SemiBold else FontWeight.Normal,
+                                        fontSize   = 14.sp
+                                    )
+                                }
                             )
                         }
                     }
+                }
+            },
+            bottomBar = {
+                Surface(color = CardBg1, shadowElevation = 8.dp) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                    ) {
+                        if (errorMessage.isNotEmpty()) {
+                            Text(
+                                text     = errorMessage,
+                                color    = ErrorRed,
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                if (isSaving) return@Button
+                                scope.launch {
+                                    isSaving     = true
+                                    errorMessage = ""
+                                    try {
+                                        val token = "Bearer ${TokenManager.getToken(context) ?: ""}"
+
+                                        if (shouldDeletePhoto && profilePhotoUri == null) {
+                                            RetrofitInstance.api.deleteProfilePhoto(token, userId)
+                                            userViewModel.updateProfilePhotoUrl(null)
+                                            shouldDeletePhoto = false
+                                        }
+
+                                        if (profilePhotoUri != null) {
+                                            val mimeType = context.contentResolver
+                                                .getType(profilePhotoUri!!) ?: "image/jpeg"
+                                            val extension = mimeType.split("/").lastOrNull() ?: "jpg"
+                                            val fileName = "avatar_${System.currentTimeMillis()}.$extension"
+
+                                            val presignedResponse = RetrofitInstance.api.getPresignedUploadUrl(
+                                                token,
+                                                PresignedUrlRequest(
+                                                    userId   = userId,
+                                                    fileName = fileName,
+                                                    fileType = mimeType
+                                                )
+                                            )
+
+                                            val uploaded = uploadImageToMinIO(
+                                                context   = context,
+                                                uri       = profilePhotoUri!!,
+                                                uploadUrl = presignedResponse.uploadUrl,
+                                                mimeType  = mimeType
+                                            )
+
+                                            if (uploaded) {
+                                                RetrofitInstance.api.confirmProfilePhotoUpload(
+                                                    token,
+                                                    ConfirmUploadRequest(
+                                                        userId = userId,
+                                                        key    = presignedResponse.key
+                                                    )
+                                                )
+                                                userViewModel.refreshProfilePhoto()
+                                            } else {
+                                                errorMessage = "Photo upload failed"
+                                                isSaving = false
+                                                return@launch
+                                            }
+                                        }
+
+                                        RetrofitInstance.api.updatePersonalProfile(
+                                            token,
+                                            userId  = userId,
+                                            request = PersonalProfileRequest(
+                                                email             = email,
+                                                gender            = gender,
+                                                blood_group       = bloodGroup,
+                                                dob               = dob,
+                                                name              = myName,
+                                                marital_status    = maritalStatus,
+                                                height            = height.toString(),
+                                                weight            = weight.toString(),
+                                                emergency_contact = emergencyContact
+                                            )
+                                        )
+                                        RetrofitInstance.api.updateMedicalProfile(
+                                            token,
+                                            userId  = userId,
+                                            request = MedicalProfileRequest(
+                                                allergies           = allergies,
+                                                current_medications = currentMedications,
+                                                past_medications    = pastMedications,
+                                                chronic_diseases    = chronicDiseases,
+                                                injuries            = injuries,
+                                                surgeries           = surgeries
+                                            )
+                                        )
+                                        RetrofitInstance.api.updateLifestyleProfile(
+                                            token,
+                                            userId  = userId,
+                                            request = LifestyleProfileRequest(
+                                                smoking         = smoking,
+                                                alcohol         = alcohol,
+                                                activity_level  = activityLevel,
+                                                food_preference = foodPreference,
+                                                occupation      = occupation,
+                                            )
+                                        )
+                                        navController.popBackStack()
+                                    } catch (e: Exception) {
+                                        errorMessage = e.message ?: "Failed to save"
+                                    } finally {
+                                        isSaving = false
+                                    }
+                                }
+                            },
+                            enabled = !isSaving && !isLoading,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(54.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor         = natureGreen,
+                                disabledContainerColor = natureGreen.copy(alpha = 0.4f)
+                            )
+                        ) {
+                            if (isSaving || isLoading) {
+                                CircularProgressIndicator(
+                                    color       = Color.White,
+                                    strokeWidth = 2.dp,
+                                    modifier    = Modifier.size(22.dp)
+                                )
+                            } else {
+                                Text(
+                                    text       = "Save",
+                                    fontSize   = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color      = Color.White
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        ) { paddingValues ->
+
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = natureGreen)
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                ) {
+                    when (selectedTab) {
+                        0 -> {
+                            item {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(100.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFFE5E7EB))
+                                            .clickable { showPhotoDialog = true },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        val imageModel = profilePhotoUri ?: profilePhotoUrl
+                                        if (imageModel != null) {
+                                            AsyncImage(
+                                                model              = imageModel,
+                                                contentDescription = "Profile Photo",
+                                                contentScale       = ContentScale.Crop,
+                                                modifier           = Modifier.fillMaxSize()
+                                            )
+                                        } else {
+                                            Icon(
+                                                imageVector        = Icons.Default.Person,
+                                                contentDescription = "Placeholder",
+                                                modifier           = Modifier.size(50.dp),
+                                                tint               = Color.Gray
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            item { ProfileRow(label = "Name",              value = myName,           placeholder = "add name",               onValueChange = { myName = it }) }
+                            item { ProfileRow(label = "Contact Number",    value = phoneNumber,      editable = false) }
+                            item { ProfileRow(label = "Email Id",          value = email,            placeholder = "add email",              onValueChange = { email = it }) }
+                            item { RadioButton(label = "Gender",           options = listOf("Male","Female","Other"), selectedOption = gender, onOptionSelected = { gender = it }) }
+                            item { DatePicker(label = "Date of Birth",     value = dob,              placeholder = "yyyy mm dd",             onValueChange = { dob = it }) }
+                            item { DropdownField(label = "Blood Group",    options = listOf("A+","A-","B+","B-","AB+","AB-","O+","O-"), selectedOption = bloodGroup, onOptionSelected = { bloodGroup = it }, paddingX = 300.dp) }
+                            item { RadioButton(label = "Marital Status",   options = listOf("yes","no"), selectedOption = maritalStatus, onOptionSelected = { maritalStatus = it }) }
+                            item { StepperField(label = "Height", min = 0, max = 500, unit = "cm", value = height, onValueChange = { height = it }) }
+                            item { ProfileRow(label = "Emergency Contact", value = emergencyContact,  placeholder = "add emergency details", onValueChange = { emergencyContact = it }) }
+                        }
+                        1 -> {
+                            item { ProfileRow(label = "Allergies",            value = allergies,           placeholder = "add allergies",   onValueChange = { allergies = it }) }
+                            item { ProfileRow(label = "Current Medications",  value = currentMedications,  placeholder = "add medications", onValueChange = { currentMedications = it }) }
+                            item { ProfileRow(label = "Past Medications",     value = pastMedications,     placeholder = "add medications", onValueChange = { pastMedications = it }) }
+                            item { ProfileRow(label = "Chronic Diseases",     value = chronicDiseases,     placeholder = "add diseases",    onValueChange = { chronicDiseases = it }) }
+                            item { ProfileRow(label = "Injuries",             value = injuries,            placeholder = "add incident",    onValueChange = { injuries = it }) }
+                            item { ProfileRow(label = "Surgeries",            value = surgeries,           placeholder = "add surgeries",   onValueChange = { surgeries = it }) }
+                        }
+                        2 -> {
+                            item { DropdownField(label = "Alcohol consumption", options = listOf("Non-drinking", "Occasional", "Regular"), selectedOption = alcohol,        onOptionSelected = { alcohol = it },        paddingX = 300.dp) }
+                            item { DropdownField(label = "Smoking Habits",      options = listOf("Non-smoker", "Occasional", "Regular"),   selectedOption = smoking,        onOptionSelected = { smoking = it },        paddingX = 300.dp) }
+                            item { RadioButton(label = "Activity Level",        options = listOf("low", "Moderate", "High"),               selectedOption = activityLevel,  onOptionSelected = { activityLevel = it }) }
+                            item { RadioButton(label = "Food Preference",       options = listOf("veg", "non-veg", "vegan"),               selectedOption = foodPreference, onOptionSelected = { foodPreference = it }) }
+                            item { ProfileRow(label = "Occupation",             value = occupation,          placeholder = "add occupation", onValueChange = { occupation = it }) }
+                        }
+                    }
+                    item { Spacer(Modifier.height(8.dp)) }
                 }
             }
         }
-    ) { paddingValues ->
 
-        if (isLoading) {
+        if (showPhotoDialog) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .clickable { showPhotoDialog = false },
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = natureGreen)
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                when (selectedTab) {
-                    0 -> {
-                        item {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 24.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth(0.65f)
+                        .wrapContentHeight()
+                        .offset(y = (0).dp)
+                        .clickable(enabled = false) {}, // Prevent clicks on card from closing
+                    shape = RoundedCornerShape(4.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                ) {
+                    Column {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(1f)
+                                .background(AvtarColor)
+                        ) {
+                            val dialogImageModel = profilePhotoUri ?: profilePhotoUrl
+                            if (dialogImageModel != null) {
+                                AsyncImage(
+                                    model = dialogImageModel,
+                                    contentDescription = "Profile Photo",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
                                 Box(
                                     modifier = Modifier
-                                        .size(100.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFFE5E7EB))
-                                        .clickable { showPhotoDialog = true },
+                                        .fillMaxSize()
+                                        .background(Color(0xFFE5E7EB)),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    val imageModel = profilePhotoUri ?: profilePhotoUrl
-                                    if (imageModel != null) {
-                                        AsyncImage(
-                                            model              = imageModel,
-                                            contentDescription = "Profile Photo",
-                                            contentScale       = ContentScale.Crop,
-                                            modifier           = Modifier.fillMaxSize()
-                                        )
-                                    } else {
-                                        Icon(
-                                            imageVector        = Icons.Default.Person,
-                                            contentDescription = "Placeholder",
-                                            modifier           = Modifier.size(50.dp),
-                                            tint               = Color.Gray
-                                        )
-                                    }
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = "Placeholder",
+                                        modifier = Modifier.size(120.dp),
+                                        tint = Color.Gray
+                                    )
                                 }
                             }
                         }
-                        item { ProfileRow(label = "Name",              value = myName,           placeholder = "add name",               onValueChange = { myName = it }) }
-                        item { ProfileRow(label = "Contact Number",    value = phoneNumber,      editable = false) }
-                        item { ProfileRow(label = "Email Id",          value = email,            placeholder = "add email",              onValueChange = { email = it }) }
-                        item { RadioButton(label = "Gender",           options = listOf("Male","Female","Other"), selectedOption = gender, onOptionSelected = { gender = it }) }
-                        item { DatePicker(label = "Date of Birth",     value = dob,              placeholder = "yyyy mm dd",             onValueChange = { dob = it }) }
-                        item { DropdownField(label = "Blood Group",    options = listOf("A+","A-","B+","B-","AB+","AB-","O+","O-"), selectedOption = bloodGroup, onOptionSelected = { bloodGroup = it }, paddingX = 300.dp) }
-                        item { RadioButton(label = "Marital Status",   options = listOf("yes","no"), selectedOption = maritalStatus, onOptionSelected = { maritalStatus = it }) }
-                        item { StepperField(label = "Height", min = 0, max = 500, unit = "cm", value = height, onValueChange = { height = it }) }
-                        item { ProfileRow(label = "Emergency Contact", value = emergencyContact,  placeholder = "add emergency details", onValueChange = { emergencyContact = it }) }
-                    }
-                    1 -> {
-                        item { ProfileRow(label = "Allergies",            value = allergies,           placeholder = "add allergies",   onValueChange = { allergies = it }) }
-                        item { ProfileRow(label = "Current Medications",  value = currentMedications,  placeholder = "add medications", onValueChange = { currentMedications = it }) }
-                        item { ProfileRow(label = "Past Medications",     value = pastMedications,     placeholder = "add medications", onValueChange = { pastMedications = it }) }
-                        item { ProfileRow(label = "Chronic Diseases",     value = chronicDiseases,     placeholder = "add diseases",    onValueChange = { chronicDiseases = it }) }
-                        item { ProfileRow(label = "Injuries",             value = injuries,            placeholder = "add incident",    onValueChange = { injuries = it }) }
-                        item { ProfileRow(label = "Surgeries",            value = surgeries,           placeholder = "add surgeries",   onValueChange = { surgeries = it }) }
-                    }
-                    2 -> {
-                        item { DropdownField(label = "Alcohol consumption", options = listOf("Non-drinking", "Occasional", "Regular"), selectedOption = alcohol,        onOptionSelected = { alcohol = it },        paddingX = 300.dp) }
-                        item { DropdownField(label = "Smoking Habits",      options = listOf("Non-smoker", "Occasional", "Regular"),   selectedOption = smoking,        onOptionSelected = { smoking = it },        paddingX = 300.dp) }
-                        item { RadioButton(label = "Activity Level",        options = listOf("low", "Moderate", "High"),               selectedOption = activityLevel,  onOptionSelected = { activityLevel = it }) }
-                        item { RadioButton(label = "Food Preference",       options = listOf("veg", "non-veg", "vegan"),               selectedOption = foodPreference, onOptionSelected = { foodPreference = it }) }
-                        item { ProfileRow(label = "Occupation",             value = occupation,          placeholder = "add occupation", onValueChange = { occupation = it }) }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color.White)
+                                .padding(vertical = 14.dp),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Remove",
+                                tint = natureGreen,
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clickable {
+                                        profilePhotoUri = null
+                                        profilePhotoUrl = null
+                                        shouldDeletePhoto = true
+                                        showPhotoDialog = false
+                                    }
+                            )
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit",
+                                tint = natureGreen,
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clickable {
+                                        photoPickerLauncher.launch("image/*")
+                                    }
+                            )
+                        }
                     }
                 }
-                item { Spacer(Modifier.height(8.dp)) }
             }
         }
     }

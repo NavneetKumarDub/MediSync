@@ -30,22 +30,18 @@ class ChatInboxViewModel : ViewModel() {
 
     fun fetchInbox(context: Context) {
         viewModelScope.launch {
-            // Start by telling the UI to show the loading spinner
             _uiState.value = InboxUiState.Loading
 
             try {
-                // Get the logged-in user's token
                 val token = TokenManager.getToken(context)
                 if (token == null) {
                     _uiState.value = InboxUiState.Error("Please log in again.")
                     return@launch
                 }
 
-                // Make the network call to the GET /api/chat/inbox route
                 val response = RetrofitInstance.api.getInbox(token = "Bearer $token")
 
                 if (response.isSuccessful && response.body() != null) {
-                    // Success! Hand the list of chats to the UI
                     val chatsList = response.body()!!.chats
                     _uiState.value = InboxUiState.Success(chatsList)
                 } else {
@@ -53,13 +49,10 @@ class ChatInboxViewModel : ViewModel() {
                 }
 
             } catch (e: IOException) {
-                // This happens if the phone has no internet connection
                 _uiState.value = InboxUiState.Error("Network error. Check your connection.")
             } catch (e: HttpException) {
-                // This happens if the server crashes (e.g., 500 error)
                 _uiState.value = InboxUiState.Error("Server error occurred.")
             } catch (e: Exception) {
-                // Catch anything else unexpected
                 Log.e("ChatInboxViewModel", "Error fetching inbox", e)
                 _uiState.value = InboxUiState.Error("An unexpected error occurred.")
             }

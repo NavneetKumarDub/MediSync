@@ -23,7 +23,7 @@ import androidx.navigation.NavController
 import com.example.medisync.ui.components.BottomNavBar
 import com.example.medisync.ui.components.ConsultationCard
 import com.example.medisync.ui.components.FindDoctorSection
-import com.example.medisync.ui.components.NextAppointmentCard
+//import com.example.medisync.ui.components.NextAppointmentCard
 import com.example.medisync.ui.navigation.NavItems
 import com.example.medisync.ui.screens.HomeTopBar
 import java.text.SimpleDateFormat
@@ -73,19 +73,19 @@ fun HomeContent(
                 GreetingHeader(name)
             }
 
-            item {
-                NextAppointmentCard(
-                    appt = Appointment(
-                        id = 1,
-                        doctorName = "Dr. Anjali Sharma",
-                        specialty = "Cardiology · General Checkup",
-                        time = "3:00 pm",
-                        status = "Upcoming",
-                        date = "12 Apr 2026",
-                        mode = "online",
-                    )
-                )
-            }
+//            item {
+//                NextAppointmentCard(
+//                    appt = Appointment(
+//                        id = 1,
+//                        doctorName = "Dr. Anjali Sharma",
+//                        specialty = "Cardiology · General Checkup",
+//                        time = "3:00 pm",
+//                        status = "Upcoming",
+//                        date = "12 Apr 2026",
+//                        mode = "online",
+//                    )
+//                )
+//            }
 
             item {
                 ConsultationCard(

@@ -206,6 +206,9 @@ data class AppointmentItem(
     @SerializedName("appointment_id", alternate = ["id"])
     val appointmentId: Int,
 
+    @SerializedName("profile_photo")
+    val profilePhoto    : String? = null,
+
     @SerializedName("doctor_id")
     val doctorId: Int? = null,
 
