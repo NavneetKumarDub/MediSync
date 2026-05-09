@@ -16,12 +16,14 @@ interface ApiService {
 
     @PUT("api/patient/personal/{userId}")
     suspend fun updatePersonalProfile(
+        @Header("Authorization") token: String,
         @Path("userId") userId: Int,
         @Body request: PersonalProfileRequest
     ): ProfileResponse
 
     @PUT("api/patient/medical/{userId}")
     suspend fun updateMedicalProfile(
+        @Header("Authorization") token: String,
         @Path("userId")userId:Int,
         @Body request: MedicalProfileRequest
     ): ProfileResponse
@@ -29,24 +31,28 @@ interface ApiService {
 
     @PUT("api/patient/lifestyle/{userId}")
     suspend fun updateLifestyleProfile(
+        @Header("Authorization") token: String,
         @Path("userId")userId:Int,
         @Body request: LifestyleProfileRequest
     ): ProfileResponse
 
     @PUT("api/doctor/personal/{userId}")
     suspend fun updateDoctorPersonal(
+        @Header("Authorization") token: String,
         @Path("userId") userId: Int,
         @Body request: DoctorPersonalRequest
     ): ProfileResponse
 
     @PUT("api/doctor/professional/{userId}")
     suspend fun updateDoctorProfessional(
+        @Header("Authorization") token: String,
         @Path("userId") userId: Int,
         @Body request: DoctorProfessionalRequest
     ): ProfileResponse
 
     @PUT("api/doctor/clinic/{userId}")
     suspend fun updateDoctorClinic(
+        @Header("Authorization") token: String,
         @Path("userId") userId: Int,
         @Body request: DoctorClinicRequest
     ): ProfileResponse
@@ -155,21 +161,25 @@ interface ApiService {
 
     @GET("api/patient/personal/{userId}")
     suspend fun getPersonalProfile(
+        @Header("Authorization") token: String,
         @Path("userId") userId: Int
     ): PersonalProfileResponse
 
     @GET("api/patient/medical/{userId}")
     suspend fun getMedicalProfile(
+        @Header("Authorization") token: String,
         @Path("userId") userId: Int
     ): MedicalProfileResponse
 
     @GET("api/patient/lifestyle/{userId}")
     suspend fun getLifestyleProfile(
+        @Header("Authorization") token: String,
         @Path("userId") userId: Int
     ): LifestyleProfileResponse
 
     @GET("api/doctor/profile/{doctorId}")
     suspend fun getDoctorProfile(
+        @Header("Authorization") token: String,
         @Path("doctorId") doctorId: Int
     ): Response<DoctorProfileResponse>
 
@@ -198,5 +208,32 @@ interface ApiService {
         @Query("month") month: Int,
         @Query("year") year: Int
     ): GetDatesWithSlotsResponse
+
+    @POST("api/upload/presigned-url")
+    suspend fun getPresignedUploadUrl(
+        @Header("Authorization") token: String,
+        @Body request: PresignedUrlRequest
+    ): PresignedUrlResponse
+
+    @POST("api/upload/confirm")
+    suspend fun confirmProfilePhotoUpload(
+        @Header("Authorization") token: String,
+        @Body request: ConfirmUploadRequest
+    ): ProfileResponse
+
+    @GET("api/upload/profile/{userId}")
+    suspend fun getProfilePhotoUrl(
+        @Header("Authorization") token: String,
+        @Path("userId") userId: Int
+    ): ProfilePhotoResponse
+
+    @DELETE("api/upload/profile/{userId}")
+    suspend fun deleteProfilePhoto(
+        @Header("Authorization") token: String,
+        @Path("userId") userId: Int
+    ): ProfileResponse
+
+
 }
+
 

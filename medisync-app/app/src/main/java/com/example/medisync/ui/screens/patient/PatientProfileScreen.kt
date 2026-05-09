@@ -1,27 +1,45 @@
 package com.example.medisync.ui.screens.patient
 
+import android.content.Context
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import coil.compose.AsyncImage
+import com.example.medisync.data.TokenManager
+import com.example.medisync.networks.ConfirmUploadRequest
 import com.example.medisync.networks.LifestyleProfileRequest
 import com.example.medisync.networks.MedicalProfileRequest
 import com.example.medisync.networks.PersonalProfileRequest
+import com.example.medisync.networks.PresignedUrlRequest
 import com.example.medisync.networks.RetrofitInstance
 import com.example.medisync.ui.components.DatePicker
 import com.example.medisync.ui.components.DropdownField
@@ -29,9 +47,51 @@ import com.example.medisync.ui.components.ProfileRow
 import com.example.medisync.ui.components.RadioButton
 import com.example.medisync.ui.components.StepperField
 import com.example.medisync.ui.theme.natureGreen
+import com.example.medisync.viewmodels.UserViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 
 private val ErrorRed = Color(0xFFDC2626)
+private val AvtarColor = Color(0xFF3E505D)
+
+suspend fun uploadImageToMinIO(
+    context: Context,
+    uri: Uri,
+    uploadUrl: String,
+    mimeType: String
+): Boolean {
+    return withContext(Dispatchers.IO) {
+        try {
+            val inputStream = context.contentResolver.openInputStream(uri)
+            val bytes = inputStream?.readBytes() ?: return@withContext false
+            inputStream.close()
+
+            val client = OkHttpClient()
+            val requestBody = bytes.toRequestBody(mimeType.toMediaType())
+            android.util.Log.d("MinIOUpload", "Uploading to URL: $uploadUrl")
+            android.util.Log.d("MinIOUpload", "Bytes size: ${bytes.size}")
+            android.util.Log.d("MinIOUpload", "MimeType: $mimeType")
+            val request = Request.Builder()
+                .url(uploadUrl)
+                .put(requestBody)
+                .addHeader("Content-Type", mimeType)
+                .build()
+
+            val response = client.newCall(request).execute()
+            android.util.Log.d("MinIOUpload", "Response code: ${response.code}")
+            android.util.Log.d("MinIOUpload", "Response body: ${response.body?.string()}")
+            response.isSuccessful
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,8 +99,12 @@ fun PatientProfileScreen(
     navController: NavController,
     name         : String,
     phoneNumber  : String,
-    userId       : Int
+    userId       : Int,
+    userViewModel: UserViewModel = viewModel()
 ) {
+    val context = LocalContext.current
+    var shouldDeletePhoto by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
     var selectedTab  by remember { mutableIntStateOf(0) }
     val tabs          = listOf("Personal", "Medical", "Lifestyle")
     val scope         = rememberCoroutineScope()
@@ -48,7 +112,19 @@ fun PatientProfileScreen(
     var isSaving     by remember { mutableStateOf(false) }
     var isLoading    by remember { mutableStateOf(true) }
 
-    // Personal fields
+    var profilePhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var profilePhotoUrl by remember { mutableStateOf<String?>(null) }
+    var showPhotoDialog by remember { mutableStateOf(false) }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            profilePhotoUri = uri
+            shouldDeletePhoto = false
+        }
+    }
+
     var myName           by remember { mutableStateOf(name) }
     var email            by remember { mutableStateOf("") }
     var gender           by remember { mutableStateOf("") }
@@ -59,7 +135,6 @@ fun PatientProfileScreen(
     var weight           by remember { mutableIntStateOf(0) }
     var emergencyContact by remember { mutableStateOf("") }
 
-    // Medical fields
     var allergies          by remember { mutableStateOf("") }
     var currentMedications by remember { mutableStateOf("") }
     var pastMedications    by remember { mutableStateOf("") }
@@ -67,19 +142,18 @@ fun PatientProfileScreen(
     var injuries           by remember { mutableStateOf("") }
     var surgeries          by remember { mutableStateOf("") }
 
-    // Lifestyle fields
     var smoking        by remember { mutableStateOf("") }
     var alcohol        by remember { mutableStateOf("") }
     var activityLevel  by remember { mutableStateOf("") }
     var foodPreference by remember { mutableStateOf("") }
     var occupation     by remember { mutableStateOf("") }
 
-    // Fetch all profiles on screen open
     LaunchedEffect(userId) {
         try {
-            val personalResponse  = RetrofitInstance.api.getPersonalProfile(userId)
-            val medicalResponse   = RetrofitInstance.api.getMedicalProfile(userId)
-            val lifestyleResponse = RetrofitInstance.api.getLifestyleProfile(userId)
+            val token = "Bearer ${TokenManager.getToken(context) ?: ""}"
+            val personalResponse  = RetrofitInstance.api.getPersonalProfile(token,userId)
+            val medicalResponse   = RetrofitInstance.api.getMedicalProfile(token,userId)
+            val lifestyleResponse = RetrofitInstance.api.getLifestyleProfile(token,userId)
 
             personalResponse.data?.let { p ->
                 myName           = p.name             ?: name
@@ -110,10 +184,102 @@ fun PatientProfileScreen(
                 occupation     = l.occupation     ?: ""
             }
 
+            try {
+                val photoResponse = RetrofitInstance.api.getProfilePhotoUrl(token,userId)
+                profilePhotoUrl = photoResponse.viewUrl
+            } catch (e: Exception) {
+                profilePhotoUrl = null
+            }
+
         } catch (e: Exception) {
             errorMessage = "Failed to load profile"
         } finally {
             isLoading = false
+        }
+    }
+
+    if (showPhotoDialog) {
+        Dialog(onDismissRequest = { showPhotoDialog = false }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .wrapContentHeight(),
+                shape = RoundedCornerShape(4.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.Black),
+                elevation = CardDefaults.cardElevation(defaultElevation = 24.dp)
+            ) {
+                Column {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1f)
+                            .background(AvtarColor)
+                    ) {
+                        val dialogImageModel = profilePhotoUri ?: profilePhotoUrl
+                        if (dialogImageModel != null) {
+                            AsyncImage(
+                                model = dialogImageModel,
+                                contentDescription = "Profile Photo",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Placeholder",
+                                modifier = Modifier
+                                    .size(100.dp)
+                                    .align(Alignment.Center),
+                                tint = Color.Gray
+                            )
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFF1E1E1E))
+                            .padding(vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    profilePhotoUri = null
+                                    profilePhotoUrl = null
+                                    shouldDeletePhoto = true
+                                    showPhotoDialog = false
+                                }
+                                .padding(4.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Remove",
+                                tint = natureGreen,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { photoPickerLauncher.launch("image/*") }
+                                .padding(4.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Edit",
+                                tint = natureGreen,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -210,7 +376,55 @@ fun PatientProfileScreen(
                                 isSaving     = true
                                 errorMessage = ""
                                 try {
+                                    val token = "Bearer ${TokenManager.getToken(context) ?: ""}"
+
+                                    if (shouldDeletePhoto && profilePhotoUri == null) {
+                                        val token = "Bearer ${TokenManager.getToken(context) ?: ""}"
+                                        RetrofitInstance.api.deleteProfilePhoto(token, userId)
+                                        userViewModel.updateProfilePhotoUrl(null)
+                                        shouldDeletePhoto = false
+                                    }
+
+                                    if (profilePhotoUri != null) {
+                                        val mimeType = context.contentResolver
+                                            .getType(profilePhotoUri!!) ?: "image/jpeg"
+                                        val extension = mimeType.split("/").lastOrNull() ?: "jpg"
+                                        val fileName = "avatar_${System.currentTimeMillis()}.$extension"
+
+                                        val presignedResponse = RetrofitInstance.api.getPresignedUploadUrl(
+                                            token,
+                                            PresignedUrlRequest(
+                                                userId   = userId,
+                                                fileName = fileName,
+                                                fileType = mimeType
+                                            )
+                                        )
+
+                                        val uploaded = uploadImageToMinIO(
+                                            context   = context,
+                                            uri       = profilePhotoUri!!,
+                                            uploadUrl = presignedResponse.uploadUrl,
+                                            mimeType  = mimeType
+                                        )
+
+                                        if (uploaded) {
+                                            RetrofitInstance.api.confirmProfilePhotoUpload(
+                                                token,
+                                                ConfirmUploadRequest(
+                                                    userId = userId,
+                                                    key    = presignedResponse.key
+                                                )
+                                            )
+                                            userViewModel.refreshProfilePhoto()
+                                        } else {
+                                            errorMessage = "Photo upload failed"
+                                            isSaving = false
+                                            return@launch
+                                        }
+                                    }
+
                                     RetrofitInstance.api.updatePersonalProfile(
+                                        token,
                                         userId  = userId,
                                         request = PersonalProfileRequest(
                                             email             = email,
@@ -225,6 +439,7 @@ fun PatientProfileScreen(
                                         )
                                     )
                                     RetrofitInstance.api.updateMedicalProfile(
+                                        token,
                                         userId  = userId,
                                         request = MedicalProfileRequest(
                                             allergies           = allergies,
@@ -236,6 +451,7 @@ fun PatientProfileScreen(
                                         )
                                     )
                                     RetrofitInstance.api.updateLifestyleProfile(
+                                        token,
                                         userId  = userId,
                                         request = LifestyleProfileRequest(
                                             smoking         = smoking,
@@ -300,15 +516,49 @@ fun PatientProfileScreen(
             ) {
                 when (selectedTab) {
                     0 -> {
-                        item { ProfileRow(label = "Name",              value = myName,          placeholder = "add name",               onValueChange = { myName = it }) }
-                        item { ProfileRow(label = "Contact Number",    value = phoneNumber,     editable = false) }
-                        item { ProfileRow(label = "Email Id",          value = email,           placeholder = "add email",              onValueChange = { email = it }) }
+                        item {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(100.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFFE5E7EB))
+                                        .clickable { showPhotoDialog = true },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    val imageModel = profilePhotoUri ?: profilePhotoUrl
+                                    if (imageModel != null) {
+                                        AsyncImage(
+                                            model              = imageModel,
+                                            contentDescription = "Profile Photo",
+                                            contentScale       = ContentScale.Crop,
+                                            modifier           = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector        = Icons.Default.Person,
+                                            contentDescription = "Placeholder",
+                                            modifier           = Modifier.size(50.dp),
+                                            tint               = Color.Gray
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        item { ProfileRow(label = "Name",              value = myName,           placeholder = "add name",               onValueChange = { myName = it }) }
+                        item { ProfileRow(label = "Contact Number",    value = phoneNumber,      editable = false) }
+                        item { ProfileRow(label = "Email Id",          value = email,            placeholder = "add email",              onValueChange = { email = it }) }
                         item { RadioButton(label = "Gender",           options = listOf("Male","Female","Other"), selectedOption = gender, onOptionSelected = { gender = it }) }
-                        item { DatePicker(label = "Date of Birth",     value = dob,             placeholder = "yyyy mm dd",             onValueChange = { dob = it }) }
+                        item { DatePicker(label = "Date of Birth",     value = dob,              placeholder = "yyyy mm dd",             onValueChange = { dob = it }) }
                         item { DropdownField(label = "Blood Group",    options = listOf("A+","A-","B+","B-","AB+","AB-","O+","O-"), selectedOption = bloodGroup, onOptionSelected = { bloodGroup = it }, paddingX = 300.dp) }
                         item { RadioButton(label = "Marital Status",   options = listOf("yes","no"), selectedOption = maritalStatus, onOptionSelected = { maritalStatus = it }) }
                         item { StepperField(label = "Height", min = 0, max = 500, unit = "cm", value = height, onValueChange = { height = it }) }
-                        item { ProfileRow(label = "Emergency Contact", value = emergencyContact, placeholder = "add emergency details", onValueChange = { emergencyContact = it }) }
+                        item { ProfileRow(label = "Emergency Contact", value = emergencyContact,  placeholder = "add emergency details", onValueChange = { emergencyContact = it }) }
                     }
                     1 -> {
                         item { ProfileRow(label = "Allergies",            value = allergies,           placeholder = "add allergies",   onValueChange = { allergies = it }) }
@@ -319,11 +569,11 @@ fun PatientProfileScreen(
                         item { ProfileRow(label = "Surgeries",            value = surgeries,           placeholder = "add surgeries",   onValueChange = { surgeries = it }) }
                     }
                     2 -> {
-                        item { DropdownField(label = "Alcohol consumption", options = listOf("Non-drinking", "Occasional", "Regular"), selectedOption = alcohol, onOptionSelected = { alcohol = it }, paddingX = 300.dp) }
-                        item { DropdownField(label = "Smoking Habits",      options = listOf("Non-smoker", "Occasional", "Regular"),  selectedOption = smoking, onOptionSelected = { smoking = it }, paddingX = 300.dp) }
-                        item { RadioButton(label = "Activity Level",        options = listOf("low", "Moderate", "High"),              selectedOption = activityLevel,  onOptionSelected = { activityLevel = it }) }
-                        item { RadioButton(label = "Food Preference",       options = listOf("veg", "non-veg", "vegan"),              selectedOption = foodPreference, onOptionSelected = { foodPreference = it }) }
-                        item { ProfileRow(label = "Occupation",             value = occupation, placeholder = "add occupation", onValueChange = { occupation = it }) }
+                        item { DropdownField(label = "Alcohol consumption", options = listOf("Non-drinking", "Occasional", "Regular"), selectedOption = alcohol,        onOptionSelected = { alcohol = it },        paddingX = 300.dp) }
+                        item { DropdownField(label = "Smoking Habits",      options = listOf("Non-smoker", "Occasional", "Regular"),   selectedOption = smoking,        onOptionSelected = { smoking = it },        paddingX = 300.dp) }
+                        item { RadioButton(label = "Activity Level",        options = listOf("low", "Moderate", "High"),               selectedOption = activityLevel,  onOptionSelected = { activityLevel = it }) }
+                        item { RadioButton(label = "Food Preference",       options = listOf("veg", "non-veg", "vegan"),               selectedOption = foodPreference, onOptionSelected = { foodPreference = it }) }
+                        item { ProfileRow(label = "Occupation",             value = occupation,          placeholder = "add occupation", onValueChange = { occupation = it }) }
                     }
                 }
                 item { Spacer(Modifier.height(8.dp)) }

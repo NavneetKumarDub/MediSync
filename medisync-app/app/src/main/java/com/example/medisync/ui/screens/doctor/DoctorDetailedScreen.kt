@@ -77,7 +77,7 @@ fun DoctorProfileScreen(
     LaunchedEffect(doctorId) {
         try {
             val token = "Bearer ${TokenManager.getToken(context)}"
-            val profileRes = RetrofitInstance.api.getDoctorProfile(doctorId)
+            val profileRes = RetrofitInstance.api.getDoctorProfile(token,doctorId)
             if (profileRes.isSuccessful) {
                 doctor = profileRes.body()?.doctor
             } else {

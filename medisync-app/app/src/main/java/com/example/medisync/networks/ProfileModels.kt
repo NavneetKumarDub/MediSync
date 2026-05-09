@@ -423,3 +423,22 @@ data class GetDatesWithSlotsResponse(
     val dates: List<String>
 )
 
+data class ProfilePhotoResponse(
+    val viewUrl: String
+)
+
+data class PresignedUrlRequest(
+    val userId: Int,
+    val fileName: String,
+    val fileType: String
+)
+
+data class PresignedUrlResponse(
+    val uploadUrl: String,
+    val key: String
+)
+
+data class ConfirmUploadRequest(
+    val userId: Int,
+    val key: String
+)

@@ -1,38 +1,93 @@
 package com.example.medisync.ui.screens.doctor
 
+import android.content.Context
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import coil.compose.AsyncImage
+import com.example.medisync.data.TokenManager
+import com.example.medisync.networks.ConfirmUploadRequest
 import com.example.medisync.networks.DoctorClinicRequest
 import com.example.medisync.networks.DoctorPersonalRequest
 import com.example.medisync.networks.DoctorProfessionalRequest
+import com.example.medisync.networks.PresignedUrlRequest
 import com.example.medisync.networks.RetrofitInstance
 import com.example.medisync.ui.components.DatePicker
 import com.example.medisync.ui.components.DropdownField
 import com.example.medisync.ui.components.ProfileRow
 import com.example.medisync.ui.components.RadioButton
 import com.example.medisync.ui.theme.natureGreen
+import com.example.medisync.viewmodels.UserViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 
 private val ErrorRed = Color(0xFFDC2626)
+private val AvtarColor = Color(0xFF3E505D)
+private val ScreenBg1 = Color(0xFFF6F7F9)
+private val CardBg1 = Color(0xFFFFFFFF)
+
+private suspend fun uploadImageToMinIO(
+    context: Context,
+    uri: Uri,
+    uploadUrl: String,
+    mimeType: String
+): Boolean {
+    return withContext(Dispatchers.IO) {
+        try {
+            val inputStream = context.contentResolver.openInputStream(uri)
+            val bytes = inputStream?.readBytes() ?: return@withContext false
+            inputStream.close()
+
+            val client = OkHttpClient()
+            val requestBody = bytes.toRequestBody(mimeType.toMediaType())
+            val request = Request.Builder()
+                .url(uploadUrl)
+                .put(requestBody)
+                .addHeader("Content-Type", mimeType)
+                .build()
+
+            val response = client.newCall(request).execute()
+            response.isSuccessful
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,22 +95,38 @@ fun DoctorProfileScreen(
     navController: NavController,
     name         : String,
     phoneNumber  : String,
-    userId       : Int
+    userId       : Int,
+    userViewModel: UserViewModel = viewModel()
 ) {
+
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
     var selectedTab  by remember { mutableIntStateOf(0) }
     val tabs          = listOf("Personal", "Professional", "Clinic")
     val scope         = rememberCoroutineScope()
     var errorMessage by remember { mutableStateOf("") }
     var isSaving     by remember { mutableStateOf(false) }
 
-    // ── Personal ──────────────────────────────
+    var shouldDeletePhoto by remember { mutableStateOf(false) }
+    var profilePhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var profilePhotoUrl by remember { mutableStateOf<String?>(null) }
+    var showPhotoDialog by remember { mutableStateOf(false) }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            profilePhotoUri = uri
+            shouldDeletePhoto = false
+        }
+    }
+
     var email         by remember { mutableStateOf("") }
     var gender        by remember { mutableStateOf("") }
     var dob           by remember { mutableStateOf("") }
     var maritalStatus by remember { mutableStateOf("") }
     var about         by remember { mutableStateOf("") }
 
-    // ── Professional ──────────────────────────
     var licenseNumber    by remember { mutableStateOf("") }
     var speciality       by remember { mutableStateOf("") }
     var subSpeciality    by remember { mutableStateOf("") }
@@ -65,27 +136,25 @@ fun DoctorProfileScreen(
     var consultationFee  by remember { mutableStateOf("") }
     var consultationType by remember { mutableStateOf("") }
 
-    // ── Clinic ────────────────────────────────
     var clinicName by remember { mutableStateOf("") }
     var address    by remember { mutableStateOf("") }
     var city       by remember { mutableStateOf("") }
     var pincode    by remember { mutableStateOf("") }
 
-    // ── FETCH EXISTING PROFILE DATA ───────────
     LaunchedEffect(key1 = userId) {
         try {
-            val response = RetrofitInstance.api.getDoctorProfile(userId)
+            val token = "Bearer ${TokenManager.getToken(context) ?: ""}"
+
+            val response = RetrofitInstance.api.getDoctorProfile(token,userId)
 
             if (response.isSuccessful) {
                 response.body()?.doctor?.let { profile ->
-                    // Populate Personal
                     email         = profile.email ?: ""
                     gender        = profile.gender ?: ""
                     dob           = profile.dob ?: ""
                     maritalStatus = profile.maritalStatus ?: ""
                     about         = profile.about ?: ""
 
-                    // Populate Professional
                     licenseNumber    = profile.licenseNumber ?: ""
                     speciality       = profile.speciality ?: ""
                     subSpeciality    = profile.subSpeciality ?: ""
@@ -95,7 +164,6 @@ fun DoctorProfileScreen(
                     consultationFee  = profile.consultationFee?.toString() ?: ""
                     consultationType = profile.consultationType ?: ""
 
-                    // Populate Clinic
                     clinicName = profile.clinicName ?: ""
                     address    = profile.address ?: ""
                     city       = profile.city ?: ""
@@ -104,15 +172,112 @@ fun DoctorProfileScreen(
             } else {
                 errorMessage = "Failed to load profile data."
             }
+
+            try {
+                val photoResponse = RetrofitInstance.api.getProfilePhotoUrl(token,userId)
+                profilePhotoUrl = photoResponse.viewUrl
+            } catch (e: Exception) {
+                profilePhotoUrl = null
+            }
+
         } catch (e: Exception) {
             errorMessage = "Network error: ${e.message}"
         }
     }
 
+    if (showPhotoDialog) {
+        Dialog(
+            onDismissRequest = { showPhotoDialog = false }
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .wrapContentHeight(),
+                shape = RoundedCornerShape(4.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.Black),
+                elevation = CardDefaults.cardElevation(defaultElevation = 24.dp)
+            ) {
+                Column {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1f)
+                            .background(AvtarColor)
+                    ) {
+                        val dialogImageModel = profilePhotoUri ?: profilePhotoUrl
+                        if (dialogImageModel != null) {
+                            AsyncImage(
+                                model = dialogImageModel,
+                                contentDescription = "Profile Photo",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Placeholder",
+                                modifier = Modifier
+                                    .size(100.dp)
+                                    .align(Alignment.Center),
+                                tint = Color.Gray
+                            )
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFF1E1E1E))
+                            .padding(vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    profilePhotoUri = null
+                                    profilePhotoUrl = null
+                                    shouldDeletePhoto = true
+                                    showPhotoDialog = false
+                                }
+                                .padding(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Remove",
+                                tint = natureGreen,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                        }
+
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { photoPickerLauncher.launch("image/*") }
+                                .padding(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit",
+                                tint = natureGreen,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     Scaffold(
-        containerColor = ScreenBg,
+        containerColor = ScreenBg1,
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            // ── Green rounded block ────────────
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -180,7 +345,7 @@ fun DoctorProfileScreen(
             }
         },
         bottomBar = {
-            Surface(color = CardBg, shadowElevation = 8.dp) {
+            Surface(color = CardBg1, shadowElevation = 8.dp) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -202,8 +367,55 @@ fun DoctorProfileScreen(
                             scope.launch {
                                 isSaving     = true
                                 errorMessage = ""
+                                val token = "Bearer ${TokenManager.getToken(context) ?: ""}"
+
                                 try {
+                                    if (shouldDeletePhoto && profilePhotoUri == null) {
+                                        RetrofitInstance.api.deleteProfilePhoto(token, userId)
+                                        userViewModel.updateProfilePhotoUrl(null)
+                                        shouldDeletePhoto = false
+                                    }
+
+                                    if (profilePhotoUri != null) {
+                                        val mimeType = context.contentResolver
+                                            .getType(profilePhotoUri!!) ?: "image/jpeg"
+                                        val extension = mimeType.split("/").lastOrNull() ?: "jpg"
+                                        val fileName = "avatar_${System.currentTimeMillis()}.$extension"
+
+                                        val presignedResponse = RetrofitInstance.api.getPresignedUploadUrl(
+                                            token,
+                                            PresignedUrlRequest(
+                                                userId   = userId,
+                                                fileName = fileName,
+                                                fileType = mimeType
+                                            )
+                                        )
+
+                                        val uploaded = uploadImageToMinIO(
+                                            context   = context,
+                                            uri       = profilePhotoUri!!,
+                                            uploadUrl = presignedResponse.uploadUrl,
+                                            mimeType  = mimeType
+                                        )
+
+                                        if (uploaded) {
+                                            RetrofitInstance.api.confirmProfilePhotoUpload(
+                                                token,
+                                                ConfirmUploadRequest(
+                                                    userId = userId,
+                                                    key    = presignedResponse.key
+                                                )
+                                            )
+                                            userViewModel.refreshProfilePhoto()
+                                        } else {
+                                            errorMessage = "Photo upload failed"
+                                            isSaving = false
+                                            return@launch
+                                        }
+                                    }
+
                                     RetrofitInstance.api.updateDoctorPersonal(
+                                        token,
                                         userId  = userId,
                                         request = DoctorPersonalRequest(
                                             email          = email,
@@ -214,6 +426,7 @@ fun DoctorProfileScreen(
                                         )
                                     )
                                     RetrofitInstance.api.updateDoctorProfessional(
+                                        token,
                                         userId  = userId,
                                         request = DoctorProfessionalRequest(
                                             license_number    = licenseNumber,
@@ -227,6 +440,7 @@ fun DoctorProfileScreen(
                                         )
                                     )
                                     RetrofitInstance.api.updateDoctorClinic(
+                                        token,
                                         userId  = userId,
                                         request = DoctorClinicRequest(
                                             clinic_name = clinicName,
@@ -280,6 +494,40 @@ fun DoctorProfileScreen(
         ) {
             when (selectedTab) {
                 0 -> {
+                    item {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(100.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFE5E7EB))
+                                    .clickable { showPhotoDialog = true },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                val imageModel = profilePhotoUri ?: profilePhotoUrl
+                                if (imageModel != null) {
+                                    AsyncImage(
+                                        model = imageModel,
+                                        contentDescription = "Profile Photo",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = "Placeholder",
+                                        modifier = Modifier.size(50.dp),
+                                        tint = Color.Gray
+                                    )
+                                }
+                            }
+                        }
+                    }
                     item { ProfileRow(label = "Name",           value = name,        editable = false) }
                     item { ProfileRow(label = "Contact Number", value = phoneNumber, editable = false) }
                     item { ProfileRow(label = "Email Id",       value = email,       placeholder = "add email", onValueChange = { email = it }) }
