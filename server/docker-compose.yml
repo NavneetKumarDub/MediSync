@@ -33,16 +33,14 @@ services:
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin123
+      MINIO_SERVER_URL: "http://192.168.1.8:9000"
+
     command: server /data --console-address ":9001"
     volumes:
-      # 2. Pointing exactly to your old MinIO data
       - server_minio_data:/data
 
 volumes:
-  # Redis can create its own normally, no strict lock needed here
   redis_data:
-  
-  # 3. The Locks: Forcing Docker to use existing hard drives
   medisyncserver_postgres_data:
     external: true
     

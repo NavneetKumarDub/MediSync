@@ -1,5 +1,5 @@
 import { Request, Response } from 'express'
-import minioClient, { BUCKETS } from '../config/minio'
+import minioClient, { BUCKETS, publicMinioClient } from '../config/minio'
 import db from '../config/db'
 
 export const getPresignedUploadUrl = async (req: Request, res: Response) => {
@@ -14,11 +14,12 @@ export const getPresignedUploadUrl = async (req: Request, res: Response) => {
         const extension = fileName.split('.').pop()
         const key = `users/${userId}/avatar_${timestamp}.${extension}`
 
-        const uploadUrl = await minioClient.presignedPutObject(
+      const uploadUrl = await publicMinioClient.presignedPutObject(
             BUCKETS.PROFILE_PHOTOS,
             key,
             15 * 60
         )
+        
 
         return res.status(200).json({
             uploadUrl,
@@ -67,7 +68,7 @@ export const getProfilePhotoUrl = async (req: Request, res: Response) => {
 
         const key = result.rows[0].profile_photo_key
 
-        const viewUrl = await minioClient.presignedGetObject(
+        const viewUrl = await publicMinioClient.presignedGetObject(
             BUCKETS.PROFILE_PHOTOS,
             key,
             60 * 60
@@ -78,5 +79,30 @@ export const getProfilePhotoUrl = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('Error generating view URL:', error)
         return res.status(500).json({ message: 'Failed to generate view URL' })
+    }
+}
+
+export const deleteProfilePhoto = async (req: Request, res: Response) => {
+    try {
+        const { userId } = req.params
+
+        const result = await db.query(
+            'SELECT profile_photo_key FROM users WHERE id = $1',
+            [userId]
+        )
+
+        const key = result.rows[0]?.profile_photo_key
+        if (key) {
+            await minioClient.removeObject(BUCKETS.PROFILE_PHOTOS, key)
+        }
+
+        await db.query(
+            'UPDATE users SET profile_photo_key = NULL WHERE id = $1',
+            [userId]
+        )
+
+        return res.status(200).json({ message: 'Profile photo deleted' })
+    } catch (error) {
+        return res.status(500).json({ message: 'Failed to delete photo' })
     }
 }

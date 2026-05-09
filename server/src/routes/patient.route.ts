@@ -4,8 +4,11 @@ import {
     getMedicalProfile, updateMedicalProfile,
     getLifestyleProfile, updateLifestyleProfile
 } from '../controllers/patient.controller'
+import { authMiddleware } from '../middlewares/auth.middleware'
 
 const router = Router()
+
+router.use(authMiddleware)
 
 router.get('/personal/:userId', getPersonalProfile)
 router.put('/personal/:userId', updatePersonalProfile)

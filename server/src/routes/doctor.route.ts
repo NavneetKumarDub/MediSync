@@ -7,8 +7,11 @@ import {
     searchDoctors,
     getDoctorProfile
 } from '../controllers/doctor.controller'
+import { authMiddleware } from '../middlewares/auth.middleware'
 
 const router = Router()
+
+router.use(authMiddleware)
 
 router.put('/personal/:userId', updateDoctorPersonal)
 router.put('/professional/:userId', updateDoctorProfessional)

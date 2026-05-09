@@ -7,6 +7,13 @@ const minioClient = new Minio.Client({
     accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
     secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin123'
 })
+export const publicMinioClient = new Minio.Client({
+    endPoint:  '192.168.1.8',
+    port:      9000,
+    useSSL:    false,
+    accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
+    secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin123'
+})
 
 export const BUCKETS = {
     PROFILE_PHOTOS:  'profile-photos',
