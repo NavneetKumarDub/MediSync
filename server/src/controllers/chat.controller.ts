@@ -80,7 +80,6 @@ export const getOrCreateChatRoom = async (req: Request, res: Response) => {
         });
 
     } catch (err: any) {
-        // Handle the "Double Click" Race Condition gracefully
         if (err.code === '23505') { 
             const recoveryRes = await db.query(
                 `SELECT id FROM chat_rooms WHERE patient_id = $1 AND doctor_id = $2`,
