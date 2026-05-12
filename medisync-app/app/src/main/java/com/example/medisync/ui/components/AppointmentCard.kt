@@ -13,22 +13,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.medisync.networks.AppointmentItem
+import com.example.medisync.data.local.AppointmentEntity
 import com.example.medisync.ui.theme.natureGreen
-
 
 @Composable
 fun AppointmentCard(
-    appt: AppointmentItem,
+    appt: AppointmentEntity,
     onAvatarClick: (name: String, photoUrl: String?) -> Unit,
     onClick: () -> Unit
 ) {
-    val isOnline = appt.type?.contains("video", ignoreCase = true) == true
-    val statusText = if (isOnline) "Online" else "Offline"
+    val isOnline    = appt.type.contains("video", ignoreCase = true)
+    val statusText  = if (isOnline) "Online" else "Offline"
     val statusColor = if (isOnline) natureGreen else Color(0xFF6B7280)
 
     Column(
@@ -48,22 +46,22 @@ fun AppointmentCard(
                     .size(52.dp)
                     .clip(CircleShape)
                     .background(Color(0xFFE1F5FE))
-                    .clickable { onAvatarClick(appt.displayName ?: "User", appt.profilePhoto) },
+                    .clickable { onAvatarClick(appt.displayName, appt.photoUrl) },
                 contentAlignment = Alignment.Center
             ) {
-                if (appt.profilePhoto != null) {
+                if (appt.photoUrl != null) {
                     AsyncImage(
-                        model = appt.profilePhoto,
-                        contentDescription = "Doctor Profile",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
+                        model            = appt.photoUrl,
+                        contentDescription = "Profile",
+                        contentScale     = ContentScale.Crop,
+                        modifier         = Modifier.fillMaxSize()
                     )
                 } else {
                     Text(
-                        text = appt.displayName.getInitials(),
-                        fontSize = 18.sp,
+                        text       = appt.displayName.getInitials(),
+                        fontSize   = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0288D1)
+                        color      = Color(0xFF0288D1)
                     )
                 }
             }
@@ -72,18 +70,18 @@ fun AppointmentCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = appt.displayName ?: "Unknown Doctor",
-                    fontSize = 16.sp,
+                    text      = appt.displayName,
+                    fontSize  = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF111827),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    color     = Color(0xFF111827),
+                    maxLines  = 1,
+                    overflow  = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = appt.speciality ?: "General Physician",
+                    text     = appt.subtitle,
                     fontSize = 14.sp,
-                    color = Color(0xFF6B7280),
+                    color    = Color(0xFF6B7280),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -91,16 +89,16 @@ fun AppointmentCard(
 
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = statusText,
-                    fontSize = 13.sp,
+                    text       = statusText,
+                    fontSize   = 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = statusColor
+                    color      = statusColor
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "${formatSmartDate(appt.date)}, ${appt.startTime?.take(5) ?: ""}",
+                    text     = "${formatSmartDate(appt.date)}, ${appt.time.take(5)}",
                     fontSize = 12.sp,
-                    color = Color(0xFF9CA3AF)
+                    color    = Color(0xFF9CA3AF)
                 )
             }
         }
@@ -115,10 +113,7 @@ fun AppointmentCard(
     }
 }
 
-
-
-private fun String?.getInitials(): String {
-    if (this.isNullOrBlank()) return "??"
+private fun String.getInitials(): String {
     return this.removePrefix("Dr. ")
         .removePrefix("Dr ")
         .trim()
@@ -126,30 +121,4 @@ private fun String?.getInitials(): String {
         .take(2)
         .mapNotNull { it.firstOrNull()?.uppercaseChar() }
         .joinToString("")
-}
-
-val demoAppt = AppointmentItem(
-    appointmentId = 1,
-    displayName = "Dr. Sourav",
-    speciality = "Cardiologist",
-    date = "2026-05-09", // Current date for testing
-    startTime = "09:00:00",
-    type = "video", // This will trigger the "Online" status
-    profilePhoto = null,
-    doctorId = 1,
-    patientId = 2,
-    endTime = "",
-    status = "upcoming",
-    roomId = 3 // This will trigger the initials placeholder
-)
-@Preview(showBackground = true)
-@Composable
-fun TestCardPreview() {
-    Column(modifier = Modifier.padding(16.dp)) {
-        AppointmentCard(
-            appt = demoAppt,
-            onAvatarClick = { _, _ -> },
-            onClick = { }
-        )
-    }
 }

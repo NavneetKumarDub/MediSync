@@ -21,7 +21,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.medisync.ui.components.BottomNavBar
 import com.example.medisync.ui.navigation.NavItems
 import com.example.medisync.ui.theme.natureGreen
-
+private val ScreenBg      = Color(0xFFEEF5F3)   // same as screen background
 private val TopBarBg1= natureGreen
 private val ScreenBg1 = Color(0xFFF6F7F9)
 private val CardBg1 = Color(0xFFFFFFFF)

@@ -33,6 +33,13 @@ import com.example.medisync.ui.components.*
 import com.example.medisync.ui.theme.natureGreen
 
 // ── Palette ────────────────────────────────────
+private val ScreenBg    = Color(0xFFE2E8F0)
+private  val TextHint = Color(0xFFE2E8F0)
+private val TextPrimary = Color(0xFF1C3A34)
+
+private val CardBg = Color(0xFFE2E8F0)
+
+private val TextSecondary = Color(0xFFE2E8F0)
 
 private val BorderSoft    = Color(0xFFE2E8F0)
 

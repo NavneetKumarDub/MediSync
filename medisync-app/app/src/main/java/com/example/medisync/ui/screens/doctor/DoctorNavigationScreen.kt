@@ -1,5 +1,7 @@
 package com.example.medisync.ui.screens.doctor
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -9,6 +11,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.medisync.appointment.AppointmentListScreen
 import com.example.medisync.ui.screens.chat.ChatListScreen
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DoctorNavigationScreen(
@@ -47,6 +50,7 @@ fun DoctorNavigationScreen(
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Preview(showBackground = true)
 @Composable
 fun DoctorHomePreview() {

@@ -6,13 +6,9 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,16 +18,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.example.medisync.R
 import com.example.medisync.data.TokenManager
-import com.example.medisync.networks.AppointmentItem
+import com.example.medisync.data.local.AppointmentEntity
 import com.example.medisync.ui.components.AppointmentCard
 import com.example.medisync.ui.components.BottomNavBar
 import com.example.medisync.ui.components.SearchBar
@@ -43,29 +37,25 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 
-
-
-
-private val MediTextMuted = Color(0xFF6B7280)
-private val MediChipActiveBg = natureGreen.copy(alpha = 0.1f)
+private val MediTextMuted        = Color(0xFF6B7280)
+private val MediChipActiveBg     = natureGreen.copy(alpha = 0.1f)
 private val MediChipActiveBorder = natureGreen.copy(alpha = 0.3f)
-private val MediChipActiveText = natureGreen
-private val MediChipIdleBg = Color(0xFFF3F4F6)
-private val MediChipIdleText = MediTextMuted
-private val filterTabs = listOf("All", "Upcoming", "Past", "Online", "Offline")
+private val MediChipActiveText   = natureGreen
+private val MediChipIdleBg       = Color(0xFFF3F4F6)
+private val MediChipIdleText     = MediTextMuted
+private val filterTabs           = listOf("All", "Upcoming", "Past", "Online", "Offline")
 
 @RequiresApi(Build.VERSION_CODES.O)
 fun getSmartDateLabel(rawDate: String?): String {
     if (rawDate.isNullOrBlank()) return "No Date"
     return try {
-        val date = LocalDate.parse(rawDate)
+        val date  = LocalDate.parse(rawDate)
         val today = LocalDate.now()
-        val diff = ChronoUnit.DAYS.between(today, date)
-
+        val diff  = ChronoUnit.DAYS.between(today, date)
         when (diff) {
-            0L -> "Today"
-            1L -> "Tomorrow"
-            -1L -> "Yesterday"
+            0L   -> "Today"
+            1L   -> "Tomorrow"
+            -1L  -> "Yesterday"
             else -> {
                 val pattern = if (date.year == today.year) "d MMM" else "d MMM yyyy"
                 date.format(DateTimeFormatter.ofPattern(pattern, Locale.ENGLISH))
@@ -76,9 +66,15 @@ fun getSmartDateLabel(rawDate: String?): String {
     }
 }
 
-// ─────────────────────────────────────────────
-//  Main Screen
-// ─────────────────────────────────────────────
+fun formatSmartDate(rawDate: String?): String {
+    if (rawDate.isNullOrBlank()) return "No Date"
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        getSmartDateLabel(rawDate)
+    } else {
+        rawDate
+    }
+}
+
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,18 +82,18 @@ fun AppointmentListScreen(
     navController: NavController,
     selectedTab: Int,
     onTabSelected: (Int) -> Unit,
-    viewModel: AppointmentViewModel = viewModel()
+    viewModel: AppointmentViewModel = viewModel(
+        factory = (LocalContext.current.applicationContext as com.example.medisync.MediSyncApplication)
+            .let { AppointmentViewModel.Factory(it.appointmentRepository) }
+    )
 ) {
     val context = LocalContext.current
-    val today = LocalDate.now()
+    val today   = LocalDate.now()
 
-    // Role & State
-    var userRole by remember { mutableStateOf("patient") }
-    var activeFilter by remember { mutableStateOf("All") }
-
-    // Popup State
-    var showAvatarDialog by remember { mutableStateOf(false) }
-    var selectedAvatarUrl by remember { mutableStateOf<String?>(null) }
+    var userRole           by remember { mutableStateOf("patient") }
+    var activeFilter       by remember { mutableStateOf("All") }
+    var showAvatarDialog   by remember { mutableStateOf(false) }
+    var selectedAvatarUrl  by remember { mutableStateOf<String?>(null) }
     var selectedAvatarName by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
@@ -107,26 +103,25 @@ fun AppointmentListScreen(
     }
 
     val appointments = viewModel.appointments
-    val navItems = if (userRole == "doctor") NavItems.doctor else NavItems.patient
+    val navItems     = if (userRole == "doctor") NavItems.doctor else NavItems.patient
 
-    // Sorting & Filtering Logic
     val filteredList = remember(activeFilter, appointments) {
         val upcoming = appointments.filter {
-            val d = try { LocalDate.parse(it.date) } catch(e: Exception) { today }
+            val d = try { LocalDate.parse(it.date) } catch (e: Exception) { today }
             !d.isBefore(today)
         }.sortedBy { it.date }
 
         val past = appointments.filter {
-            val d = try { LocalDate.parse(it.date) } catch(e: Exception) { today }
+            val d = try { LocalDate.parse(it.date) } catch (e: Exception) { today }
             d.isBefore(today)
         }.sortedByDescending { it.date }
 
         when (activeFilter) {
             "Upcoming" -> upcoming
-            "Past" -> past
-            "Online" -> (upcoming + past).filter { it.type?.contains("video", true) == true }
-            "Offline" -> (upcoming + past).filter { it.type?.contains("video", true) == false }
-            else -> upcoming + past
+            "Past"     -> past
+            "Online"   -> (upcoming + past).filter { it.type.contains("video", true) }
+            "Offline"  -> (upcoming + past).filter { !it.type.contains("video", true) }
+            else       -> upcoming + past
         }
     }
 
@@ -137,26 +132,29 @@ fun AppointmentListScreen(
                 TopAppBar(
                     title = {
                         Text(
-                            text = "Appointments",
-                            fontSize = 24.sp,
+                            text       = "Appointments",
+                            fontSize   = 24.sp,
                             fontWeight = FontWeight.Bold,
-                            color = natureGreen
-                        )                            },
+                            color      = natureGreen
+                        )
+                    },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
                 )
             },
             bottomBar = {
-                BottomNavBar(navItems = navItems, selectedIndex = selectedTab, onItemSelected = onTabSelected)
+                BottomNavBar(
+                    navItems      = navItems,
+                    selectedIndex = selectedTab,
+                    onItemSelected = onTabSelected
+                )
             }
         ) { paddingValues ->
             Column(modifier = Modifier.padding(paddingValues)) {
-
                 Spacer(Modifier.height(8.dp))
                 SearchBar()
                 Spacer(Modifier.height(12.dp))
                 FilterRow(active = activeFilter, onSelect = { activeFilter = it })
                 Spacer(Modifier.height(8.dp))
-
 
                 if (viewModel.isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -164,30 +162,27 @@ fun AppointmentListScreen(
                     }
                 } else {
                     AppointmentLazyList(
-                        list = filteredList,
+                        list         = filteredList,
                         onAvatarClick = { name, url ->
                             selectedAvatarName = name
-                            selectedAvatarUrl = url
-                            showAvatarDialog = true
+                            selectedAvatarUrl  = url
+                            showAvatarDialog   = true
                         },
-                        onCardClick = { /* Navigate */ }
+                        onCardClick  = { }
                     )
                 }
             }
         }
 
-        // 4. Avatar Popup Overlay (Using your exact Box/Card structure)
         if (showAvatarDialog) {
             AvatarPopup(
-                name = selectedAvatarName,
-                url = selectedAvatarUrl,
+                name      = selectedAvatarName,
+                url       = selectedAvatarUrl,
                 onDismiss = { showAvatarDialog = false }
             )
         }
     }
 }
-
-
 
 @Composable
 fun FilterRow(active: String, onSelect: (String) -> Unit) {
@@ -202,24 +197,24 @@ fun FilterRow(active: String, onSelect: (String) -> Unit) {
             val isActive = tab == active
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(24.dp)) // WhatsApp style pill shape
+                    .clip(RoundedCornerShape(24.dp))
                     .background(if (isActive) MediChipActiveBg else MediChipIdleBg)
                     .then(
                         if (isActive) Modifier.border(
                             width = 1.dp,
-                            color = MediChipActiveBorder, // Border only on active
+                            color = MediChipActiveBorder,
                             shape = RoundedCornerShape(24.dp)
-                        ) else Modifier // No border on idle tabs
+                        ) else Modifier
                     )
                     .clickable { onSelect(tab) }
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = tab,
-                    fontSize = 14.sp,
+                    text       = tab,
+                    fontSize   = 14.sp,
                     fontWeight = FontWeight.Medium,
-                    color = if (isActive) MediChipActiveText else MediChipIdleText
+                    color      = if (isActive) MediChipActiveText else MediChipIdleText
                 )
             }
         }
@@ -228,9 +223,9 @@ fun FilterRow(active: String, onSelect: (String) -> Unit) {
 
 @Composable
 fun AppointmentLazyList(
-    list: List<AppointmentItem>,
-    onAvatarClick: (String, String?) -> Unit,
-    onCardClick: (AppointmentItem) -> Unit
+    list          : List<AppointmentEntity>,
+    onAvatarClick : (String, String?) -> Unit,
+    onCardClick   : (AppointmentEntity) -> Unit
 ) {
     if (list.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -238,11 +233,11 @@ fun AppointmentLazyList(
         }
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(list, key = { it.appointmentId }) { appt ->
+            items(list, key = { it.id }) { appt ->
                 AppointmentCard(
-                    appt = appt,
+                    appt         = appt,
                     onAvatarClick = onAvatarClick,
-                    onClick = { onCardClick(appt) }
+                    onClick       = { onCardClick(appt) }
                 )
             }
         }
@@ -252,7 +247,7 @@ fun AppointmentLazyList(
 @Composable
 fun AvatarPopup(name: String, url: String?, onDismiss: () -> Unit) {
     Box(
-        modifier = Modifier
+        modifier         = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.6f))
             .clickable { onDismiss() },
@@ -264,26 +259,44 @@ fun AvatarPopup(name: String, url: String?, onDismiss: () -> Unit) {
                 .wrapContentHeight()
                 .offset(y = (-80).dp)
                 .clickable(enabled = false) { },
-            shape = RoundedCornerShape(4.dp),
+            shape  = RoundedCornerShape(4.dp),
             colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E))
         ) {
             Column {
                 Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f)) {
                     if (url != null) {
-                        AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                        AsyncImage(
+                            model              = url,
+                            contentDescription = null,
+                            contentScale       = ContentScale.Crop,
+                            modifier           = Modifier.fillMaxSize()
+                        )
                     } else {
-                        Box(Modifier.fillMaxSize().background(Color(0xFFE1F5FE)), contentAlignment = Alignment.Center) {
-                            Text(name.take(1).uppercase(), fontSize = 100.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF0288D1))
+                        Box(
+                            Modifier.fillMaxSize().background(Color(0xFFE1F5FE)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                name.take(1).uppercase(),
+                                fontSize   = 100.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color      = Color(0xFF0288D1)
+                            )
                         }
                     }
-                    Box(Modifier.fillMaxWidth().background(Color.Black.copy(alpha = 0.25f)).align(Alignment.TopCenter).padding(horizontal = 12.dp, vertical = 6.dp)) {
+                    Box(
+                        Modifier.fillMaxWidth()
+                            .background(Color.Black.copy(alpha = 0.25f))
+                            .align(Alignment.TopCenter)
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
                         Text(name, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                     }
                 }
                 Row(
-                    modifier = Modifier.fillMaxWidth().background(Color.White).padding(vertical = 14.dp),
+                    modifier              = Modifier.fillMaxWidth().background(Color.White).padding(vertical = 14.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment     = Alignment.CenterVertically
                 ) {
                     Icon(Icons.Outlined.Visibility, null, tint = natureGreen, modifier = Modifier.size(24.dp).clickable { onDismiss() })
                     Icon(Icons.Default.Info, null, tint = natureGreen, modifier = Modifier.size(24.dp).clickable { onDismiss() })
