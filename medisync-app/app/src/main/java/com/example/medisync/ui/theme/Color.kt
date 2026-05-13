@@ -26,7 +26,10 @@ val Iconselectedcolor = Color(0xFF96D2EE)
 
 val mylightGray = Color(0xFFE7E7E7)
 val mylittleDarkGray = Color(0xFFE5E7E7)
+//val natureGreen = Color(0xFF30B736)
+
 val natureGreen = Color(0xFF03A9F4)
+
 
 // Shadow colors — soft, matched to light gray background
 val ShadowAmbient = Color(0x26000000)   // 15% opacity black — ambient shadow

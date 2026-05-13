@@ -37,19 +37,18 @@ class AppointmentViewModel(
         private set
 
     var isLoading by mutableStateOf(false)
-        private set
 
     init {
         viewModelScope.launch {
             repository.appointments.collectLatest { list ->
                 appointments = list
+                isLoading = false
             }
         }
     }
 
     fun fetchPatientAppointments(context: Context) {
         viewModelScope.launch {
-            isLoading = true
             try {
                 repository.syncPatientAppointments(context)
             } catch (e: Exception) {
@@ -61,7 +60,6 @@ class AppointmentViewModel(
 
     fun fetchDoctorAppointments(context: Context) {
         viewModelScope.launch {
-            isLoading = true
             try {
                 repository.syncDoctorAppointments(context)
             } catch (e: Exception) {
