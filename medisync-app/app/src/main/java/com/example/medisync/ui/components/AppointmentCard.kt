@@ -25,7 +25,7 @@ fun AppointmentCard(
     onAvatarClick: (name: String, photoUrl: String?) -> Unit,
     onClick: () -> Unit
 ) {
-    val isOnline    = appt.type.contains("video", ignoreCase = true)
+    val isOnline = appt.type.equals("online", ignoreCase = true)
     val statusText  = if (isOnline) "Online" else "Offline"
     val statusColor = if (isOnline) natureGreen else Color(0xFF6B7280)
 

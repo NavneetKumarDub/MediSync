@@ -122,8 +122,8 @@ fun AppointmentListScreen(
         when (activeFilter) {
             "Upcoming" -> upcoming
             "Past"     -> past
-            "Online"   -> (upcoming + past).filter { it.type.contains("video", true) }
-            "Offline"  -> (upcoming + past).filter { !it.type.contains("video", true) }
+            "Online"   -> (upcoming + past).filter { it.type.equals("online", ignoreCase = true) }
+            "Offline"  -> (upcoming + past).filter { it.type.contains("offline", ignoreCase = true) }
             else       -> upcoming + past
         }
     }
