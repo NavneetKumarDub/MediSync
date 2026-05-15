@@ -103,6 +103,7 @@ export const getInbox = async (req: Request, res: Response) => {
     
     const userId = (req as any).user.id;
     const userRole = (req as any).user.role;
+    const lastSync = (req.query.since as string) || '1970-01-01T00:00:00Z';
 
     try {
         let query = '';
@@ -114,13 +115,14 @@ export const getInbox = async (req: Request, res: Response) => {
                     u.id as "userId", 
                     u.name, 
                     dp.profile_photo as "profilePhoto", 
-                    pro.speciality
+                    pro.speciality,
+                    cr.updated_at
                 FROM chat_rooms cr
                 JOIN users u ON cr.doctor_id = u.id
                 LEFT JOIN doctor_personal dp ON dp.user_id = u.id
                 LEFT JOIN doctor_professional pro ON pro.user_id = u.id
-                WHERE cr.patient_id = $1
-                ORDER BY cr.created_at DESC
+                WHERE cr.patient_id = $1 AND cr.updated_at > $2
+                ORDER BY cr.updated_at ASC
             `;
         } 
         else if (userRole === 'doctor') {
@@ -129,18 +131,19 @@ export const getInbox = async (req: Request, res: Response) => {
                     cr.id as "roomId", 
                     u.id as "userId", 
                     u.name, 
-                    pp.profile_photo as "profilePhoto"
+                    pp.profile_photo as "profilePhoto",
+                    cr.updated_at
                 FROM chat_rooms cr
                 JOIN users u ON cr.patient_id = u.id
                 LEFT JOIN patient_personal pp ON pp.user_id = u.id
-                WHERE cr.doctor_id = $1
-                ORDER BY cr.created_at DESC
+                WHERE cr.doctor_id = $1 AND cr.updated_at > $2
+                ORDER BY cr.updated_at ASC
             `;
         } else {
             return res.status(403).json({ message: 'Invalid user role' });
         }
 
-        const inboxRes = await db.query(query, [userId]);
+        const inboxRes = await db.query(query, [userId, lastSync]);
         
         return res.status(200).json({
             chats: inboxRes.rows
@@ -157,23 +160,24 @@ export const getRoomMessages = async (req: Request, res: Response) => {
     console.log("[Chat Controller] getRoomMessages");
     
     const { roomId } = req.params;
+    const lastSync = (req.query.since as string) || '1970-01-01T00:00:00Z';
 
     if (!roomId) {
         return res.status(400).json({ message: 'roomId is required' });
     }
 
     try {
-        
         const messagesRes = await db.query(
             `SELECT 
                 id, 
                 sender_id AS "senderId", 
                 message AS "text", 
-                sent_at AS "createdAt"
+                sent_at AS "createdAt",
+                updated_at
             FROM chat_messages 
-            WHERE room_id = $1 
-            ORDER BY sent_at ASC`,
-            [roomId]
+            WHERE room_id = $1 AND updated_at > $2
+            ORDER BY updated_at ASC`,
+            [roomId, lastSync]
         );
 
         return res.status(200).json({

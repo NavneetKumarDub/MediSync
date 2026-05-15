@@ -112,13 +112,15 @@ export const updateDoctorAvailability = async (req: Request, res: Response) => {
 export const searchDoctors = async (req: Request, res: Response) => {
     console.log("Iside serach doctor controller : ",req.query);
     const {
-        q = '',                    // search query (name or speciality)
-        consultation_type,         // online | offline | both
-        min_experience,            // minimum years
-        max_fee,                   // maximum fee
-        min_fee,                   // minimum fee
-        languages,                 // language filter
+        q = '',                    
+        consultation_type,         
+        min_experience,            
+        max_fee,                   
+        min_fee,                   
+        languages,                 
     } = req.query
+
+    const lastSync = (req.query.since as string) || '1970-01-01T00:00:00Z';
 
     try {
         const conditions: string[] = ['u.role = \'doctor\'']
@@ -171,6 +173,16 @@ export const searchDoctors = async (req: Request, res: Response) => {
             paramIndex++
         }
 
+        // Delta Sync Condition (Any of the profile tables updated)
+        conditions.push(`(
+            u.updated_at > $${paramIndex} OR 
+            dp.updated_at > $${paramIndex} OR 
+            dper.updated_at > $${paramIndex} OR 
+            dc.updated_at > $${paramIndex}
+        )`)
+        params.push(lastSync)
+        paramIndex++
+
         const whereClause = conditions.join(' AND ')
 
         const result = await db.query(`
@@ -186,7 +198,14 @@ export const searchDoctors = async (req: Request, res: Response) => {
                 dp.consultation_type,
                 dper.about,
                 dper.profile_photo,
-                dc.city
+                dc.city,
+                -- Calculate the absolute latest updated_at among all joined tables
+                GREATEST(
+                    u.updated_at, 
+                    COALESCE(dp.updated_at, '1970-01-01'::timestamp), 
+                    COALESCE(dper.updated_at, '1970-01-01'::timestamp), 
+                    COALESCE(dc.updated_at, '1970-01-01'::timestamp)
+                ) AS updated_at
             FROM users u
             LEFT JOIN doctor_professional dp   ON u.id = dp.user_id
             LEFT JOIN doctor_personal     dper ON u.id = dper.user_id
@@ -195,7 +214,6 @@ export const searchDoctors = async (req: Request, res: Response) => {
             ORDER BY dp.experience_years DESC NULLS LAST
             LIMIT 20
         `, params)
-
 
         res.json({ doctors: result.rows })
 
@@ -209,6 +227,8 @@ export const searchDoctors = async (req: Request, res: Response) => {
 export const getDoctorProfile = async (req: Request, res: Response) => {
     console.log("Inside get doctor profile controller : ",req.params);
     const { doctorId } = req.params
+    const lastSync = (req.query.since as string) || '1970-01-01T00:00:00Z';
+
     try {
         const result = await db.query(`
             SELECT 
@@ -233,15 +253,32 @@ export const getDoctorProfile = async (req: Request, res: Response) => {
                 dc.city,
                 dc.pincode,
                 dc.lat,
-                dc.lng
+                dc.lng,
+                -- Return the most recent updated_at across all joined tables
+                GREATEST(
+                    u.updated_at, 
+                    COALESCE(dp.updated_at, '1970-01-01'::timestamp), 
+                    COALESCE(dper.updated_at, '1970-01-01'::timestamp), 
+                    COALESCE(dc.updated_at, '1970-01-01'::timestamp)
+                ) AS updated_at
             FROM users u
             LEFT JOIN doctor_professional dp   ON u.id = dp.user_id
             LEFT JOIN doctor_personal     dper ON u.id = dper.user_id
             LEFT JOIN doctor_clinic       dc   ON u.id = dc.user_id
             WHERE u.id = $1 AND u.role = 'doctor'
-        `, [doctorId])
+            AND (
+                u.updated_at > $2 OR 
+                dp.updated_at > $2 OR 
+                dper.updated_at > $2 OR 
+                dc.updated_at > $2
+            )
+        `, [doctorId, lastSync])
 
         if (result.rows.length === 0) {
+            // If they provided a 'since' parameter, it might just mean no changes occurred
+            if (req.query.since) {
+                return res.json({ doctor: null, notModified: true })
+            }
             return res.status(404).json({ message: 'Doctor not found' })
         }
 

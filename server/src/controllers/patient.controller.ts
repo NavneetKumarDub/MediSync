@@ -4,10 +4,19 @@ import db from '../config/db'
 // GET personal profile
 export const getPersonalProfile = async (req: Request, res: Response) => {
     const { userId } = req.params
+    const lastSync = (req.query.since as string) || '1970-01-01T00:00:00Z';
+
     try {
         const result = await db.query(
-            'SELECT p.*,u.name FROM patient_personal as p join users as u on p.user_id = u.id where p.user_id = $1', [userId]
+            `SELECT p.*, u.name, 
+                    GREATEST(p.updated_at, u.updated_at) AS updated_at
+             FROM patient_personal as p 
+             JOIN users as u on p.user_id = u.id 
+             WHERE p.user_id = $1 
+             AND (p.updated_at > $2 OR u.updated_at > $2)`, 
+            [userId, lastSync]
         )
+        // If data is null, the frontend knows nothing has changed since the last sync
         res.json({ data: result.rows[0] || null })
     } catch (error) {
         res.status(500).json({ message: 'Server error' })
@@ -35,7 +44,7 @@ export const updatePersonalProfile = async (req: Request, res: Response) => {
                 )
                 console.log("INSERT result:", result.rowCount)
             } catch (insertError) {
-                console.log("INSERT ERROR:", insertError)  // ← this will show exact DB error
+                console.log("INSERT ERROR:", insertError)  
             }
         }else {
             console.log("existing")
@@ -91,9 +100,13 @@ export const updatePersonalProfile = async (req: Request, res: Response) => {
 // GET medical profile
 export const getMedicalProfile = async (req: Request, res: Response) => {
     const { userId } = req.params
+    const lastSync = (req.query.since as string) || '1970-01-01T00:00:00Z';
+
     try {
         const result = await db.query(
-            'SELECT * FROM patient_medical WHERE user_id = $1', [userId]
+            `SELECT * FROM patient_medical 
+             WHERE user_id = $1 AND updated_at > $2`, 
+            [userId, lastSync]
         )
         res.json({ data: result.rows[0] || null })
     } catch (error) {
@@ -133,9 +146,13 @@ export const updateMedicalProfile = async (req: Request, res: Response) => {
 
 export const getLifestyleProfile = async (req: Request, res: Response) => {
     const { userId } = req.params
+    const lastSync = (req.query.since as string) || '1970-01-01T00:00:00Z';
+
     try {
         const result = await db.query(
-            'SELECT * FROM patient_lifestyle WHERE user_id = $1', [userId]
+            `SELECT * FROM patient_lifestyle 
+             WHERE user_id = $1 AND updated_at > $2`, 
+            [userId, lastSync]
         )
         res.json({ data: result.rows[0] || null })
     } catch (error) {

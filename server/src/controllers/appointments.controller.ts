@@ -35,7 +35,7 @@ export const bookAppointment = async (req: Request, res: Response) => {
         const consultType = docRes.rows[0]?.consultation_type ?? 'both';
         const apptType = consultType === 'offline' ? 'in_person' : 'online';
 
-        // 3. Create appointment (REMOVED start_time from RETURNING because it's not in this table)
+        // 3. Create appointment
         const apptRes = await client.query(
             `INSERT INTO appointments (patient_id, doctor_id, type, slot_id)
              VALUES ($1, $2, $3, $4)
@@ -81,7 +81,7 @@ export const bookAppointment = async (req: Request, res: Response) => {
             await sendToUser(doctorId, 'appointment:new', {
                 appointment: {
                     id: appointment.id,
-                    scheduledAt: slot.start_time, // Fix: Get from slot variable
+                    scheduledAt: slot.start_time, 
                     status: appointment.status,
                     type: appointment.type,
                     fee: slot.consultation_fee,
@@ -114,14 +114,16 @@ export const bookAppointment = async (req: Request, res: Response) => {
 };
 
 export const getPatientAppointments = async (req: Request, res: Response) => {
-    console.log(
-        "Inside getPatientAppointments controller"
-    )
+    console.log("Inside getPatientAppointments controller");
     const patientId = (req as any).user.id;
-    try{
+    
+    // Extract the anchor timestamp from query parameters
+    const lastSync = (req.query.since as string) || '1970-01-01T00:00:00Z';
+
+    try {
         const result = await db.query(
             `SELECT 
-                u.name AS display_name, -- Alias to display_name for the app
+                u.name AS display_name,
                 a.id AS appointment_id,
                 a.doctor_id, 
                 a.status, 
@@ -130,35 +132,40 @@ export const getPatientAppointments = async (req: Request, res: Response) => {
                 s.start_time,
                 s.end_time,
                 s.date,
-                cr.id AS room_id
+                cr.id AS room_id,
+                a.updated_at -- Expose updated_at to frontend
             FROM appointments AS a 
             JOIN users AS u ON a.doctor_id = u.id
             LEFT JOIN doctor_professional AS dp ON u.id = dp.user_id
             LEFT JOIN appointment_slots AS s ON a.slot_id = s.id
             LEFT JOIN chat_rooms AS cr ON a.id = cr.appointment_id
-            WHERE a.patient_id = $1
-            ORDER BY s.date DESC, s.start_time DESC`,
-            [patientId]
+            WHERE a.patient_id = $1 AND a.updated_at > $2
+            ORDER BY a.updated_at ASC`, // Process oldest updates first
+            [patientId, lastSync]
         );
 
         if(result.rowCount === 0){
-            return res.json({ appointments: [] })
+            return res.json({ appointments: [] });
         }
-        res.json({ appointments: result.rows })
+        res.json({ appointments: result.rows });
     }
     catch(error){
-        console.error('Get patient appointments error:', error)
-        res.status(500).json({ message: 'Server error' })
+        console.error('Get patient appointments error:', error);
+        res.status(500).json({ message: 'Server error' });
     }
-}
+};
 
 export const getDoctorAppointments = async (req: Request, res: Response) => {
-    console.log("Inside getDoctorAppointments controller")
+    console.log("Inside getDoctorAppointments controller");
     const doctorId = (req as any).user.id;
+    
+    // Extract the anchor timestamp from query parameters
+    const lastSync = (req.query.since as string) || '1970-01-01T00:00:00Z';
+
     try {
         const result = await db.query(
             `SELECT 
-                u.name AS display_name, -- Alias to display_name for the app
+                u.name AS display_name, 
                 a.id AS appointment_id,
                 a.patient_id, 
                 a.status, 
@@ -166,14 +173,15 @@ export const getDoctorAppointments = async (req: Request, res: Response) => {
                 s.start_time,
                 s.end_time,
                 s.date,
-                cr.id AS room_id
+                cr.id AS room_id,
+                a.updated_at -- Expose updated_at to frontend
             FROM appointments AS a 
             JOIN users AS u ON a.patient_id = u.id
             LEFT JOIN appointment_slots AS s ON a.slot_id = s.id
             LEFT JOIN chat_rooms AS cr ON a.id = cr.appointment_id
-            WHERE a.doctor_id = $1
-            ORDER BY s.date ASC, s.start_time ASC`, 
-            [doctorId]
+            WHERE a.doctor_id = $1 AND a.updated_at > $2
+            ORDER BY a.updated_at ASC`, // Process oldest updates first
+            [doctorId, lastSync]
         );
 
         if(result.rowCount === 0) return res.json({ appointments: [] });
@@ -182,4 +190,4 @@ export const getDoctorAppointments = async (req: Request, res: Response) => {
         console.error('Get doctor appointments error:', error);
         res.status(500).json({ message: 'Server error' });
     }
-}
+};
