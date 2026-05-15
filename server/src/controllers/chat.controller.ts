@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import db from '../config/db'
+import { sendToUser, isUserOnline } from '../websocket/chat.ws'
 
 export const getRoomMetadata = async (req: Request, res: Response) => {
     const userId = (req as any).user.id;
@@ -12,6 +13,10 @@ export const getRoomMetadata = async (req: Request, res: Response) => {
                     WHEN r.patient_id = $1 THEN u_doc.name 
                     ELSE u_pat.name 
                 END AS display_name,
+                CASE 
+                    WHEN r.patient_id = $1 THEN u_doc.profile_photo_key 
+                    ELSE u_pat.profile_photo_key 
+                END AS profile_photo,
                 CASE 
                     WHEN r.patient_id = $1 THEN 'Doctor' 
                     ELSE 'Patient' 
@@ -31,10 +36,7 @@ export const getRoomMetadata = async (req: Request, res: Response) => {
     }
 };
 
-
 export const getOrCreateChatRoom = async (req: Request, res: Response) => {
-    console.log("[Chat Controller] getOrCreateChatRoom");
-    
     const requesterId = (req as any).user.id; 
     const requesterRole = (req as any).user.role; 
     
@@ -92,15 +94,11 @@ export const getOrCreateChatRoom = async (req: Request, res: Response) => {
                 });
             }
         }
-        console.error('[getOrCreateChatRoom] Error:', err);
         return res.status(500).json({ message: 'Server error' });
     }
 };
 
-
 export const getInbox = async (req: Request, res: Response) => {
-    console.log("[Chat Controller] getInbox");
-    
     const userId = (req as any).user.id;
     const userRole = (req as any).user.role;
     const lastSync = (req.query.since as string) || '1970-01-01T00:00:00Z';
@@ -114,12 +112,11 @@ export const getInbox = async (req: Request, res: Response) => {
                     cr.id as "roomId", 
                     u.id as "userId", 
                     u.name, 
-                    dp.profile_photo as "profilePhoto", 
+                    u.profile_photo_key as "profilePhoto", 
                     pro.speciality,
                     cr.updated_at
                 FROM chat_rooms cr
                 JOIN users u ON cr.doctor_id = u.id
-                LEFT JOIN doctor_personal dp ON dp.user_id = u.id
                 LEFT JOIN doctor_professional pro ON pro.user_id = u.id
                 WHERE cr.patient_id = $1 AND cr.updated_at > $2
                 ORDER BY cr.updated_at ASC
@@ -131,11 +128,10 @@ export const getInbox = async (req: Request, res: Response) => {
                     cr.id as "roomId", 
                     u.id as "userId", 
                     u.name, 
-                    pp.profile_photo as "profilePhoto",
+                    u.profile_photo_key as "profilePhoto",
                     cr.updated_at
                 FROM chat_rooms cr
                 JOIN users u ON cr.patient_id = u.id
-                LEFT JOIN patient_personal pp ON pp.user_id = u.id
                 WHERE cr.doctor_id = $1 AND cr.updated_at > $2
                 ORDER BY cr.updated_at ASC
             `;
@@ -150,15 +146,11 @@ export const getInbox = async (req: Request, res: Response) => {
         });
 
     } catch (err) {
-        console.error('[getInbox] Error:', err);
         return res.status(500).json({ message: 'Server error' });
     }
 };
 
-
 export const getRoomMessages = async (req: Request, res: Response) => {
-    console.log("[Chat Controller] getRoomMessages");
-    
     const { roomId } = req.params;
     const lastSync = (req.query.since as string) || '1970-01-01T00:00:00Z';
 
@@ -185,7 +177,6 @@ export const getRoomMessages = async (req: Request, res: Response) => {
         });
 
     } catch (err) {
-        console.error('[getRoomMessages] Error:', err);
         return res.status(500).json({ message: 'Server error' });
     }
 };

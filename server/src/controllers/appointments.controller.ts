@@ -35,7 +35,6 @@ export const bookAppointment = async (req: Request, res: Response) => {
         const consultType = docRes.rows[0]?.consultation_type ?? 'both';
         const apptType = consultType === 'offline' ? 'in_person' : 'online';
 
-        // 3. Create appointment
         const apptRes = await client.query(
             `INSERT INTO appointments (patient_id, doctor_id, type, slot_id)
              VALUES ($1, $2, $3, $4)
@@ -44,7 +43,6 @@ export const bookAppointment = async (req: Request, res: Response) => {
         );
         const appointment = apptRes.rows[0];
 
-        // 4. Link slot → appointment
         await client.query(
             `UPDATE appointment_slots SET appointment_id = $1 WHERE id = $2`,
             [appointment.id, slotId]
@@ -61,15 +59,15 @@ export const bookAppointment = async (req: Request, res: Response) => {
         const roomId = roomRes.rows[0].id;
 
         const patientRes = await client.query(
-            `SELECT u.id, u.name, pp.profile_photo FROM users u 
-             LEFT JOIN patient_personal pp ON pp.user_id = u.id WHERE u.id = $1`,
+            `SELECT u.id, u.name, u.profile_photo_key AS profile_photo 
+             FROM users u 
+             WHERE u.id = $1`,
             [patientId]
         );
         
         const doctorSnap = await client.query(
-            `SELECT u.id, u.name, dp.profile_photo, pro.speciality
+            `SELECT u.id, u.name, u.profile_photo_key AS profile_photo, pro.speciality
              FROM users u
-             LEFT JOIN doctor_personal dp ON dp.user_id = u.id
              LEFT JOIN doctor_professional pro ON pro.user_id = u.id
              WHERE u.id = $1`,
             [doctorId]
@@ -117,13 +115,13 @@ export const getPatientAppointments = async (req: Request, res: Response) => {
     console.log("Inside getPatientAppointments controller");
     const patientId = (req as any).user.id;
     
-    // Extract the anchor timestamp from query parameters
     const lastSync = (req.query.since as string) || '1970-01-01T00:00:00Z';
 
     try {
         const result = await db.query(
             `SELECT 
                 u.name AS display_name,
+                u.profile_photo_key AS profile_photo,
                 a.id AS appointment_id,
                 a.doctor_id, 
                 a.status, 
@@ -133,14 +131,14 @@ export const getPatientAppointments = async (req: Request, res: Response) => {
                 s.end_time,
                 s.date,
                 cr.id AS room_id,
-                a.updated_at -- Expose updated_at to frontend
+                a.updated_at 
             FROM appointments AS a 
             JOIN users AS u ON a.doctor_id = u.id
             LEFT JOIN doctor_professional AS dp ON u.id = dp.user_id
             LEFT JOIN appointment_slots AS s ON a.slot_id = s.id
             LEFT JOIN chat_rooms AS cr ON a.id = cr.appointment_id
             WHERE a.patient_id = $1 AND a.updated_at > $2
-            ORDER BY a.updated_at ASC`, // Process oldest updates first
+            ORDER BY a.updated_at ASC`, 
             [patientId, lastSync]
         );
 
@@ -159,13 +157,13 @@ export const getDoctorAppointments = async (req: Request, res: Response) => {
     console.log("Inside getDoctorAppointments controller");
     const doctorId = (req as any).user.id;
     
-    // Extract the anchor timestamp from query parameters
     const lastSync = (req.query.since as string) || '1970-01-01T00:00:00Z';
 
     try {
         const result = await db.query(
             `SELECT 
                 u.name AS display_name, 
+                u.profile_photo_key AS profile_photo,
                 a.id AS appointment_id,
                 a.patient_id, 
                 a.status, 
@@ -174,13 +172,13 @@ export const getDoctorAppointments = async (req: Request, res: Response) => {
                 s.end_time,
                 s.date,
                 cr.id AS room_id,
-                a.updated_at -- Expose updated_at to frontend
+                a.updated_at
             FROM appointments AS a 
             JOIN users AS u ON a.patient_id = u.id
             LEFT JOIN appointment_slots AS s ON a.slot_id = s.id
             LEFT JOIN chat_rooms AS cr ON a.id = cr.appointment_id
             WHERE a.doctor_id = $1 AND a.updated_at > $2
-            ORDER BY a.updated_at ASC`, // Process oldest updates first
+            ORDER BY a.updated_at ASC`,
             [doctorId, lastSync]
         );
 

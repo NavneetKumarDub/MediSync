@@ -110,7 +110,6 @@ export const updateDoctorAvailability = async (req: Request, res: Response) => {
 }
 
 export const searchDoctors = async (req: Request, res: Response) => {
-    console.log("Iside serach doctor controller : ",req.query);
     const {
         q = '',                    
         consultation_type,         
@@ -127,7 +126,6 @@ export const searchDoctors = async (req: Request, res: Response) => {
         const params: any[] = []
         let paramIndex = 1
 
-        // Search by name or speciality
         if (q) {
             conditions.push(`(
                 u.name ILIKE $${paramIndex} OR 
@@ -137,7 +135,6 @@ export const searchDoctors = async (req: Request, res: Response) => {
             paramIndex++
         }
 
-        // Filter by consultation type
         if (consultation_type && consultation_type !== 'both') {
             conditions.push(`(
                 dp.consultation_type = $${paramIndex} OR 
@@ -147,14 +144,12 @@ export const searchDoctors = async (req: Request, res: Response) => {
             paramIndex++
         }
 
-        // Filter by minimum experience
         if (min_experience) {
             conditions.push(`dp.experience_years >= $${paramIndex}`)
             params.push(Number(min_experience))
             paramIndex++
         }
 
-        // Filter by fee range
         if (min_fee) {
             conditions.push(`dp.consultation_fee >= $${paramIndex}`)
             params.push(Number(min_fee))
@@ -166,14 +161,12 @@ export const searchDoctors = async (req: Request, res: Response) => {
             paramIndex++
         }
 
-        // Filter by language
         if (languages) {
             conditions.push(`dp.languages ILIKE $${paramIndex}`)
             params.push(`%${languages}%`)
             paramIndex++
         }
 
-        // Delta Sync Condition (Any of the profile tables updated)
         conditions.push(`(
             u.updated_at > $${paramIndex} OR 
             dp.updated_at > $${paramIndex} OR 
@@ -189,6 +182,7 @@ export const searchDoctors = async (req: Request, res: Response) => {
             SELECT 
                 u.id              AS doctor_id,
                 u.name            AS doctor_name,
+                u.profile_photo_key AS profile_photo,
                 dp.speciality,
                 dp.sub_speciality,
                 dp.qualification,
@@ -197,9 +191,7 @@ export const searchDoctors = async (req: Request, res: Response) => {
                 dp.consultation_fee,
                 dp.consultation_type,
                 dper.about,
-                dper.profile_photo,
                 dc.city,
-                -- Calculate the absolute latest updated_at among all joined tables
                 GREATEST(
                     u.updated_at, 
                     COALESCE(dp.updated_at, '1970-01-01'::timestamp), 
@@ -218,14 +210,11 @@ export const searchDoctors = async (req: Request, res: Response) => {
         res.json({ doctors: result.rows })
 
     } catch (error) {
-        console.error('Search error:', error)
         res.status(500).json({ message: 'Server error' })
     }
 }
 
-// Get single doctor public profile
 export const getDoctorProfile = async (req: Request, res: Response) => {
-    console.log("Inside get doctor profile controller : ",req.params);
     const { doctorId } = req.params
     const lastSync = (req.query.since as string) || '1970-01-01T00:00:00Z';
 
@@ -234,6 +223,7 @@ export const getDoctorProfile = async (req: Request, res: Response) => {
             SELECT 
                 u.id              AS doctor_id,
                 u.name            AS doctor_name,
+                u.profile_photo_key AS profile_photo,
                 dp.speciality,
                 dp.sub_speciality,
                 dp.qualification,
@@ -247,14 +237,12 @@ export const getDoctorProfile = async (req: Request, res: Response) => {
                 dper.email,
                 dper.dob,
                 dper.marital_status,
-                dper.profile_photo,
                 dc.clinic_name,
                 dc.address,
                 dc.city,
                 dc.pincode,
                 dc.lat,
                 dc.lng,
-                -- Return the most recent updated_at across all joined tables
                 GREATEST(
                     u.updated_at, 
                     COALESCE(dp.updated_at, '1970-01-01'::timestamp), 
@@ -275,7 +263,6 @@ export const getDoctorProfile = async (req: Request, res: Response) => {
         `, [doctorId, lastSync])
 
         if (result.rows.length === 0) {
-            // If they provided a 'since' parameter, it might just mean no changes occurred
             if (req.query.since) {
                 return res.json({ doctor: null, notModified: true })
             }
@@ -284,7 +271,6 @@ export const getDoctorProfile = async (req: Request, res: Response) => {
 
         res.json({ doctor: result.rows[0] })
     } catch (error) {
-        console.log("error : ", error)
         res.status(500).json({ message: 'Server error' })
     }
 }
