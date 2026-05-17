@@ -8,11 +8,12 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AppointmentDao {
-    // Read: Automatically updates the UI when the database changes
+    @Query("SELECT MAX(updated_at) FROM appointments_table")
+    suspend fun getLatestUpdatedAt(): String?
+
     @Query("SELECT * FROM appointments_table ORDER BY date ASC, time ASC")
     fun getAllAppointments(): Flow<List<AppointmentEntity>>
 
-    // Write: Overwrites old data with fresh server data
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAppointments(appointments: List<AppointmentEntity>)
 

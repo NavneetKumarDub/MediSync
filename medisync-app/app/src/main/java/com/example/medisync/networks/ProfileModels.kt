@@ -207,7 +207,7 @@ data class AppointmentItem(
     val appointmentId: Int,
 
     @SerializedName("profile_photo")
-    val profilePhoto    : String? = null,
+    val profilePhoto: String? = null,
 
     @SerializedName("doctor_id")
     val doctorId: Int? = null,
@@ -237,7 +237,13 @@ data class AppointmentItem(
     val type: String?,
 
     @SerializedName("room_id")
-    val roomId: Int? = null
+    val roomId: Int? = null,
+
+    @SerializedName("consultation_fee", alternate = ["fee"])
+    val fee: String? = null,
+
+    @SerializedName("updated_at")
+    val updatedAt: String? = null
 )
 
 data class RoomMetadataResponse(

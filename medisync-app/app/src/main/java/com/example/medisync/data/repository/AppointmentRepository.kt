@@ -38,14 +38,19 @@ class AppointmentRepository(
 
                 val entities = networkList.map { item ->
                     AppointmentEntity(
-                        id          = item.appointmentId,
-                        status      = item.status ?: "pending",
-                        type        = item.type ?: "Offline",
-                        date        = item.date ?: "No Date",
-                        time        = item.startTime ?: "No Time",
+                        id = item.appointmentId,
+                        status = item.status ?: "pending",
+                        type = item.type ?: "Offline",
+                        date = item.date ?: "No Date",
+                        time = item.startTime ?: "No Time",
                         displayName = item.displayName ?: "Unknown",
-                        subtitle    = item.speciality ?: "Patient",
-                        photoUrl    = item.profilePhoto
+                        subtitle = item.speciality ?: "Patient",
+                        photoUrl = item.profilePhoto,
+                        roomId = item.roomId,
+                        doctorId = item.doctorId,
+                        patientId = item.patientId,
+                        consultationFee = item.fee?.toDouble(),
+                        updatedAt = item.updatedAt
                     )
                 }
 
