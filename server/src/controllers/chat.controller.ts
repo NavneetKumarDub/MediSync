@@ -98,6 +98,7 @@ export const getOrCreateChatRoom = async (req: Request, res: Response) => {
     }
 };
 
+
 export const getInbox = async (req: Request, res: Response) => {
     const userId = (req as any).user.id;
     const userRole = (req as any).user.role;
@@ -109,15 +110,29 @@ export const getInbox = async (req: Request, res: Response) => {
         if (userRole === 'patient') {
             query = `
                 SELECT 
-                    cr.id as "roomId", 
-                    u.id as "userId", 
-                    u.name, 
-                    u.profile_photo_key as "profilePhoto", 
+                    cr.id AS room_id, 
+                    u.id AS other_user_id, 
+                    u.name AS display_name, 
+                    u.profile_photo_key AS profile_photo, 
                     pro.speciality,
+                    m.message AS last_message,
+                    m.sent_at AS last_message_time,
+                    -- Count unread messages sent by the doctor (not the current user)
+                    (SELECT COUNT(*)::int 
+                     FROM chat_messages cm 
+                     WHERE cm.room_id = cr.id AND cm.sender_id != $1 AND cm.is_read = false) AS unread_count,
                     cr.updated_at
                 FROM chat_rooms cr
                 JOIN users u ON cr.doctor_id = u.id
                 LEFT JOIN doctor_professional pro ON pro.user_id = u.id
+                -- Grab the single most recent message for this room
+                LEFT JOIN LATERAL (
+                    SELECT message, sent_at 
+                    FROM chat_messages 
+                    WHERE room_id = cr.id 
+                    ORDER BY sent_at DESC 
+                    LIMIT 1
+                ) m ON true
                 WHERE cr.patient_id = $1 AND cr.updated_at > $2
                 ORDER BY cr.updated_at ASC
             `;
@@ -125,13 +140,28 @@ export const getInbox = async (req: Request, res: Response) => {
         else if (userRole === 'doctor') {
             query = `
                 SELECT 
-                    cr.id as "roomId", 
-                    u.id as "userId", 
-                    u.name, 
-                    u.profile_photo_key as "profilePhoto",
+                    cr.id AS room_id, 
+                    u.id AS other_user_id, 
+                    u.name AS display_name, 
+                    u.profile_photo_key AS profile_photo,
+                    NULL AS speciality,
+                    m.message AS last_message,
+                    m.sent_at AS last_message_time,
+                    -- Count unread messages sent by the patient (not the current user)
+                    (SELECT COUNT(*)::int 
+                     FROM chat_messages cm 
+                     WHERE cm.room_id = cr.id AND cm.sender_id != $1 AND cm.is_read = false) AS unread_count,
                     cr.updated_at
                 FROM chat_rooms cr
                 JOIN users u ON cr.patient_id = u.id
+                -- Grab the single most recent message for this room
+                LEFT JOIN LATERAL (
+                    SELECT message, sent_at 
+                    FROM chat_messages 
+                    WHERE room_id = cr.id 
+                    ORDER BY sent_at DESC 
+                    LIMIT 1
+                ) m ON true
                 WHERE cr.doctor_id = $1 AND cr.updated_at > $2
                 ORDER BY cr.updated_at ASC
             `;
@@ -146,6 +176,7 @@ export const getInbox = async (req: Request, res: Response) => {
         });
 
     } catch (err) {
+        console.error('Get inbox error:', err);
         return res.status(500).json({ message: 'Server error' });
     }
 };

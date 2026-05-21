@@ -102,6 +102,10 @@ async function handleMessage(ws: Socket, type: string, data: any) {
                  VALUES ($1, $2, $3) RETURNING id, sent_at`,
                 [data.roomId, uid, data.text]
             )
+            await db.query(
+                `UPDATE chat_rooms SET updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+                [data.roomId]
+            )
             await publisher.del(`chat:history:${data.roomId}`)
             await publisher.publish(channel, JSON.stringify({
                 type: 'chat:message',

@@ -1,6 +1,7 @@
 package com.example.medisync.appointment
 
 import android.os.Build
+import android.provider.SyncStateContract
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -26,6 +27,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.medisync.data.TokenManager
 import com.example.medisync.data.local.AppointmentEntity
+import com.example.medisync.networks.RetrofitInstance
 import com.example.medisync.ui.components.AppointmentCard
 import com.example.medisync.ui.components.BottomNavBar
 import com.example.medisync.ui.components.SearchBar
@@ -269,7 +271,7 @@ fun AvatarPopup(name: String, url: String?, onDismiss: () -> Unit) {
                 Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f)) {
                     if (url != null) {
                         AsyncImage(
-                            model              = url,
+                            model = "${RetrofitInstance.MINIO_BASE_URL}${url}",
                             contentDescription = null,
                             contentScale       = ContentScale.Crop,
                             modifier           = Modifier.fillMaxSize()
