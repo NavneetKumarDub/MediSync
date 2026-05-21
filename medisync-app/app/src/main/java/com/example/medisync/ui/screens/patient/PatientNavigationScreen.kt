@@ -1,14 +1,11 @@
 package com.example.medisync.ui.screens.patient
-import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import com.example.medisync.appointment.AppointmentListScreen
+import com.example.medisync.ui.screens.appointment.AppointmentListScreen
 import com.example.medisync.ui.screens.chat.ChatListScreen
 
 

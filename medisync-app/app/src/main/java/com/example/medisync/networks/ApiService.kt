@@ -130,7 +130,8 @@ interface ApiService {
 
     @GET("api/chat/inbox")
     suspend fun getInbox(
-        @Header("Authorization") token: String
+        @Header("Authorization") token: String,
+        @Query("since") since: String
     ): Response<InboxResponse>
 
     @GET("api/chat/room/{roomId}/messages")

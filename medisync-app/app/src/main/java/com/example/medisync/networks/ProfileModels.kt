@@ -260,18 +260,29 @@ data class GetOrCreateRoomRequest(
 )
 
 data class InboxResponse(
-    val chats: List<InboxChat>
+    @SerializedName("chats") val chats: List<InboxChat>
 )
 
 data class InboxChat(
-    @SerializedName("roomId") val roomId: Int,
-    @SerializedName("userId") val userId: Int, // The OTHER person's ID
-    val name: String,
-    @SerializedName("profilePhoto") val profilePhoto: String?,
-    val speciality: String? // Will be null if the other person is a patient
+    @SerializedName("room_id") val roomId: Int,
+
+    @SerializedName("other_user_id") val userId: Int,
+
+    @SerializedName("display_name") val name: String,
+
+    @SerializedName("profile_photo") val profilePhoto: String?,
+
+    @SerializedName("speciality") val speciality: String?,
+
+    @SerializedName("last_message") val lastMessage: String?,
+
+    @SerializedName("last_message_time") val lastMessageTime: String?,
+
+    @SerializedName("unread_count") val unreadCount: Int?,
+
+    @SerializedName("updated_at") val updatedAt: String?
 )
 
-// --- Message History Models ---
 data class MessageHistoryResponse(
     val messages: List<ChatMessage>
 )

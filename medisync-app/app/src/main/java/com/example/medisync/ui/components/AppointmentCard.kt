@@ -17,11 +17,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.medisync.data.local.AppointmentEntity
+import com.example.medisync.networks.RetrofitInstance
 import com.example.medisync.ui.theme.natureGreen
 
 @Composable
 fun AppointmentCard(
     appt: AppointmentEntity,
+    url: String? = null,
     onAvatarClick: (name: String, photoUrl: String?) -> Unit,
     onClick: () -> Unit
 ) {
@@ -51,7 +53,7 @@ fun AppointmentCard(
             ) {
                 if (appt.photoUrl != null) {
                     AsyncImage(
-                        model            = appt.photoUrl,
+                        model            = "${RetrofitInstance.MINIO_BASE_URL}${appt.photoUrl}",
                         contentDescription = "Profile",
                         contentScale     = ContentScale.Crop,
                         modifier         = Modifier.fillMaxSize()

@@ -12,11 +12,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
+
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material3.*
@@ -27,28 +24,29 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.DialogWindowProvider
+
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.example.medisync.data.TokenManager
-import com.example.medisync.networks.InboxChat
 import com.example.medisync.ui.components.BottomNavBar
 import com.example.medisync.ui.components.SearchBar
 import com.example.medisync.ui.navigation.NavItems
-import com.example.medisync.ui.theme.natureGreen // Make sure this is imported!
+import com.example.medisync.ui.theme.natureGreen
 import com.example.medisync.viewmodels.ChatInboxViewModel
-import com.example.medisync.viewmodels.InboxUiState
+import com.example.medisync.data.local.ChatInboxEntity
+import com.example.medisync.networks.RetrofitInstance
 
-// Unified White Background for WhatsApp style
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
+import java.util.TimeZone
+
 private val MediScreenNeutralBg = Color(0xFFFFFFFF)
 private val MediCardWhite = Color(0xFFFFFFFF)
 private val MediTopBarWhite = Color(0xFFFFFFFF)
@@ -81,7 +79,10 @@ fun ChatListScreen(
     navController: NavController,
     selectedTab: Int,
     onTabSelected: (Int) -> Unit,
-    viewModel: ChatInboxViewModel = viewModel()
+    viewModel: ChatInboxViewModel = viewModel(
+        factory = (LocalContext.current.applicationContext as com.example.medisync.MediSyncApplication)
+            .let { ChatInboxViewModel.Factory(it.chatInboxRepository) }
+    )
 ) {
     val context = LocalContext.current
     var activeFilter by remember { mutableStateOf("All") }
@@ -91,23 +92,21 @@ fun ChatListScreen(
     var selectedAvatarUrl by remember { mutableStateOf<String?>(null) }
     var selectedAvatarName by remember { mutableStateOf("") }
 
-    val uiState by viewModel.uiState.collectAsState()
-
+    val chats by viewModel.inboxChats.collectAsState()
     LaunchedEffect(Unit) {
-        viewModel.fetchInbox(context)
+        val token = TokenManager.getToken(context)
+        if (token != null) {
+            viewModel.triggerSync(token)
+        }
     }
 
-    val isLoading = uiState is InboxUiState.Loading
-    val chats = if (uiState is InboxUiState.Success) {
-        (uiState as InboxUiState.Success).chats
-    } else {
-        emptyList()
-    }
+
 
     val list = remember(activeFilter, chats) {
         when (activeFilter) {
             "All" -> chats
-            "Doctors", "Favourites" -> chats.filter { it.speciality != null }
+            "Unread" -> chats.filter { it.unreadCount > 0 }
+
             else -> chats
         }
     }
@@ -158,34 +157,17 @@ fun ChatListScreen(
                 FilterRow(active = activeFilter, onSelect = { activeFilter = it })
                 Spacer(Modifier.height(8.dp))
 
-                if (isLoading) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = natureGreen)
+
+                ChatList(
+                    list = list,
+                    navController = navController,
+                    onAvatarClick = { name, photoUrl ->
+                        selectedAvatarName = name
+                        selectedAvatarUrl = photoUrl
+                        showAvatarDialog = true
                     }
-                } else if (uiState is InboxUiState.Error) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = (uiState as InboxUiState.Error).message,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                } else {
-                    ChatList(
-                        list = list,
-                        navController = navController,
-                        onAvatarClick = { name, photoUrl ->
-                            selectedAvatarName = name
-                            selectedAvatarUrl = photoUrl
-                            showAvatarDialog = true
-                        }
-                    )
-                }
+                )
+
             }
         }
 
@@ -217,7 +199,7 @@ fun ChatListScreen(
                         ) {
                             if (selectedAvatarUrl != null) {
                                 AsyncImage(
-                                    model = selectedAvatarUrl,
+                                    model = "${RetrofitInstance.MINIO_BASE_URL}$selectedAvatarUrl",
                                     contentDescription = "Profile Photo",
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier.fillMaxSize()
@@ -334,7 +316,7 @@ fun FilterRow(active: String, onSelect: (String) -> Unit) {
 
 @Composable
 fun ChatList(
-    list: List<InboxChat>,
+    list: List<ChatInboxEntity>,
     navController: NavController,
     onAvatarClick: (name: String, photoUrl: String?) -> Unit
 ) {
@@ -375,7 +357,7 @@ fun ChatList(
             itemsIndexed(list, key = { _, chat -> chat.roomId }) { index, chat ->
                 ChatItemCard(
                     chat = chat,
-                    onAvatarClick = { onAvatarClick(chat.name, chat.profilePhoto) },
+                    onAvatarClick = { onAvatarClick(chat.displayName, chat.photoUrl) },
                     onClick = { navController.navigate("chat/${chat.roomId}") }
                 )
             }
@@ -385,7 +367,7 @@ fun ChatList(
 
 @Composable
 fun ChatItemCard(
-    chat: InboxChat,
+    chat: ChatInboxEntity,
     onAvatarClick: () -> Unit,
     onClick: () -> Unit
 ) {
@@ -406,16 +388,16 @@ fun ChatItemCard(
                 .clickable { onAvatarClick() },
             contentAlignment = Alignment.Center
         ) {
-            if (chat.profilePhoto != null) {
+            if (chat.photoUrl != null) {
                 AsyncImage(
-                    model = chat.profilePhoto,
+                    model = "${RetrofitInstance.MINIO_BASE_URL}${chat.photoUrl}",
                     contentDescription = "Avatar",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
             } else {
                 Text(
-                    text = chat.name.take(1).uppercase(),
+                    text = chat.displayName.take(1).uppercase(),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = MediSkyBlueText
@@ -427,25 +409,58 @@ fun ChatItemCard(
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = chat.name,
+                text = chat.displayName,
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
                 color = MediTextDark
             )
-            Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = chat.speciality ?: "Patient",
+                text = chat.lastMessage ?: "",
                 color = MediTextMuted,
-                fontSize = 14.sp
+                fontSize = 12.sp,
             )
         }
-
         Text(
-            text = "Yesterday",
+            text = formatChatTime(chat.lastMessageTime),
             color = MediTextMuted,
             fontSize = 12.sp,
-            modifier = Modifier.align(Alignment.Top) // Aligns to the top right of the row
         )
+
+
+    }
+}
+
+
+
+fun formatChatTime(isoString: String?): String {
+    if (isoString.isNullOrEmpty()) return ""
+
+    return try {
+        val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+        parser.timeZone = TimeZone.getTimeZone("UTC")
+        val messageDate = parser.parse(isoString) ?: return ""
+
+        val messageCalendar = Calendar.getInstance().apply { time = messageDate }
+        val todayCalendar = Calendar.getInstance()
+        val yesterdayCalendar = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+
+        when {
+            messageCalendar.get(Calendar.YEAR) == todayCalendar.get(Calendar.YEAR) &&
+                    messageCalendar.get(Calendar.DAY_OF_YEAR) == todayCalendar.get(Calendar.DAY_OF_YEAR) -> {
+                val timeFormatter = SimpleDateFormat("h:mm a", Locale.getDefault())
+                timeFormatter.format(messageDate)
+            }
+            messageCalendar.get(Calendar.YEAR) == yesterdayCalendar.get(Calendar.YEAR) &&
+                    messageCalendar.get(Calendar.DAY_OF_YEAR) == yesterdayCalendar.get(Calendar.DAY_OF_YEAR) -> {
+                "Yesterday"
+            }
+            else -> {
+                val dateFormatter = SimpleDateFormat("dd/MM/yy", Locale.getDefault())
+                dateFormatter.format(messageDate)
+            }
+        }
+    } catch (e: Exception) {
+        ""
     }
 }
 

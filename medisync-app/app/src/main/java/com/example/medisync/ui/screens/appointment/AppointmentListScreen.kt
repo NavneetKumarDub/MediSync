@@ -1,7 +1,6 @@
-package com.example.medisync.appointment
+package com.example.medisync.ui.screens.appointment
 
 import android.os.Build
-import android.provider.SyncStateContract
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -25,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.example.medisync.MediSyncApplication
 import com.example.medisync.data.TokenManager
 import com.example.medisync.data.local.AppointmentEntity
 import com.example.medisync.networks.RetrofitInstance
@@ -85,7 +85,7 @@ fun AppointmentListScreen(
     selectedTab: Int,
     onTabSelected: (Int) -> Unit,
     viewModel: AppointmentViewModel = viewModel(
-        factory = (LocalContext.current.applicationContext as com.example.medisync.MediSyncApplication)
+        factory = (LocalContext.current.applicationContext as MediSyncApplication)
             .let { AppointmentViewModel.Factory(it.appointmentRepository) }
     )
 ) {

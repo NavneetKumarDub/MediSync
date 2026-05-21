@@ -22,6 +22,8 @@ object RetrofitInstance{
 
     const val VIDEO_WS_URL = "ws://192.168.1.8:3000/video"
 
+    const val MINIO_BASE_URL = "http://192.168.1.8:9000/profile-photos/"
+
 //
 //    const val BASE_URL = "https://gfnfmq1w-3000.inc1.devtunnels.ms/"
 //    const val CHAT_WS_URL = "wss://gfnfmq1w-3000.inc1.devtunnels.ms/chat"
