@@ -185,6 +185,8 @@ export const getRoomMessages = async (req: Request, res: Response) => {
     const { roomId } = req.params;
     const lastSync = (req.query.since as string) || '1970-01-01T00:00:00Z';
 
+        console.log("inside getroom message id : ",roomId)
+
     if (!roomId) {
         return res.status(400).json({ message: 'roomId is required' });
     }
@@ -193,21 +195,21 @@ export const getRoomMessages = async (req: Request, res: Response) => {
         const messagesRes = await db.query(
             `SELECT 
                 id, 
+                room_id AS "roomId",
                 sender_id AS "senderId", 
                 message AS "text", 
-                sent_at AS "createdAt",
-                updated_at
+                is_read AS "isRead",
+                sent_at AS "sentAt"
             FROM chat_messages 
-            WHERE room_id = $1 AND updated_at > $2
-            ORDER BY updated_at ASC`,
+            WHERE room_id = $1 AND sent_at > $2
+            ORDER BY sent_at ASC`,
             [roomId, lastSync]
         );
 
-        return res.status(200).json({
-            messages: messagesRes.rows
-        });
+        return res.status(200).json(messagesRes.rows);
 
     } catch (err) {
+        console.error(err);
         return res.status(500).json({ message: 'Server error' });
     }
 };

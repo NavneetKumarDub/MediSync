@@ -77,6 +77,7 @@ async function handleMessage(ws: Socket, type: string, data: any) {
 
     switch (type) {
         case 'chat:join': {
+            console.log(" joined chat : ",data.roomId)
             if (!(await isInRoom(uid, data.roomId))) {
                 return send(ws, 'error', { message: 'Access denied' })
             }
@@ -92,31 +93,61 @@ async function handleMessage(ws: Socket, type: string, data: any) {
         }
 
         case 'chat:message': {
+            console.log("inside websocket chat message event")
             const channel = `chat:room:${data.roomId}`
             if (!ws.channels.has(channel)) {
+                console.log("returning error: Join room first")
                 return send(ws, 'error', { message: 'Join room first' })
             }
+            const clientTempId = data.clientTempId;
 
+            const serverTimeUTC = new Date().toISOString();
+
+            // 1. Save to Database
             const r = await db.query(
-                `INSERT INTO chat_messages (room_id, sender_id, message)
-                 VALUES ($1, $2, $3) RETURNING id, sent_at`,
-                [data.roomId, uid, data.text]
+                `INSERT INTO chat_messages (room_id, sender_id, message, sent_at)
+                 VALUES ($1, $2, $3, $4) RETURNING id`,
+                [data.roomId, uid, data.text, serverTimeUTC]
             )
+            console.log("inserted room message")
+
             await db.query(
-                `UPDATE chat_rooms SET updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
-                [data.roomId]
+                `UPDATE chat_rooms SET updated_at = $1 WHERE id = $2`,
+                [serverTimeUTC, data.roomId]
             )
             await publisher.del(`chat:history:${data.roomId}`)
+
+            // 2. Prepare the payload
+            const payloadData = {
+                messageId: r.rows[0].id,
+                clientTempId: clientTempId,
+                roomId: data.roomId,
+                senderId: uid,
+                text: data.text,
+                sentAt: serverTimeUTC,
+            };
+
+            // 3. Publish to the specific room (for anyone who has the chat OPEN)
             await publisher.publish(channel, JSON.stringify({
                 type: 'chat:message',
-                data: {
-                    messageId: r.rows[0].id,
-                    roomId: data.roomId,
-                    senderId: uid,
-                    text: data.text,
-                    sentAt: r.rows[0].sent_at,
-                },
-            }))
+                data: payloadData
+            }));
+
+            // 4. NEW FIX: Alert the other user GLOBALLY so their phone gets it anywhere!
+            const roomRes = await db.query(
+                `SELECT patient_id, doctor_id FROM chat_rooms WHERE id = $1`,
+                [data.roomId]
+            );
+            
+            if (roomRes.rows.length > 0) {
+                const room = roomRes.rows[0];
+                // Figure out who the "other" person is
+                const otherUserId = room.patient_id === uid ? room.doctor_id : room.patient_id;
+                
+                // Use your existing helper function to alert their personal channel!
+                await sendToUser(otherUserId, 'chat:message', payloadData);
+            }
+
             break
         }
 
