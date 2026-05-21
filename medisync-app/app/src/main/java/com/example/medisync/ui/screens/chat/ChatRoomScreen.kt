@@ -1,5 +1,7 @@
 package com.example.medisync.ui.screens.chat
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -24,19 +26,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
-import com.example.medisync.viewmodels.ChatMessage
+import coil.compose.AsyncImage
+import com.example.medisync.MediSyncApplication
+import com.example.medisync.data.TokenManager
+import com.example.medisync.data.local.ChatMessageEntity
+import com.example.medisync.networks.RetrofitInstance
 import com.example.medisync.viewmodels.ChatViewModel
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.*
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 // ── WhatsApp-style color palette with your blue accent ──
 private val ChatBg         = Color(0xFFE7F0F4)
@@ -53,41 +59,65 @@ private val DateChipBg     = Color(0xFFD1E7F0)
 private val DateChipText   = Color(0xFF1F4D6B)
 private val ReadTick       = Color(0xFF53BDEB)
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
     navController: NavController,
     roomId: Int,
-    chatViewModel: ChatViewModel = viewModel()
+    otherUserName: String,
+    photoUrl: String? = null
 ) {
     val context = LocalContext.current
-    val uiState by chatViewModel.uiState.collectAsState()
-    var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
 
-    LaunchedEffect(roomId) {
-        chatViewModel.joinRoom(roomId, context)
+    val app = context.applicationContext as MediSyncApplication
+
+    var myUserId by remember { mutableStateOf<Int?>(null) }
+    var myToken by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        myUserId = TokenManager.getUserId(context) ?: 0
+        myToken = TokenManager.getToken(context) ?: ""
     }
+    if (myUserId == null || myToken == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = MyBubble)
+        }
+        return
+    }
+    val chatViewModel: ChatViewModel = viewModel(
+        factory = ChatViewModel.Factory(
+            repository = app.chatInboxRepository,
+            roomId = roomId,
+            myUserId = myUserId!!,
+            token = myToken!!
+        )
+    )
 
-    LaunchedEffect(uiState.messages.size) {
-        if (uiState.messages.isNotEmpty()) {
-            listState.animateScrollToItem(uiState.messages.size - 1)
+
+    val uiState by chatViewModel.uiState.collectAsState()
+    val messages by chatViewModel.messages.collectAsState()
+
+    var inputText by remember { mutableStateOf("") }
+
+    val lastMessageId = messages.lastOrNull()?.clientTempId ?: messages.lastOrNull()?.id?.toString()
+    LaunchedEffect(lastMessageId) {
+        if (messages.isNotEmpty()) {
+            listState.animateScrollToItem(0)
         }
     }
+
 
     Scaffold(
         containerColor = ChatBg,
         topBar = {
             ChatTopBar(
-                // 1. WIRED UP: The name now comes from the API via ViewModel
-                name = uiState.otherUserName,
-                // 2. WIRED UP: Status (e.g., "Online", "Connecting...") comes from WebSocket
+                name = otherUserName,
                 subtitle = uiState.headerStatus,
+                photoUrl = photoUrl,
                 onBack = { navController.popBackStack() },
-                onJoin = {
-                     navController.navigate("video_room/$roomId")
-                }
+                onJoin = { navController.navigate("video_room/$roomId") }
             )
         },
         bottomBar = {
@@ -110,13 +140,9 @@ fun ChatScreen(
                     onSend = {
                         val trimmed = inputText.trim()
                         if (trimmed.isNotBlank()) {
-                            chatViewModel.sendMessage(roomId, trimmed)
+                            chatViewModel.sendMessage(trimmed)
                             inputText = ""
-                            scope.launch {
-                                if (uiState.messages.isNotEmpty()) {
-                                    listState.animateScrollToItem(uiState.messages.size - 1)
-                                }
-                            }
+
                         }
                     }
                 )
@@ -125,6 +151,7 @@ fun ChatScreen(
     ) { padding ->
         LazyColumn(
             state = listState,
+            reverseLayout = true,
             contentPadding = PaddingValues(
                 start = 10.dp,
                 end = 10.dp,
@@ -134,17 +161,22 @@ fun ChatScreen(
             verticalArrangement = Arrangement.spacedBy(3.dp),
             modifier = Modifier.fillMaxSize()
         ) {
-            item { DateChip("Today") }
-            items(uiState.messages, key = { it.localId }) { msg ->
+            val reversedList = messages.reversed()
+
+            items(reversedList, key = { it.clientTempId ?: it.id.toString() }) { msg ->                val isMine = msg.senderId == myUserId
                 MessageBubble(
                     message = msg,
+                    isMine = isMine,
                     onVisible = {
-                        if (!msg.isMine && !msg.isRead && msg.serverId != null) {
-                            chatViewModel.markAsRead(roomId, msg.serverId)
+                        if (!isMine && !msg.isRead) {
+                            chatViewModel.markAsRead(msg.id)
                         }
                     }
                 )
             }
+
+            // 2. Put the DateChip at the END of the code, so it renders at the TOP of the screen!
+            item { DateChip("Today") }
         }
     }
 }
@@ -154,6 +186,7 @@ fun ChatScreen(
 private fun ChatTopBar(
     name: String,
     subtitle: String,
+    photoUrl: String?,
     onBack: () -> Unit,
     onJoin: () -> Unit = {}
 ) {
@@ -171,26 +204,38 @@ private fun ChatTopBar(
         },
         title = {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        // Safely handles empty strings if the name hasn't loaded yet
-                        text = if (name.isNotBlank() && name != "Loading...") {
-                            name.split(" ").filter { it.isNotEmpty() }
-                                .take(2).joinToString("") { it.first().uppercase() }
-                        } else {
-                            ""
-                        },
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White
+
+                if (!photoUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = "${RetrofitInstance.MINIO_BASE_URL}$photoUrl",
+                        contentDescription = "Profile Picture",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
                     )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (name.isNotBlank() && name != "Loading...") {
+                                name.split(" ").filter { it.isNotEmpty() }
+                                    .take(2).joinToString("") { it.first().uppercase() }
+                            } else {
+                                ""
+                            },
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White
+                        )
+                    }
                 }
+
                 Column {
                     Text(name, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                     if (subtitle.isNotBlank()) {
@@ -232,21 +277,32 @@ private fun JoinPill(onClick: () -> Unit) {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
-private fun MessageBubble(message: ChatMessage, onVisible: () -> Unit) {
-    val timeFormatted = remember(message.timestamp) {
-        SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(message.timestamp))
+private fun MessageBubble(
+    message: ChatMessageEntity,
+    isMine: Boolean,
+    onVisible: () -> Unit
+) {
+    val timeFormatted = remember(message.sentAt) {
+        try {
+            val instant = Instant.parse(message.sentAt)
+            val formatter = DateTimeFormatter.ofPattern("h:mm a").withZone(ZoneId.systemDefault())
+            formatter.format(instant)
+        } catch (e: Exception) {
+            "..."
+        }
     }
 
-    LaunchedEffect(message.localId) { onVisible() }
+    LaunchedEffect(message.id) { onVisible() }
 
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 1.dp),
-        horizontalArrangement = if (message.isMine) Arrangement.End else Arrangement.Start
+        horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start
     ) {
         Column(
             modifier = Modifier.widthIn(max = 300.dp),
-            horizontalAlignment = if (message.isMine) Alignment.End else Alignment.Start
+            horizontalAlignment = if (isMine) Alignment.End else Alignment.Start
         ) {
             Box(
                 modifier = Modifier
@@ -254,18 +310,18 @@ private fun MessageBubble(message: ChatMessage, onVisible: () -> Unit) {
                         RoundedCornerShape(
                             topStart = 14.dp,
                             topEnd = 14.dp,
-                            bottomStart = if (message.isMine) 14.dp else 2.dp,
-                            bottomEnd = if (message.isMine) 2.dp else 14.dp
+                            bottomStart = if (isMine) 14.dp else 2.dp,
+                            bottomEnd = if (isMine) 2.dp else 14.dp
                         )
                     )
-                    .background(if (message.isMine) MyBubble else OtherBubble)
+                    .background(if (isMine) MyBubble else OtherBubble)
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
                 Column {
                     Text(
-                        text = message.text,
+                        text = message.message, // Updated from message.text
                         fontSize = 14.5.sp,
-                        color = if (message.isMine) MyBubbleText else OtherBubbleText,
+                        color = if (isMine) MyBubbleText else OtherBubbleText,
                         lineHeight = 20.sp
                     )
                     Row(
@@ -276,12 +332,12 @@ private fun MessageBubble(message: ChatMessage, onVisible: () -> Unit) {
                         Text(
                             text = timeFormatted,
                             fontSize = 10.sp,
-                            color = if (message.isMine) TimeTextMine else TimeTextOther
+                            color = if (isMine) TimeTextMine else TimeTextOther
                         )
-                        if (message.isMine) {
+                        if (isMine) {
                             Spacer(Modifier.width(4.dp))
                             when {
-                                message.serverId == null -> Icon(
+                                message.id < 0 -> Icon(
                                     imageVector = Icons.Default.Check,
                                     contentDescription = null,
                                     modifier = Modifier.size(14.dp),
@@ -410,10 +466,4 @@ private fun ChatInputBar(
             }
         }
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun ChatScreenPreview() {
-    ChatScreen(navController = rememberNavController(), roomId = 1)
 }

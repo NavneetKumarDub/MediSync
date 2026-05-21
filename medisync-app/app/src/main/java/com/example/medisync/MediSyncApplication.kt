@@ -19,7 +19,8 @@ class MediSyncApplication : Application() {
 
     val chatInboxRepository by lazy {
         ChatInboxRepository(
-            chatDao = database.chatInboxDao(),
+            chatDao = database.chatInboxDao() ,
+            chatMessageDao = database.chatMessageDao(),
             api = RetrofitInstance.api
         )
     }

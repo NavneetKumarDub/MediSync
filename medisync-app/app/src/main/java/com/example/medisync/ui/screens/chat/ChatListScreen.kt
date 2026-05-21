@@ -1,6 +1,9 @@
 package com.example.medisync.ui.screens.chat
 
+import android.net.Uri
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -43,6 +46,10 @@ import com.example.medisync.data.local.ChatInboxEntity
 import com.example.medisync.networks.RetrofitInstance
 
 import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
@@ -73,6 +80,7 @@ private val MediChipIdleText = MediTextMuted
 
 private val filterTabs = listOf("All", "Unread", "Favourites", "Groups") // Updated to match WhatsApp screenshot
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatListScreen(
@@ -314,6 +322,7 @@ fun FilterRow(active: String, onSelect: (String) -> Unit) {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ChatList(
     list: List<ChatInboxEntity>,
@@ -358,13 +367,19 @@ fun ChatList(
                 ChatItemCard(
                     chat = chat,
                     onAvatarClick = { onAvatarClick(chat.displayName, chat.photoUrl) },
-                    onClick = { navController.navigate("chat/${chat.roomId}") }
+                    onClick = {
+                        val encodedName = Uri.encode(chat.displayName)
+                        val encodedUrl = Uri.encode(chat.photoUrl)
+
+                        navController.navigate("chat/${chat.roomId}?name=$encodedName&photoUrl=$encodedUrl")
+                    }
                 )
             }
         }
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ChatItemCard(
     chat: ChatInboxEntity,
@@ -432,38 +447,41 @@ fun ChatItemCard(
 
 
 
+@RequiresApi(Build.VERSION_CODES.O)
 fun formatChatTime(isoString: String?): String {
     if (isoString.isNullOrEmpty()) return ""
 
     return try {
-        val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
-        parser.timeZone = TimeZone.getTimeZone("UTC")
-        val messageDate = parser.parse(isoString) ?: return ""
+        // 1. Parse the exact UTC timestamp mathematically (Just like ChatScreen!)
+        val instant = Instant.parse(isoString)
 
-        val messageCalendar = Calendar.getInstance().apply { time = messageDate }
-        val todayCalendar = Calendar.getInstance()
-        val yesterdayCalendar = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+        // 2. Convert to the user's local timezone Date for comparison
+        val localDate = instant.atZone(ZoneId.systemDefault()).toLocalDate()
+        val today = LocalDate.now(ZoneId.systemDefault())
 
+        // 3. Apply your custom logic with mathematical precision
         when {
-            messageCalendar.get(Calendar.YEAR) == todayCalendar.get(Calendar.YEAR) &&
-                    messageCalendar.get(Calendar.DAY_OF_YEAR) == todayCalendar.get(Calendar.DAY_OF_YEAR) -> {
-                val timeFormatter = SimpleDateFormat("h:mm a", Locale.getDefault())
-                timeFormatter.format(messageDate)
+            localDate.isEqual(today) -> {
+                // Same day: Show "h:mm a" (e.g., 4:00 PM)
+                val timeFormatter = DateTimeFormatter.ofPattern("h:mm a").withZone(ZoneId.systemDefault())
+                timeFormatter.format(instant)
             }
-            messageCalendar.get(Calendar.YEAR) == yesterdayCalendar.get(Calendar.YEAR) &&
-                    messageCalendar.get(Calendar.DAY_OF_YEAR) == yesterdayCalendar.get(Calendar.DAY_OF_YEAR) -> {
+            localDate.isEqual(today.minusDays(1)) -> {
+                // Exactly one day ago
                 "Yesterday"
             }
             else -> {
-                val dateFormatter = SimpleDateFormat("dd/MM/yy", Locale.getDefault())
-                dateFormatter.format(messageDate)
+                // Older dates
+                val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yy").withZone(ZoneId.systemDefault())
+                dateFormatter.format(instant)
             }
         }
     } catch (e: Exception) {
-        ""
+        "" // Clean fallback if the string is completely broken
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Preview(showBackground = true, backgroundColor = 0xFFFFFFFF)
 @Composable
 fun ChatListPreview() {

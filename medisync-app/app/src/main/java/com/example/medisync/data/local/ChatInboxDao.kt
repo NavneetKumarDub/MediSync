@@ -20,4 +20,15 @@ interface ChatInboxDao {
 
     @Query("DELETE FROM chat_inbox_table")
     suspend fun clearAllChats()
+
+
+    @Query("""
+        UPDATE chat_inbox_table 
+        SET last_message = :message, 
+            last_message_time = :time, 
+            unread_count = unread_count + :incrementBy 
+        WHERE room_id = :roomId
+    """)
+    suspend fun updateInboxSnippet(roomId: Int, message: String, time: String, incrementBy: Int)
+
 }

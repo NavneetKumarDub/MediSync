@@ -1,5 +1,6 @@
 package com.example.medisync.networks
 
+import com.example.medisync.data.repository.MessageDto
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -137,8 +138,9 @@ interface ApiService {
     @GET("api/chat/room/{roomId}/messages")
     suspend fun getRoomMessages(
         @Header("Authorization") token: String,
-        @Path("roomId") roomId: Int
-    ): Response<MessageHistoryResponse>
+        @Path("roomId") roomId: Int,
+        @Query("since") lastTimestamp: String? = null
+    ): Response<List<MessageDto>>
 
     // Get slots for a day
     @GET("api/slots/regular")

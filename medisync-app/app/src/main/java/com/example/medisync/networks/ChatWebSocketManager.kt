@@ -101,6 +101,7 @@ object ChatWebSocketManager {
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
+            android.util.Log.d("RAW_SOCKET", "INCOMING NETWORK TRAFFIC: $text")
             try {
                 val obj = json.parseToJsonElement(text).jsonObject
                 val type = obj["type"]?.jsonPrimitive?.content ?: return

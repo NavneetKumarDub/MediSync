@@ -8,12 +8,19 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
 import androidx.annotation.RequiresExtension
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.medisync.data.TokenManager
+import com.example.medisync.networks.ChatNotificationManager
+import com.example.medisync.networks.ChatWebSocketManager
 import com.example.medisync.ui.screens.doctor.DoctorProfileScreen
 import com.example.medisync.ui.screens.auth.LoginScreen
 import com.example.medisync.ui.screens.auth.OtpScreen
@@ -39,6 +46,21 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             MediSyncTheme {
+                val context = LocalContext.current
+                val scope = rememberCoroutineScope()
+                val app = context.applicationContext as MediSyncApplication
+                val notificationManager = remember { ChatNotificationManager(app.chatInboxRepository,context) }
+
+                LaunchedEffect(key1 = true) {
+                    val token = TokenManager.getToken(context)
+                    if (token != null) {
+                        ChatWebSocketManager.connect(context)
+                        notificationManager.startListening(scope)
+                    } else {
+                        notificationManager.stopListening()
+                        ChatWebSocketManager.disconnect()
+                    }
+                }
                 val navController = rememberNavController()
 
                 NavHost(
@@ -120,12 +142,24 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    composable("chat/{roomId}") { backStackEntry ->
-                        val roomId = backStackEntry.arguments?.getString("roomId")?.toIntOrNull() ?: 0
+                    composable(
+                        route = "chat/{roomId}?name={name}&photoUrl={photoUrl}",
+                        // Define the arguments so Compose knows photoUrl can be null
+                        arguments = listOf(
+                            navArgument("roomId") { type = NavType.IntType },
+                            navArgument("name") { type = NavType.StringType; defaultValue = "Unknown User" },
+                            navArgument("photoUrl") { type = NavType.StringType; nullable = true }
+                        )
+                    ) { backStackEntry ->
+                        val roomId = backStackEntry.arguments?.getInt("roomId") ?: 0
+                        val name = backStackEntry.arguments?.getString("name") ?: "Unknown User"
+                        val photoUrl = backStackEntry.arguments?.getString("photoUrl")
 
                         ChatScreen(
                             navController = navController,
-                            roomId = roomId
+                            roomId = roomId,
+                            otherUserName = name,
+                            photoUrl = photoUrl
                         )
                     }
                     composable("video_room/{roomId}") { backStackEntry ->
