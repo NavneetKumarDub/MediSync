@@ -36,6 +36,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
+import com.google.firebase.messaging.FirebaseMessaging
+import com.example.medisync.networks.SaveFcmTokenRequest
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,6 +57,7 @@ fun OtpScreen(
     val focusRequester = remember { FocusRequester() }
     val scope          = rememberCoroutineScope()
     val context        = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         while (timeLeft > 0) {
@@ -218,8 +223,20 @@ fun OtpScreen(
                                             )
                                             Log.d("verifyOtp", response.toString())
                                             TokenManager.saveToken(context, response.token)
+                                            FirebaseMessaging.getInstance().token.addOnSuccessListener { fcmToken ->
+                                                coroutineScope.launch {
+                                                    runCatching {
+                                                        RetrofitInstance.api.saveFcmToken(
+                                                            token = "Bearer ${response.token}",
+                                                            body = SaveFcmTokenRequest(token = fcmToken)
+                                                        )
+                                                    }
+                                                }
+                                            }
                                             TokenManager.saveUserId(context, response.user.id)
                                             response.user.role?.let { TokenManager.saveRole(context, it) }
+                                            response.user.name?.let { TokenManager.saveName(context, it) }
+                                            response.user.phone.let { TokenManager.savePhone(context, it) }
                                             ChatWebSocketManager.connect(context)
 
                                             if (response.isNewUser || response.user.name == null) {

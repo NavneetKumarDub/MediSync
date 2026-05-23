@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -24,6 +25,7 @@ import com.example.medisync.ui.theme.natureGreen
 import kotlinx.coroutines.launch
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
+import com.example.medisync.data.TokenManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,6 +34,7 @@ fun RegisterScreen(
     phone        : String,
     role         : String
 ) {
+    val context = LocalContext.current
     var name         by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
     var isLoading    by remember { mutableStateOf(false) }
@@ -166,6 +169,11 @@ fun RegisterScreen(
                                     )
                                 )
                                 userId = response.user?.id ?: 0
+                                TokenManager.saveUserId(context, userId)
+                                TokenManager.saveRole(context, role)
+                                TokenManager.saveName(context, name)
+
+                                TokenManager.savePhone(context, phone)
                                 isLoading = false
                                 val destination = when (role) {
                                     "doctor"  -> "doctorHome/$name/$phone/$userId"

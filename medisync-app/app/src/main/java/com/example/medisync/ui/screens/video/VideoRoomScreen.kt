@@ -126,18 +126,18 @@ fun VideoRoomScreen(
     val isLocalVideoOn by viewModel.isLocalVideoOn.collectAsState()
     val isMicOn by viewModel.isMicOn.collectAsState()
     val remoteVideoTrack by viewModel.remoteVideoTrack.collectAsState()
-
-    // FIXED: Observe localVideoTrack instead of the removed localPreviewTrack.
-    // A single VideoTrack can have multiple sinks — one sink renders in the PiP,
-    // another sink is used internally by the peer connection to send frames.
+    val audioOutputs by viewModel.audioOutputs.collectAsState()
+    val selectedAudioOutput by viewModel.selectedAudioOutput.collectAsState()
     val localVideoTrack by viewModel.localVideoTrack.collectAsState()
 
     var offset by remember { mutableStateOf(Offset.Zero) }
     var isControlsVisible by remember { mutableStateOf(true) }
 
     LaunchedEffect(roomId) {
+        viewModel.refreshAudioOutputs()
         viewModel.connect(roomId)
     }
+
 
     LaunchedEffect(isControlsVisible) {
         if (isControlsVisible) {
@@ -342,8 +342,11 @@ fun VideoRoomScreen(
                 VideoCallBottomBar(
                     isMicOn = isMicOn,
                     isVideoOn = isLocalVideoOn,
+                    audioOutputs = audioOutputs,
+                    selectedAudioOutput = selectedAudioOutput,
                     onMicToggle = { viewModel.toggleMic() },
                     onVideoToggle = { viewModel.toggleVideo() },
+                    onAudioOutputSelected = { viewModel.selectAudioOutput(it) },
                     onEndCall = {
                         viewModel.endCall()
                         onHangUp()

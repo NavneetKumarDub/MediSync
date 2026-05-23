@@ -67,23 +67,16 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("androidx.compose.material:material-icons-extended")
 
-    // ViewModel
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
 
-// OkHttp for WebSocket
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
-// DataStore for JWT storage
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 
-// Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
-// Gson for JSON parsing
     implementation("com.google.code.gson:gson:2.10.1")
-    // Add to build.gradle.kts
     implementation("io.coil-kt:coil-compose:2.5.0")
-    // JSON parsing (typed, replaces Gson usage in WebSocket code)
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation("io.getstream:stream-webrtc-android:1.3.10")
     implementation("androidx.compose.ui:ui-text-google-fonts:1.6.0")
@@ -93,7 +86,7 @@ dependencies {
     implementation("androidx.room:room-runtime:$room_version")
 
     implementation("androidx.room:room-ktx:$room_version")
-
+    implementation("com.google.firebase:firebase-messaging")
     ksp("androidx.room:room-compiler:$room_version")
 
 }

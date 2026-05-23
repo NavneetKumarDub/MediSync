@@ -462,3 +462,7 @@ data class ConfirmUploadRequest(
     val userId: Int,
     val key: String
 )
+data class SaveFcmTokenRequest(
+    val token: String,
+    val platform: String = "android"
+)

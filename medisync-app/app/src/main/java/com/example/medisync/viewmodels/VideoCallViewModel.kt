@@ -2,6 +2,7 @@ package com.example.medisync.viewmodels
 
 import android.app.Application
 import android.content.Context
+import android.media.AudioDeviceCallback
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -16,10 +17,29 @@ import com.example.medisync.networks.VideoWebSocketManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.webrtc.audio.JavaAudioDeviceModule
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
+import android.os.Build
+import android.os.Looper
+import java.util.logging.Handler
 
+
+
+enum class AudioOutputKind {
+    BLUETOOTH,
+    SPEAKER,
+    EARPIECE
+}
+
+data class AudioOutputDevice(
+    val id: Int,
+    val name: String,
+    val type: Int,
+    val kind: AudioOutputKind
+)
 class VideoCallViewModel(application: Application) : AndroidViewModel(application) {
 
-    // ─── UI State Flows ───────────────────────────────────────────────────────
+
     private val _isPeerConnected = MutableStateFlow(false)
     val isPeerConnected: StateFlow<Boolean> = _isPeerConnected.asStateFlow()
 
@@ -35,10 +55,13 @@ class VideoCallViewModel(application: Application) : AndroidViewModel(applicatio
     private val _remoteVideoTrack = MutableStateFlow<VideoTrack?>(null)
     val remoteVideoTrack: StateFlow<VideoTrack?> = _remoteVideoTrack.asStateFlow()
 
-    // ─── WebRTC Core Components ───────────────────────────────────────────────
-    // FIXED: Single shared EGL context for ALL renderers and capture pipeline.
-    // Using two separate EglBase contexts means the GPU texture handles are
-    // invisible to each other — which caused the blank local PiP preview.
+    private val _audioOutputs = MutableStateFlow<List<AudioOutputDevice>>(emptyList())
+    val audioOutputs: StateFlow<List<AudioOutputDevice>> = _audioOutputs.asStateFlow()
+
+    private val _selectedAudioOutput = MutableStateFlow<AudioOutputDevice?>(null)
+    val selectedAudioOutput: StateFlow<AudioOutputDevice?> = _selectedAudioOutput.asStateFlow()
+
+
     val eglBaseContext: EglBase.Context by lazy { EglBase.create().eglBaseContext }
 
     private var peerConnectionFactory: PeerConnectionFactory? = null
@@ -54,11 +77,28 @@ class VideoCallViewModel(application: Application) : AndroidViewModel(applicatio
     private var remotePeerId: String? = null
     private var isNegotiating = false
 
+    private val audioDeviceCallback = object : AudioDeviceCallback() {
+        override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) {
+            refreshAudioOutputs()
+        }
+
+        override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>) {
+            refreshAudioOutputs(autoSelect = true)
+        }
+    }
+
     init {
         initializeWebRTC(application)
         startLocalVideo(application)
-    }
 
+        val audioManager = application.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        audioManager.registerAudioDeviceCallback(
+            audioDeviceCallback,
+            null
+        )
+
+        refreshAudioOutputs(autoSelect = true)
+    }
     // ─── Connect to Room ──────────────────────────────────────────────────────
     fun connect(roomId: Int) {
         currentRoomId = roomId
@@ -67,6 +107,126 @@ class VideoCallViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     // ─── Observe Incoming Signals ─────────────────────────────────────────────
+    fun refreshAudioOutputs(autoSelect: Boolean = false) {
+        val audioManager = getApplication<Application>()
+            .getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
+        val rawDevices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+
+        val routes = rawDevices
+            .mapNotNull { it.toAudioOutputDeviceOrNull() }
+            .distinctBy { it.kind }
+            .sortedBy {
+                when (it.kind) {
+                    AudioOutputKind.BLUETOOTH -> 0
+                    AudioOutputKind.SPEAKER -> 1
+                    AudioOutputKind.EARPIECE -> 2
+                }
+            }
+
+        _audioOutputs.value = routes
+
+        val currentStillAvailable = routes.any {
+            it.kind == _selectedAudioOutput.value?.kind
+        }
+
+        if (autoSelect || !currentStillAvailable) {
+            val preferred =
+                routes.firstOrNull { it.kind == AudioOutputKind.BLUETOOTH }
+                    ?: routes.firstOrNull { it.kind == AudioOutputKind.SPEAKER }
+                    ?: routes.firstOrNull { it.kind == AudioOutputKind.EARPIECE }
+
+            if (preferred != null) {
+                selectAudioOutput(preferred)
+            } else {
+                _selectedAudioOutput.value = null
+            }
+        }
+    }
+
+    private fun AudioDeviceInfo.toAudioOutputDeviceOrNull(): AudioOutputDevice? {
+        return when (type) {
+            AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
+            AudioDeviceInfo.TYPE_BLUETOOTH_A2DP -> {
+                AudioOutputDevice(
+                    id = id,
+                    name = productName?.toString()?.takeIf { it.isNotBlank() } ?: "Bluetooth",
+                    type = type,
+                    kind = AudioOutputKind.BLUETOOTH
+                )
+            }
+
+            AudioDeviceInfo.TYPE_BUILTIN_SPEAKER -> {
+                AudioOutputDevice(
+                    id = id,
+                    name = "Speaker",
+                    type = type,
+                    kind = AudioOutputKind.SPEAKER
+                )
+            }
+
+            AudioDeviceInfo.TYPE_BUILTIN_EARPIECE -> {
+                AudioOutputDevice(
+                    id = id,
+                    name = "Phone",
+                    type = type,
+                    kind = AudioOutputKind.EARPIECE
+                )
+            }
+
+            else -> null
+        }
+    }
+    fun selectAudioOutput(output: AudioOutputDevice) {
+        val audioManager = getApplication<Application>()
+            .getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
+        audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val realDevice = audioManager
+                .getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+                .firstOrNull {
+                    it.toAudioOutputDeviceOrNull()?.kind == output.kind
+                }
+
+            if (realDevice != null && audioManager.setCommunicationDevice(realDevice)) {
+                _selectedAudioOutput.value = output
+            }
+        } else {
+            audioManager.isSpeakerphoneOn = output.kind == AudioOutputKind.SPEAKER
+            _selectedAudioOutput.value = output
+        }
+    }
+
+    private fun AudioDeviceInfo.isCallOutputDevice(): Boolean {
+        return type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER ||
+                type == AudioDeviceInfo.TYPE_BUILTIN_EARPIECE ||
+                type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+                type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    type == AudioDeviceInfo.TYPE_BLE_HEADSET ||
+                            type == AudioDeviceInfo.TYPE_BLE_SPEAKER
+                } else {
+                    false
+                }
+    }
+
+    private fun AudioDeviceInfo.displayNameForCall(): String {
+        val label = productName?.toString()?.takeIf { it.isNotBlank() }
+
+        return when (type) {
+            AudioDeviceInfo.TYPE_BUILTIN_SPEAKER -> "Speaker"
+            AudioDeviceInfo.TYPE_BUILTIN_EARPIECE -> "Phone"
+            AudioDeviceInfo.TYPE_WIRED_HEADSET,
+            AudioDeviceInfo.TYPE_WIRED_HEADPHONES -> label ?: "Wired headset"
+            AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
+            AudioDeviceInfo.TYPE_BLUETOOTH_A2DP -> label ?: "Bluetooth"
+            else -> label ?: "Audio device"
+        }
+    }
     private fun observeSignals() {
         viewModelScope.launch {
             wsManager.events.collect { event ->
@@ -416,6 +576,10 @@ class VideoCallViewModel(application: Application) : AndroidViewModel(applicatio
 
     override fun onCleared() {
         super.onCleared()
+        val audioManager = getApplication<Application>()
+            .getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
+        audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
         viewModelScope.launch(Dispatchers.IO) {
             try { videoCapturer?.stopCapture() } catch (e: Exception) { }
             videoCapturer?.dispose()

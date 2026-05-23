@@ -236,7 +236,11 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Path("userId") userId: Int
     ): ProfileResponse
-
+    @POST("api/user/fcm-token")
+    suspend fun saveFcmToken(
+        @Header("Authorization") token: String,
+        @Body body: SaveFcmTokenRequest
+    ): Response<Unit>
 
 }
 

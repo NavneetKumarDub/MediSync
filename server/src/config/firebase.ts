@@ -6,3 +6,4 @@ admin.initializeApp({
 })
 
 export const firebaseAuth = admin.auth()
+export const firebaseMessaging = admin.messaging()

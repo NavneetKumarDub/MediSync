@@ -247,3 +247,14 @@ CREATE TABLE IF NOT EXISTS doctor_slot_settings
 
 DROP TRIGGER IF EXISTS trg_update_modtime ON doctor_slot_settings;
 CREATE TRIGGER trg_update_modtime BEFORE UPDATE ON doctor_slot_settings FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
+
+CREATE TABLE if not exist user_fcm_tokens (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token TEXT NOT NULL UNIQUE,
+  platform TEXT DEFAULT 'android',
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_user_fcm_tokens_user_id
+ON user_fcm_tokens(user_id);

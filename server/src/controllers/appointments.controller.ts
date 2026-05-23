@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import db from '../config/db'
 import { sendToUser, isUserOnline } from '../websocket/chat.ws'
+import { sendPushNotificationToUser } from '../services/notification.service'
 
 export const bookAppointment = async (req: Request, res: Response) => {
     console.log("Inside bookAppointment controller")
@@ -79,16 +80,28 @@ export const bookAppointment = async (req: Request, res: Response) => {
             await sendToUser(doctorId, 'appointment:new', {
                 appointment: {
                     id: appointment.id,
-                    scheduledAt: slot.start_time, 
+                    scheduledAt: slot.start_time,
                     status: appointment.status,
                     type: appointment.type,
                     fee: slot.consultation_fee,
                 },
                 patient: patientRes.rows[0],
                 roomId,
-            });
-        } catch (wsErr) {
-            console.error('[bookAppointment] WS push failed:', wsErr);
+            })
+
+            await sendPushNotificationToUser({
+                userId: doctorId,
+                title: 'New appointment booked',
+                body: `${patientRes.rows[0]?.name ?? 'A patient'} booked an appointment`,
+                data: {
+                    type: 'appointment_booked',
+                    appointmentId: String(appointment.id),
+                    roomId: String(roomId),
+                    patientId: String(patientId)
+                }
+            })
+        } catch (notifyErr) {
+            console.error('[bookAppointment] Notify failed:', notifyErr)
         }
 
         res.status(201).json({

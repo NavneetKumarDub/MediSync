@@ -7,15 +7,13 @@
         android:required="false" />
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- 2. Access to the device's camera for the local video track -->
     <uses-permission android:name="android.permission.CAMERA" />
 
-    <!-- 3. Access to the device's microphone for the local audio track -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
-    <!-- Optional but highly recommended: Allows WebRTC to know if you switch from WiFi to Cellular -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" /> <!-- CRITICAL FOR SPEAKER -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" /><!-- CRITICAL FOR SPEAKER -->
     <application
         android:usesCleartextTraffic="true"
         android:allowBackup="true"
@@ -30,6 +28,7 @@
         >
         <activity
             android:name=".MainActivity"
+            android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize"
             android:exported="true"
             android:label="@string/app_name"
@@ -40,6 +39,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <service
+            android:name=".services.MediSyncFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="medisync_notifications" />
     </application>
 
 </manifest>

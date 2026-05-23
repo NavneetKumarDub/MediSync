@@ -26,19 +26,38 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.medisync.ui.theme.natureGreen
-
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.runtime.*
+import com.example.medisync.viewmodels.AudioOutputDevice
+import androidx.compose.material.icons.filled.BluetoothAudio
+import androidx.compose.material.icons.filled.PhoneInTalk
+import androidx.compose.material.icons.filled.VolumeUp
+import com.example.medisync.viewmodels.AudioOutputKind
 val bottomBarColor = natureGreen
 
 @Composable
 fun VideoCallBottomBar(
     isMicOn: Boolean,
     isVideoOn: Boolean,
+    audioOutputs: List<AudioOutputDevice>,
+    selectedAudioOutput: AudioOutputDevice?,
     onMicToggle: () -> Unit,
     onVideoToggle: () -> Unit,
+    onAudioOutputSelected: (AudioOutputDevice) -> Unit,
     onEndCall: () -> Unit,
     onFlipCamera: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val audioIcon = when (selectedAudioOutput?.kind) {
+        AudioOutputKind.BLUETOOTH -> Icons.Default.BluetoothAudio
+        AudioOutputKind.EARPIECE -> Icons.Default.PhoneInTalk
+        AudioOutputKind.SPEAKER,
+        null -> Icons.Default.VolumeUp
+    }
+    var isAudioMenuOpen by remember { mutableStateOf(false) }
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -55,15 +74,75 @@ fun VideoCallBottomBar(
                 horizontalArrangement = Arrangement.spacedBy(20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Mic Button
+                CallControlButton(
+                    icon = if (isVideoOn) Icons.Default.Videocam else Icons.Default.VideocamOff,
+                    isActive = isVideoOn,
+                    onClick = onVideoToggle,
+                    size = 45.dp
+                )
+                var isAudioMenuOpen by remember { mutableStateOf(false) }
+
+                Box {
+                    CallControlButton(
+                        icon = audioIcon,
+                        isActive = true,
+                        onClick = { isAudioMenuOpen = true },
+                        size = 45.dp
+                    )
+
+                    DropdownMenu(
+                        expanded = isAudioMenuOpen,
+                        onDismissRequest = { isAudioMenuOpen = false },
+                        modifier = Modifier
+                            .background(Color(0xFF202124), RoundedCornerShape(18.dp))
+                            .width(210.dp)
+                    ) {
+                        audioOutputs.forEach { output ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = output.name,
+                                        color = Color.White
+                                    )
+                                },
+                                leadingIcon = {
+                                    val icon = when (output.kind) {
+                                        AudioOutputKind.BLUETOOTH -> Icons.Default.BluetoothAudio
+                                        AudioOutputKind.SPEAKER -> Icons.Default.VolumeUp
+                                        AudioOutputKind.EARPIECE -> Icons.Default.PhoneInTalk
+                                    }
+
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = null,
+                                        tint = Color.White
+                                    )
+                                },
+                                trailingIcon = {
+                                    if (output.kind == selectedAudioOutput?.kind) {
+                                        Text("✓", color = Color.White)
+                                    }
+                                },
+                                onClick = {
+                                    onAudioOutputSelected(output)
+                                    isAudioMenuOpen = false
+                                }
+                            )
+                        }
+                    }
+                }
                 CallControlButton(
                     icon = if (isMicOn) Icons.Default.Mic else Icons.Default.MicOff,
                     isActive = isMicOn,
                     onClick = onMicToggle,
                     size = 45.dp
                 )
-
-                // End Call Button
+                CallControlButton(
+                    icon = Icons.Default.FlipCameraAndroid,
+                    isActive = true,
+                    onClick = onFlipCamera,
+                    size = 45.dp
+                )
                 CallControlButton(
                     icon = Icons.Default.CallEnd,
                     isActive = false,
@@ -72,21 +151,7 @@ fun VideoCallBottomBar(
                     onClick = onEndCall
                 )
 
-                // Video Button
-                CallControlButton(
-                    icon = if (isVideoOn) Icons.Default.Videocam else Icons.Default.VideocamOff,
-                    isActive = isVideoOn,
-                    onClick = onVideoToggle,
-                    size = 45.dp
-                )
 
-                // Flip Camera Button
-                CallControlButton(
-                    icon = Icons.Default.FlipCameraAndroid,
-                    isActive = true,
-                    onClick = onFlipCamera,
-                    size = 45.dp
-                )
             }
         }
     }
@@ -129,27 +194,27 @@ fun CallControlButton(
     }
 }
 
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun VideoCallBottomBarPreview() {
-    MaterialTheme {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.DarkGray),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text = "Doctor's Video Feed Here", color = Color.LightGray)
-
-            VideoCallBottomBar(
-                isMicOn = true,
-                isVideoOn = false,
-                onMicToggle = {},
-                onVideoToggle = {},
-                onEndCall = {},
-                onFlipCamera = {},
-                modifier = Modifier.align(Alignment.BottomCenter)
-            )
-        }
-    }
-}
+//@Preview(showBackground = true, showSystemUi = true)
+//@Composable
+//fun VideoCallBottomBarPreview() {
+//    MaterialTheme {
+//        Box(
+//            modifier = Modifier
+//                .fillMaxSize()
+//                .background(Color.DarkGray),
+//            contentAlignment = Alignment.Center
+//        ) {
+//            Text(text = "Doctor's Video Feed Here", color = Color.LightGray)
+//
+//            VideoCallBottomBar(
+//                isMicOn = true,
+//                isVideoOn = false,
+//                onMicToggle = {},
+//                onVideoToggle = {},
+//                onEndCall = {},
+//                onFlipCamera = {},
+//                modifier = Modifier.align(Alignment.BottomCenter)
+//            )
+//        }
+//    }
+//}

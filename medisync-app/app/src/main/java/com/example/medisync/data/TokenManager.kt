@@ -14,11 +14,32 @@ import kotlinx.coroutines.flow.map
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "medisync_prefs")
 
 object TokenManager {
+    private val NAME_KEY = stringPreferencesKey("user_name")
+    private val PHONE_KEY = stringPreferencesKey("user_phone")
 
     private val TOKEN_KEY  = stringPreferencesKey("jwt_token")
     private val USER_ID_KEY = intPreferencesKey("user_id")
     private val ROLE_KEY   = stringPreferencesKey("user_role")
 
+    suspend fun saveName(context: Context, name: String) {
+        context.dataStore.edit { it[NAME_KEY] = name }
+    }
+
+    suspend fun getName(context: Context): String? {
+        return context.dataStore.data
+            .map { it[NAME_KEY] }
+            .first()
+    }
+
+    suspend fun savePhone(context: Context, phone: String) {
+        context.dataStore.edit { it[PHONE_KEY] = phone }
+    }
+
+    suspend fun getPhone(context: Context): String? {
+        return context.dataStore.data
+            .map { it[PHONE_KEY] }
+            .first()
+    }
     suspend fun saveToken(context: Context, token: String) {
         context.dataStore.edit { it[TOKEN_KEY] = token }
     }

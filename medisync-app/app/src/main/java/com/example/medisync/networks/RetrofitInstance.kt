@@ -16,7 +16,7 @@ object RetrofitInstance{
 //    const val CHAT_WS_URL = "ws://10.32.173.175:3000/chat"
 //    const val VIDEO_WS_URL = "ws://10.32.173.175:3000/video"
 
-    const val BASE_URL = "http://192.168.1.8:3000"
+    const val BASE_URL = "http://192.168.1.8:3000/"
 
     const val CHAT_WS_URL = "ws://192.168.1.8:3000/chat"
 

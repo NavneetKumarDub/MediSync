@@ -4,6 +4,7 @@ import { URL } from 'url'
 import jwt from 'jsonwebtoken'
 import { publisher, subscriber } from '../config/redis'
 import db from '../config/db'
+import { sendPushNotificationToUser } from '../services/notification.service'
 
 interface Socket extends WebSocket {
     userId: number
@@ -103,7 +104,6 @@ async function handleMessage(ws: Socket, type: string, data: any) {
 
             const serverTimeUTC = new Date().toISOString();
 
-            // 1. Save to Database
             const r = await db.query(
                 `INSERT INTO chat_messages (room_id, sender_id, message, sent_at)
                  VALUES ($1, $2, $3, $4) RETURNING id`,
@@ -117,7 +117,6 @@ async function handleMessage(ws: Socket, type: string, data: any) {
             )
             await publisher.del(`chat:history:${data.roomId}`)
 
-            // 2. Prepare the payload
             const payloadData = {
                 messageId: r.rows[0].id,
                 clientTempId: clientTempId,
@@ -127,25 +126,37 @@ async function handleMessage(ws: Socket, type: string, data: any) {
                 sentAt: serverTimeUTC,
             };
 
-            // 3. Publish to the specific room (for anyone who has the chat OPEN)
             await publisher.publish(channel, JSON.stringify({
                 type: 'chat:message',
                 data: payloadData
             }));
 
-            // 4. NEW FIX: Alert the other user GLOBALLY so their phone gets it anywhere!
             const roomRes = await db.query(
                 `SELECT patient_id, doctor_id FROM chat_rooms WHERE id = $1`,
                 [data.roomId]
             );
             
             if (roomRes.rows.length > 0) {
-                const room = roomRes.rows[0];
-                // Figure out who the "other" person is
-                const otherUserId = room.patient_id === uid ? room.doctor_id : room.patient_id;
-                
-                // Use your existing helper function to alert their personal channel!
-                await sendToUser(otherUserId, 'chat:message', payloadData);
+                const room = roomRes.rows[0]
+                const otherUserId = room.patient_id === uid ? room.doctor_id : room.patient_id
+
+                await sendToUser(otherUserId, 'chat:message', payloadData)
+
+                if (!isUserOnline(otherUserId)) {
+                    await sendPushNotificationToUser({
+                        userId: otherUserId,
+                        title: 'New message',
+                        body: data.text,
+                        dataOnly: true,
+                        data: {
+                            type: 'chat_message',
+                            roomId: String(data.roomId),
+                            senderId: String(uid),
+                            messageId: String(r.rows[0].id),
+                           
+                        }
+                    })
+                }
             }
 
             break
