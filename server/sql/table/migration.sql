@@ -110,22 +110,27 @@ CREATE TABLE IF NOT EXISTS doctor_professional
 DROP TRIGGER IF EXISTS trg_update_modtime ON doctor_professional;
 CREATE TRIGGER trg_update_modtime BEFORE UPDATE ON doctor_professional FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
 
-CREATE TABLE IF NOT EXISTS doctor_clinic
-(
-    id          SERIAL PRIMARY KEY,
-    user_id     INTEGER REFERENCES users ON DELETE CASCADE,
-    clinic_name VARCHAR(200),
-    address     TEXT,
-    city        VARCHAR(100),
-    pincode     VARCHAR(10),
-    lat         NUMERIC(10, 7),
-    lng         NUMERIC(10, 7),
-    created_at  TIMESTAMP DEFAULT NOW(),
-    updated_at  TIMESTAMP DEFAULT NOW()
+CREATE TABLE IF NOT EXISTS doctor_clinic (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    clinic_name VARCHAR(255),
+    address TEXT,
+    city VARCHAR(100),
+    pincode VARCHAR(20),
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT unique_doctor_clinic_user UNIQUE (user_id)
 );
 
 DROP TRIGGER IF EXISTS trg_update_modtime ON doctor_clinic;
-CREATE TRIGGER trg_update_modtime BEFORE UPDATE ON doctor_clinic FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
+
+CREATE TRIGGER trg_update_modtime
+BEFORE UPDATE ON doctor_clinic
+FOR EACH ROW
+EXECUTE PROCEDURE update_modified_column();
 
 CREATE TABLE IF NOT EXISTS doctor_availability
 (
@@ -284,12 +289,28 @@ CREATE TABLE IF NOT EXISTS medical_reports (
     file_size BIGINT,
     created_at TIMESTAMP DEFAULT NOW()
 );
+CREATE TABLE IF NOT EXISTS doctor_ratings (
+    id SERIAL PRIMARY KEY,
 
-ALTER TABLE doctor_clinic
-ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;
+    doctor_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    patient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    appointment_id INTEGER NOT NULL REFERENCES appointments(id) ON DELETE CASCADE,
 
-ALTER TABLE doctor_clinic
-ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
+    rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    comment TEXT,
 
-ALTER TABLE doctor_clinic
-ADD COLUMN IF NOT EXISTS address TEXT;
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+
+    CONSTRAINT unique_rating_per_appointment UNIQUE (appointment_id)
+);
+DROP TRIGGER IF EXISTS trg_update_modtime ON doctor_ratings;
+
+CREATE TRIGGER trg_update_modtime
+BEFORE UPDATE ON doctor_ratings
+FOR EACH ROW
+EXECUTE PROCEDURE update_modified_column();
+
+DROP TRIGGER IF EXISTS trg_update_modtime ON doctor_ratings;
+
+

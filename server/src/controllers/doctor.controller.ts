@@ -57,27 +57,41 @@ export const updateDoctorProfessional = async (req: Request, res: Response) => {
 
 export const updateDoctorClinic = async (req: Request, res: Response) => {
     const { userId } = req.params
-    const { clinic_name, address, city, pincode } = req.body
+    const { clinic_name } = req.body
+
     try {
         const existing = await db.query(
-            'SELECT * FROM doctor_clinic WHERE user_id = $1', [userId]
+            'SELECT * FROM doctor_clinic WHERE user_id = $1',
+            [userId]
         )
+
+        let result
+
         if (existing.rows.length === 0) {
-            await db.query(
-                `INSERT INTO doctor_clinic (user_id, clinic_name, address, city, pincode)
-                VALUES ($1,$2,$3,$4,$5)`,
-                [userId, clinic_name, address, city, pincode]
+            result = await db.query(
+                `INSERT INTO doctor_clinic (user_id, clinic_name)
+                 VALUES ($1, $2)
+                 RETURNING user_id, clinic_name, address, city, pincode, latitude, longitude`,
+                [userId, clinic_name]
             )
         } else {
-            await db.query(
-                `UPDATE doctor_clinic SET clinic_name=$1, address=$2,
-                city=$3, pincode=$4 WHERE user_id=$5`,
-                [clinic_name, address, city, pincode, userId]
+            result = await db.query(
+                `UPDATE doctor_clinic
+                 SET clinic_name = $1,
+                     updated_at = NOW()
+                 WHERE user_id = $2
+                 RETURNING user_id, clinic_name, address, city, pincode, latitude, longitude`,
+                [clinic_name, userId]
             )
         }
-        res.json({ message: 'Updated successfully' })
+
+        return res.status(200).json({
+            message: 'Clinic updated successfully',
+            clinic: result.rows[0]
+        })
     } catch (error) {
-        res.status(500).json({ message: 'Server error' })
+        console.error('updateDoctorClinic error:', error)
+        return res.status(500).json({ message: 'Server error' })
     }
 }
 
@@ -216,14 +230,15 @@ export const searchDoctors = async (req: Request, res: Response) => {
 
 export const getDoctorProfile = async (req: Request, res: Response) => {
     const { doctorId } = req.params
-    const lastSync = (req.query.since as string) || '1970-01-01T00:00:00Z';
+    const lastSync = (req.query.since as string) || '1970-01-01T00:00:00Z'
 
     try {
         const result = await db.query(`
             SELECT 
-                u.id              AS doctor_id,
-                u.name            AS doctor_name,
+                u.id AS doctor_id,
+                u.name AS doctor_name,
                 u.profile_photo_key AS profile_photo,
+
                 dp.speciality,
                 dp.sub_speciality,
                 dp.qualification,
@@ -232,17 +247,20 @@ export const getDoctorProfile = async (req: Request, res: Response) => {
                 dp.consultation_type,
                 dp.languages,
                 dp.license_number,
+
                 dper.about,
                 dper.gender,
                 dper.email,
                 dper.dob,
                 dper.marital_status,
+
                 dc.clinic_name,
                 dc.address,
                 dc.city,
                 dc.pincode,
-                dc.lat,
-                dc.lng,
+                dc.latitude,
+                dc.longitude,
+
                 GREATEST(
                     u.updated_at, 
                     COALESCE(dp.updated_at, '1970-01-01'::timestamp), 
@@ -250,31 +268,33 @@ export const getDoctorProfile = async (req: Request, res: Response) => {
                     COALESCE(dc.updated_at, '1970-01-01'::timestamp)
                 ) AS updated_at
             FROM users u
-            LEFT JOIN doctor_professional dp   ON u.id = dp.user_id
-            LEFT JOIN doctor_personal     dper ON u.id = dper.user_id
-            LEFT JOIN doctor_clinic       dc   ON u.id = dc.user_id
-            WHERE u.id = $1 AND u.role = 'doctor'
-            AND (
-                u.updated_at > $2 OR 
-                dp.updated_at > $2 OR 
-                dper.updated_at > $2 OR 
-                dc.updated_at > $2
-            )
+            LEFT JOIN doctor_professional dp ON u.id = dp.user_id
+            LEFT JOIN doctor_personal dper ON u.id = dper.user_id
+            LEFT JOIN doctor_clinic dc ON u.id = dc.user_id
+            WHERE u.id = $1
+              AND u.role = 'doctor'
+              AND (
+                    u.updated_at > $2 OR 
+                    dp.updated_at > $2 OR 
+                    dper.updated_at > $2 OR 
+                    dc.updated_at > $2
+              )
         `, [doctorId, lastSync])
 
         if (result.rows.length === 0) {
             if (req.query.since) {
                 return res.json({ doctor: null, notModified: true })
             }
+
             return res.status(404).json({ message: 'Doctor not found' })
         }
 
-        res.json({ doctor: result.rows[0] })
+        return res.json({ doctor: result.rows[0] })
     } catch (error) {
-        res.status(500).json({ message: 'Server error' })
+        console.error('getDoctorProfile error:', error)
+        return res.status(500).json({ message: 'Server error' })
     }
 }
-
 export const updateClinicLocation = async (req: Request, res: Response) => {
     try {
         const userId = (req as any).user.id

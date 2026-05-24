@@ -39,6 +39,7 @@ import com.example.medisync.ui.screens.auth.OtpScreen
 import com.example.medisync.ui.screens.auth.RegisterScreen
 import com.example.medisync.ui.screens.auth.SelectRoleScreen
 import com.example.medisync.ui.screens.chat.ChatScreen
+import com.example.medisync.ui.screens.doctor.DoctorClinicLocationScreen
 import com.example.medisync.ui.screens.doctor.DoctorCustomScheduleScreen
 import com.example.medisync.ui.screens.doctor.DoctorNavigationScreen
 import com.example.medisync.ui.screens.doctor.DoctorProfileScreen
@@ -308,6 +309,9 @@ class MainActivity : ComponentActivity() {
                             navController = navController,
                             userId = backStackEntry.arguments?.getString("userId")?.toIntOrNull() ?: 0
                         )
+                    }
+                    composable("doctorClinicLocation") {
+                        DoctorClinicLocationScreen(navController = navController)
                     }
 
                 }

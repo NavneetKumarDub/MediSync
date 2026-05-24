@@ -58,9 +58,7 @@ data class DoctorProfessionalRequest(
 
 data class DoctorClinicRequest(
     val clinic_name: String,
-    val address: String,
-    val city: String,
-    val pincode: String
+
 )
 
 data class DoctorAvailabilityRequest(

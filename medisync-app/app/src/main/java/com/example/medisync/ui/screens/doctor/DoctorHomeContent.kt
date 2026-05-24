@@ -76,7 +76,7 @@ fun DoctorHomeContent(
                         icon = Icons.Default.LocationOn,
                         onClick = {
                             scope.launch { drawerState.close() }
-                            // navController.navigate("doctorClinicLocation")
+                            navController.navigate("doctorClinicLocation")
                         }
                     ),
                     AppDrawerItem(

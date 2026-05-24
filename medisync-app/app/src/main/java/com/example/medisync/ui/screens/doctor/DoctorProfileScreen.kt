@@ -137,9 +137,7 @@ fun DoctorProfileScreen(
     var consultationType by remember { mutableStateOf("") }
 
     var clinicName by remember { mutableStateOf("") }
-    var address    by remember { mutableStateOf("") }
-    var city       by remember { mutableStateOf("") }
-    var pincode    by remember { mutableStateOf("") }
+
 
     LaunchedEffect(key1 = userId) {
         try {
@@ -165,9 +163,7 @@ fun DoctorProfileScreen(
                     consultationType = profile.consultationType ?: ""
 
                     clinicName = profile.clinicName ?: ""
-                    address    = profile.address ?: ""
-                    city       = profile.city ?: ""
-                    pincode    = profile.pincode ?: ""
+
                 }
             } else {
                 errorMessage = "Failed to load profile data."
@@ -444,9 +440,7 @@ fun DoctorProfileScreen(
                                         userId  = userId,
                                         request = DoctorClinicRequest(
                                             clinic_name = clinicName,
-                                            address     = address,
-                                            city        = city,
-                                            pincode     = pincode
+
                                         )
                                     )
                                     navController.popBackStack()
@@ -556,9 +550,7 @@ fun DoctorProfileScreen(
                 }
                 2 -> {
                     item { ProfileRow(label = "Clinic Name", value = clinicName, placeholder = "add clinic name",    onValueChange = { clinicName = it }) }
-                    item { ProfileRow(label = "Address",     value = address,    placeholder = "add street address", onValueChange = { address = it }) }
-                    item { ProfileRow(label = "City",        value = city,       placeholder = "e.g. Bangalore",     onValueChange = { city = it }) }
-                    item { ProfileRow(label = "Pincode",     value = pincode,    placeholder = "6-digit pincode",    onValueChange = { if (it.all { c -> c.isDigit() } && it.length <= 6) pincode = it }) }
+
                 }
             }
             item { Spacer(Modifier.height(8.dp)) }
