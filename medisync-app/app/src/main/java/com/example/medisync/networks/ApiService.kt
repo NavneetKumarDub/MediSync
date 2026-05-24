@@ -253,6 +253,10 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Query("key") key: String
     ): Response<ChatFileViewUrlResponse>
+    @GET("api/records/patient")
+    suspend fun getPatientRecords(
+        @Header("Authorization") token: String
+    ): Response<PatientRecordsResponse>
 
 }
 

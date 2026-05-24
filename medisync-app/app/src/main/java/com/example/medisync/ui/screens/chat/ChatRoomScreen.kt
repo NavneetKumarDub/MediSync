@@ -39,6 +39,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -80,6 +81,8 @@ fun ChatScreen(
 ) {
     val context = LocalContext.current
     val listState = rememberLazyListState()
+    var imagePreviewUrl by remember { mutableStateOf<String?>(null) }
+    var imageUrls by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
 
     val app = context.applicationContext as MediSyncApplication
 
@@ -192,6 +195,7 @@ fun ChatScreen(
         )
     }
 
+
     Scaffold(
         containerColor = ChatBg,
         topBar = {
@@ -249,19 +253,41 @@ fun ChatScreen(
         ) {
             val reversedList = messages.reversed()
 
-            items(reversedList, key = { it.clientTempId ?: it.id.toString() }) { msg ->                val isMine = msg.senderId == myUserId
+            items(reversedList, key = { it.clientTempId ?: it.id.toString() }) { msg ->
+                val fileKey = msg.fileKey
+
+                LaunchedEffect(fileKey) {
+                    if (
+                        msg.messageType == "image" &&
+                        fileKey != null &&
+                        imageUrls[fileKey] == null
+                    ) {
+                        chatViewModel.openFile(fileKey) { url ->
+                            imageUrls = imageUrls + (fileKey to url)
+                        }
+                    }
+                }
+                val isMine = msg.senderId == myUserId
                 MessageBubble(
                     message = msg,
                     isMine = isMine,
+                    imageUrl = msg.fileKey?.let { imageUrls[it] },
                     onVisible = {
                         if (!isMine && !msg.isRead) {
                             chatViewModel.markAsRead(msg.id)
                         }
                     },
-                    onFileClick = { fileKey ->
+                    onFileClick = { fileKey, fileType ->
                         chatViewModel.openFile(fileKey) { url ->
-                            val openIntent = Intent(Intent.ACTION_VIEW, url.toUri())
-                            context.startActivity(openIntent)
+                            if (fileType?.startsWith("image/") == true) {
+                                imagePreviewUrl = url
+                            } else {
+                                val openIntent = Intent(Intent.ACTION_VIEW).apply {
+                                    setDataAndType(url.toUri(), fileType ?: "application/pdf")
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                context.startActivity(Intent.createChooser(openIntent, "Open file"))
+                            }
                         }
                     }
                 )
@@ -269,6 +295,37 @@ fun ChatScreen(
 
             // 2. Put the DateChip at the END of the code, so it renders at the TOP of the screen!
             item { DateChip("Today") }
+        }
+    }
+    imagePreviewUrl?.let { url ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .clickable { imagePreviewUrl = null },
+            contentAlignment = Alignment.Center
+        ) {
+            AsyncImage(
+                model = url,
+                contentDescription = "Image",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            IconButton(
+                onClick = { imagePreviewUrl = null },
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding()
+                    .padding(12.dp)
+                    .background(Color.Black.copy(alpha = 0.45f), CircleShape)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White
+                )
+            }
         }
     }
 }
@@ -374,9 +431,9 @@ private fun JoinPill(onClick: () -> Unit) {
 private fun MessageBubble(
     message: ChatMessageEntity,
     isMine: Boolean,
+    imageUrl: String?,
     onVisible: () -> Unit,
-    onFileClick: (String) -> Unit
-
+    onFileClick: (String, String?) -> Unit
 ) {
     val timeFormatted = remember(message.sentAt) {
         try {
@@ -395,7 +452,7 @@ private fun MessageBubble(
         horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start
     ) {
         Column(
-            modifier = Modifier.widthIn(max = 300.dp),
+            modifier = Modifier.widthIn(max = if (message.messageType == "image") 230.dp else 300.dp),
             horizontalAlignment = if (isMine) Alignment.End else Alignment.Start
         ) {
             Box(
@@ -419,6 +476,34 @@ private fun MessageBubble(
                             color = if (isMine) MyBubbleText else OtherBubbleText,
                             lineHeight = 20.sp
                         )
+                    } else if (message.messageType == "image") {
+                        Column(
+                            modifier = Modifier.clickable {
+                                message.fileKey?.let { key ->
+                                    onFileClick(key, message.fileType)
+                                }
+                            }
+                        ) {
+                            AsyncImage(
+                                model = imageUrl,
+                                contentDescription = message.fileName ?: "Image",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .width(220.dp)
+                                    .height(260.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                            )
+
+                            Spacer(Modifier.height(4.dp))
+
+                            Text(
+                                text = message.fileName ?: "Image",
+                                fontSize = 11.sp,
+                                color = if (isMine) MyBubbleText else OtherBubbleText,
+                                maxLines = 1,
+                                modifier = Modifier.width(220.dp)
+                            )
+                        }
                     } else {
                         Text(
                             text = message.fileName ?: "File",
@@ -427,7 +512,9 @@ private fun MessageBubble(
                             lineHeight = 20.sp,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.clickable {
-                                message.fileKey?.let(onFileClick)
+                                message.fileKey?.let { key ->
+                                    onFileClick(key, message.fileType)
+                                }
                             }
                         )
                     }

@@ -479,3 +479,17 @@ data class ChatFileUploadUrlResponse(
 data class ChatFileViewUrlResponse(
     val viewUrl: String
 )
+
+data class PatientRecordsResponse(
+    val records: List<PatientRecordDto>
+)
+
+data class PatientRecordDto(
+    val id: Int,
+    val fileKey: String,
+    val fileName: String,
+    val fileType: String?,
+    val fileSize: Long?,
+    val uploadedByName: String,
+    val createdAt: String
+)
