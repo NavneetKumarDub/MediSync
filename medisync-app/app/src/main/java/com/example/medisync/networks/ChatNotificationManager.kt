@@ -15,6 +15,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import java.time.Instant
 
 class ChatNotificationManager(
@@ -50,23 +51,33 @@ class ChatNotificationManager(
         when (event.type) {
             "chat:message" -> {
                 val roomId = data["roomId"]?.jsonPrimitive?.int ?: return
-                val clientTempId = data["clientTempId"]?.jsonPrimitive?.contentOrNull // Get the fingerprint
+                val clientTempId = data["clientTempId"]?.jsonPrimitive?.contentOrNull
                 val senderId = data["senderId"]?.jsonPrimitive?.int ?: return
                 val serverId = data["messageId"]?.jsonPrimitive?.int ?: return
-                val text = data["text"]?.jsonPrimitive?.content ?: return
+                val text = data["text"]?.jsonPrimitive?.contentOrNull
                 val sentAt = data["sentAt"]?.jsonPrimitive?.content ?: return
+
+                val messageType = data["messageType"]?.jsonPrimitive?.contentOrNull ?: "text"
+                val fileKey = data["fileKey"]?.jsonPrimitive?.contentOrNull
+                val fileName = data["fileName"]?.jsonPrimitive?.contentOrNull
+                val fileType = data["fileType"]?.jsonPrimitive?.contentOrNull
+                val fileSize = data["fileSize"]?.jsonPrimitive?.longOrNull
 
                 if (senderId == myUserId && clientTempId != null) {
                     repository.reconcileMessageId(clientTempId, serverId, sentAt)
                 } else {
-                    // IT IS A NEW MESSAGE:
-                    // Either from someone else or a sync event, insert as normal.
+
                     val incomingMessage = ChatMessageEntity(
-                        id = serverId, // Use the server ID
+                        id = serverId,
                         clientTempId = clientTempId,
                         roomId = roomId,
                         senderId = senderId,
                         message = text,
+                        messageType = messageType,
+                        fileKey = fileKey,
+                        fileName = fileName,
+                        fileType = fileType,
+                        fileSize = fileSize,
                         isRead = false,
                         sentAt = sentAt,
                         updatedAt = sentAt

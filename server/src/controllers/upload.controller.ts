@@ -106,3 +106,88 @@ export const deleteProfilePhoto = async (req: Request, res: Response) => {
         return res.status(500).json({ message: 'Failed to delete photo' })
     }
 }
+
+export const getChatFileUploadUrl = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user.id
+        const { roomId, fileName, fileType } = req.body
+
+        if (!roomId || !fileName || !fileType) {
+            return res.status(400).json({
+                message: 'roomId, fileName and fileType are required'
+            })
+        }
+
+        const roomRes = await db.query(
+            `SELECT id FROM chat_rooms
+             WHERE id = $1 AND (patient_id = $2 OR doctor_id = $2)`,
+            [roomId, userId]
+        )
+
+        if (roomRes.rowCount === 0) {
+            return res.status(403).json({ message: 'Access denied' })
+        }
+
+        const timestamp = Date.now()
+        const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_')
+        const key = `chat/${roomId}/${userId}_${timestamp}_${safeName}`
+
+        const uploadUrl = await publicMinioClient.presignedPutObject(
+            BUCKETS.MEDICAL_RECORDS,
+            key,
+            15 * 60
+        )
+
+        return res.status(200).json({
+            uploadUrl,
+            key
+        })
+    } catch (error) {
+        console.error('getChatFileUploadUrl error:', error)
+        return res.status(500).json({ message: 'Failed to generate upload URL' })
+    }
+}
+export const getChatFileViewUrl = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user.id
+        const key = req.query.key as string
+
+        if (!key) {
+            return res.status(400).json({ message: 'key is required' })
+        }
+
+        const accessRes = await db.query(
+            `SELECT cm.id
+             FROM chat_messages cm
+             JOIN chat_rooms cr ON cr.id = cm.room_id
+             WHERE cm.file_key = $1
+               AND (cr.patient_id = $2 OR cr.doctor_id = $2)
+             LIMIT 1`,
+            [key, userId]
+        )
+
+        const reportAccessRes = await db.query(
+            `SELECT id
+             FROM medical_reports
+             WHERE file_key = $1
+               AND (patient_id = $2 OR uploaded_by = $2)
+             LIMIT 1`,
+            [key, userId]
+        )
+
+        if (accessRes.rowCount === 0 && reportAccessRes.rowCount === 0) {
+            return res.status(403).json({ message: 'Access denied' })
+        }
+
+        const viewUrl = await publicMinioClient.presignedGetObject(
+            BUCKETS.MEDICAL_RECORDS,
+            key,
+            5 * 60
+        )
+
+        return res.status(200).json({ viewUrl })
+    } catch (error) {
+        console.error('getChatFileViewUrl error:', error)
+        return res.status(500).json({ message: 'Failed to generate file URL' })
+    }
+}

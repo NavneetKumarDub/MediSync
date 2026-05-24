@@ -11,6 +11,7 @@ composeBom = "2024.09.00"
 ksp = "2.2.10-2.0.2"
 coreKtxVersion = "1.18.0"
 firebaseMessagingKtx = "25.0.2"
+compiler = "3.2.0-alpha11"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -29,6 +30,7 @@ androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-te
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtxVersion" }
 firebase-messaging-ktx = { group = "com.google.firebase", name = "firebase-messaging-ktx", version.ref = "firebaseMessagingKtx" }
+androidx-compiler = { group = "androidx.databinding", name = "compiler", version.ref = "compiler" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

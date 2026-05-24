@@ -34,6 +34,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.medisync.MediSyncApplication
 import com.example.medisync.data.TokenManager
 import com.example.medisync.networks.BookAppointmentRequest
 import com.example.medisync.networks.RetrofitInstance
@@ -181,6 +182,9 @@ fun SlotPickerScreen(
                     )
                     when {
                         res.isSuccessful -> {
+                            val app = context.applicationContext as MediSyncApplication
+                            app.appointmentRepository.syncPatientAppointments(context)
+
                             navController.popBackStack()
                         }
                         res.code() == 409 -> {

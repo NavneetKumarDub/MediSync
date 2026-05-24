@@ -218,17 +218,30 @@ CREATE TRIGGER trg_update_modtime BEFORE UPDATE ON chat_rooms FOR EACH ROW EXECU
 
 CREATE TABLE IF NOT EXISTS chat_messages
 (
-    id         SERIAL PRIMARY KEY,
-    room_id    INTEGER REFERENCES chat_rooms ON DELETE CASCADE,
-    sender_id  INTEGER REFERENCES users,
-    message    TEXT    NOT NULL,
-    is_read    BOOLEAN   DEFAULT FALSE,
-    sent_at    TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
+    id           SERIAL PRIMARY KEY,
+    room_id      INTEGER REFERENCES chat_rooms ON DELETE CASCADE,
+    sender_id    INTEGER REFERENCES users,
+    message      TEXT,
+    message_type VARCHAR(20) DEFAULT 'text',
+    file_key     TEXT,
+    file_name    TEXT,
+    file_type    TEXT,
+    file_size    BIGINT,
+    is_read      BOOLEAN   DEFAULT FALSE,
+    sent_at      TIMESTAMP DEFAULT NOW(),
+    updated_at   TIMESTAMP DEFAULT NOW(),
 
+    CONSTRAINT chat_messages_content_check CHECK (
+        message IS NOT NULL
+        OR file_key IS NOT NULL
+    )
+);
 DROP TRIGGER IF EXISTS trg_update_modtime ON chat_messages;
-CREATE TRIGGER trg_update_modtime BEFORE UPDATE ON chat_messages FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
+CREATE TRIGGER trg_update_modtime
+BEFORE UPDATE ON chat_messages
+FOR EACH ROW
+EXECUTE PROCEDURE update_modified_column();
+
 
 CREATE TABLE IF NOT EXISTS doctor_slot_settings
 (
@@ -248,7 +261,7 @@ CREATE TABLE IF NOT EXISTS doctor_slot_settings
 DROP TRIGGER IF EXISTS trg_update_modtime ON doctor_slot_settings;
 CREATE TRIGGER trg_update_modtime BEFORE UPDATE ON doctor_slot_settings FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
 
-CREATE TABLE if not exist user_fcm_tokens (
+CREATE TABLE if not exists user_fcm_tokens (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   token TEXT NOT NULL UNIQUE,
@@ -258,3 +271,16 @@ CREATE TABLE if not exist user_fcm_tokens (
 );
 CREATE INDEX IF NOT EXISTS idx_user_fcm_tokens_user_id
 ON user_fcm_tokens(user_id);
+
+CREATE TABLE IF NOT EXISTS medical_reports (
+    id SERIAL PRIMARY KEY,
+    patient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    uploaded_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    appointment_id INTEGER REFERENCES appointments(id) ON DELETE SET NULL,
+    chat_room_id INTEGER REFERENCES chat_rooms(id) ON DELETE SET NULL,
+    file_key TEXT NOT NULL,
+    file_name TEXT NOT NULL,
+    file_type TEXT,
+    file_size BIGINT,
+    created_at TIMESTAMP DEFAULT NOW()
+);

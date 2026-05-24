@@ -1,6 +1,11 @@
 package com.example.medisync.ui.screens.chat
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import android.provider.OpenableColumns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,12 +30,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -39,6 +48,7 @@ import com.example.medisync.data.TokenManager
 import com.example.medisync.data.local.ChatMessageEntity
 import com.example.medisync.networks.RetrofitInstance
 import com.example.medisync.viewmodels.ChatViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -100,6 +110,35 @@ fun ChatScreen(
     val messages by chatViewModel.messages.collectAsState()
 
     var inputText by remember { mutableStateOf("") }
+    var pickedFile by remember { mutableStateOf<PickedChatFile?>(null) }
+    var saveAsReport by remember { mutableStateOf(false) }
+    var myRole by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        myRole = TokenManager.getRole(context)
+    }
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    LaunchedEffect(Unit) {
+        delay(300)
+        focusRequester.requestFocus()
+        keyboardController?.show()
+    }
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            val type = context.contentResolver.getType(uri) ?: "application/octet-stream"
+            pickedFile = PickedChatFile(
+                uri = uri,
+                name = getFileName(context, uri),
+                type = type,
+                size = getFileSize(context, uri)
+            )
+            saveAsReport = false
+        }
+    }
 
     val lastMessageId = messages.lastOrNull()?.clientTempId ?: messages.lastOrNull()?.id?.toString()
     LaunchedEffect(lastMessageId) {
@@ -108,6 +147,50 @@ fun ChatScreen(
         }
     }
 
+    pickedFile?.let { file ->
+        AlertDialog(
+            onDismissRequest = { pickedFile = null },
+            title = { Text("Send file?") },
+            text = {
+                Column {
+                    Text(file.name)
+
+                    if (myRole == "doctor") {
+                        Spacer(Modifier.height(12.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(
+                                checked = saveAsReport,
+                                onCheckedChange = { saveAsReport = it }
+                            )
+                            Text("Also save as patient report")
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        chatViewModel.sendFile(
+                            context = context,
+                            uri = file.uri,
+                            fileName = file.name,
+                            fileType = file.type,
+                            fileSize = file.size,
+                            saveAsReport = myRole == "doctor" && saveAsReport
+                        )
+                        pickedFile = null
+                    }
+                ) {
+                    Text("Send")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pickedFile = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     Scaffold(
         containerColor = ChatBg,
@@ -142,9 +225,12 @@ fun ChatScreen(
                         if (trimmed.isNotBlank()) {
                             chatViewModel.sendMessage(trimmed)
                             inputText = ""
-
                         }
-                    }
+                    },
+                    onAttachClick = {
+                        filePickerLauncher.launch(arrayOf("image/*", "application/pdf"))
+                    },
+                    focusRequester = focusRequester
                 )
             }
         }
@@ -170,6 +256,12 @@ fun ChatScreen(
                     onVisible = {
                         if (!isMine && !msg.isRead) {
                             chatViewModel.markAsRead(msg.id)
+                        }
+                    },
+                    onFileClick = { fileKey ->
+                        chatViewModel.openFile(fileKey) { url ->
+                            val openIntent = Intent(Intent.ACTION_VIEW, url.toUri())
+                            context.startActivity(openIntent)
                         }
                     }
                 )
@@ -282,7 +374,9 @@ private fun JoinPill(onClick: () -> Unit) {
 private fun MessageBubble(
     message: ChatMessageEntity,
     isMine: Boolean,
-    onVisible: () -> Unit
+    onVisible: () -> Unit,
+    onFileClick: (String) -> Unit
+
 ) {
     val timeFormatted = remember(message.sentAt) {
         try {
@@ -318,12 +412,25 @@ private fun MessageBubble(
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
                 Column {
-                    Text(
-                        text = message.message, // Updated from message.text
-                        fontSize = 14.5.sp,
-                        color = if (isMine) MyBubbleText else OtherBubbleText,
-                        lineHeight = 20.sp
-                    )
+                    if (message.messageType == "text") {
+                        Text(
+                            text = message.message ?: "",
+                            fontSize = 14.5.sp,
+                            color = if (isMine) MyBubbleText else OtherBubbleText,
+                            lineHeight = 20.sp
+                        )
+                    } else {
+                        Text(
+                            text = message.fileName ?: "File",
+                            fontSize = 14.5.sp,
+                            color = if (isMine) MyBubbleText else OtherBubbleText,
+                            lineHeight = 20.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.clickable {
+                                message.fileKey?.let(onFileClick)
+                            }
+                        )
+                    }
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.End,
@@ -385,8 +492,10 @@ private fun DateChip(label: String) {
 private fun ChatInputBar(
     value: String,
     onValueChange: (String) -> Unit,
-    onSend: () -> Unit
-) {
+    onSend: () -> Unit,
+    onAttachClick: () -> Unit,
+    focusRequester: FocusRequester
+){
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -425,11 +534,14 @@ private fun ChatInputBar(
                     unfocusedIndicatorColor = Color.Transparent,
                     disabledIndicatorColor = Color.Transparent
                 ),
-                modifier = Modifier.weight(1f).heightIn(min = 40.dp, max = 120.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 40.dp, max = 120.dp)
+                    .focusRequester(focusRequester),
                 textStyle = LocalTextStyle.current.copy(fontSize = 14.5.sp),
                 maxLines = 5
             )
-            IconButton(onClick = { }, modifier = Modifier.size(36.dp)) {
+            IconButton(onClick = onAttachClick, modifier = Modifier.size(36.dp)) {
                 Icon(
                     Icons.Default.AttachFile,
                     contentDescription = "Attach",
@@ -466,4 +578,33 @@ private fun ChatInputBar(
             }
         }
     }
+}
+
+private data class PickedChatFile(
+    val uri: Uri,
+    val name: String,
+    val type: String,
+    val size: Long?
+)
+
+private fun getFileName(context: android.content.Context, uri: Uri): String {
+    val cursor = context.contentResolver.query(uri, null, null, null, null)
+    cursor?.use {
+        val nameIndex = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+        if (it.moveToFirst() && nameIndex >= 0) {
+            return it.getString(nameIndex)
+        }
+    }
+    return "file"
+}
+
+private fun getFileSize(context: android.content.Context, uri: Uri): Long? {
+    val cursor = context.contentResolver.query(uri, null, null, null, null)
+    cursor?.use {
+        val sizeIndex = it.getColumnIndex(OpenableColumns.SIZE)
+        if (it.moveToFirst() && sizeIndex >= 0) {
+            return it.getLong(sizeIndex)
+        }
+    }
+    return null
 }

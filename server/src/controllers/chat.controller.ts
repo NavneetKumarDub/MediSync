@@ -197,7 +197,12 @@ export const getRoomMessages = async (req: Request, res: Response) => {
                 id, 
                 room_id AS "roomId",
                 sender_id AS "senderId", 
-                message AS "text", 
+                message AS "text",
+                message_type AS "messageType",
+                file_key AS "fileKey",
+                file_name AS "fileName",
+                file_type AS "fileType",
+                file_size AS "fileSize",
                 is_read AS "isRead",
                 sent_at AS "sentAt"
             FROM chat_messages 

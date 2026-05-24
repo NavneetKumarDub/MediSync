@@ -1,5 +1,7 @@
 package com.example.medisync.data.repository
 
+import android.content.Context
+import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -8,10 +10,17 @@ import com.example.medisync.data.local.ChatInboxEntity
 import com.example.medisync.data.local.ChatMessageDao
 import com.example.medisync.data.local.ChatMessageEntity
 import com.example.medisync.networks.ApiService
+import com.example.medisync.networks.ChatFileUploadUrlRequest
 import com.example.medisync.networks.ChatWebSocketManager
 import com.example.medisync.viewmodels.ChatSession
 import com.google.gson.annotations.SerializedName
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.CancellationException
 
 data class ChatInboxResponse(
@@ -39,9 +48,23 @@ data class MessageDto(
     @SerializedName("senderId")
     val senderId: Int,
 
-    // Let's say your Node server actually calls it "text" in JSON
     @SerializedName("text")
-    val text: String,
+    val text: String?,
+
+    @SerializedName("messageType")
+    val messageType: String = "text",
+
+    @SerializedName("fileKey")
+    val fileKey: String? = null,
+
+    @SerializedName("fileName")
+    val fileName: String? = null,
+
+    @SerializedName("fileType")
+    val fileType: String? = null,
+
+    @SerializedName("fileSize")
+    val fileSize: Long? = null,
 
     @SerializedName("isRead")
     val isRead: Boolean,
@@ -57,6 +80,127 @@ class ChatInboxRepository(
 ) {
 
     val allChats: Flow<List<ChatInboxEntity>> = chatDao.getAllChats()
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun sendFileMessage(
+        roomId: Int,
+        myUserId: Int,
+        fileName: String,
+        fileType: String,
+        fileSize: Long?,
+        fileKey: String,
+        saveAsReport: Boolean
+    ) {
+        val localId = (System.currentTimeMillis() % Int.MAX_VALUE).toInt()
+        val fingerprint = java.util.UUID.randomUUID().toString()
+        val now = java.time.Instant.now().toString()
+
+        val messageType = if (fileType.startsWith("image/")) "image" else "file"
+
+        val tempMessage = ChatMessageEntity(
+            id = localId,
+            clientTempId = fingerprint,
+            roomId = roomId,
+            senderId = myUserId,
+            message = null,
+            messageType = messageType,
+            fileKey = fileKey,
+            fileName = fileName,
+            fileType = fileType,
+            fileSize = fileSize,
+            isRead = true,
+            sentAt = now,
+            updatedAt = now
+        )
+
+        chatMessageDao.insertMessage(tempMessage)
+
+        ChatWebSocketManager.send(
+            "chat:message",
+            mapOf(
+                "roomId" to roomId,
+                "text" to null,
+                "clientTempId" to fingerprint,
+                "messageType" to messageType,
+                "fileKey" to fileKey,
+                "fileName" to fileName,
+                "fileType" to fileType,
+                "fileSize" to fileSize,
+                "saveAsReport" to saveAsReport
+            )
+        )
+    }
+    suspend fun uploadChatFile(
+        context: Context,
+        uploadUrl: String,
+        uri: Uri,
+        mimeType: String
+    ) = withContext(Dispatchers.IO) {
+        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            ?: throw IllegalArgumentException("Unable to read selected file")
+
+        val requestBody = bytes.toRequestBody(mimeType.toMediaTypeOrNull())
+
+        val request = Request.Builder()
+            .url(uploadUrl)
+            .put(requestBody)
+            .build()
+
+        val response = OkHttpClient().newCall(request).execute()
+
+        if (!response.isSuccessful) {
+            throw IllegalStateException(
+                "File upload failed: ${response.code} ${response.body?.string()}"
+            )
+        }
+
+        response.close()
+    }
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun uploadAndSendFileMessage(
+        context: Context,
+        token: String,
+        roomId: Int,
+        myUserId: Int,
+        uri: Uri,
+        fileName: String,
+        fileType: String,
+        fileSize: Long?,
+        saveAsReport: Boolean
+    ) {
+        val uploadRes = api.getChatFileUploadUrl(
+            token = "Bearer $token",
+            request = ChatFileUploadUrlRequest(
+                roomId = roomId,
+                fileName = fileName,
+                fileType = fileType
+            )
+        )
+
+        if (!uploadRes.isSuccessful || uploadRes.body() == null) {
+            throw IllegalStateException("Failed to get upload URL")
+        }
+
+        val uploadData = uploadRes.body()!!
+
+        uploadChatFile(
+            context = context,
+            uploadUrl = uploadData.uploadUrl,
+            uri = uri,
+            mimeType = fileType
+        )
+
+        sendFileMessage(
+            roomId = roomId,
+            myUserId = myUserId,
+            fileName = fileName,
+            fileType = fileType,
+            fileSize = fileSize,
+            fileKey = uploadData.key,
+            saveAsReport = saveAsReport
+        )
+    }
+
 
     suspend fun syncChats(token: String) {
         try {
@@ -114,7 +258,8 @@ class ChatInboxRepository(
         ChatWebSocketManager.send("chat:message", mapOf(
             "roomId" to roomId,
             "text" to text,
-            "clientTempId" to fingerprint
+            "clientTempId" to fingerprint,
+            "messageType" to "text"
         ))
     }
     suspend fun syncMissingMessages(roomId: Int , token: String) {
@@ -130,6 +275,11 @@ class ChatInboxRepository(
                         roomId = roomId,
                         senderId = msg.senderId,
                         message = msg.text,
+                        messageType = msg.messageType,
+                        fileKey = msg.fileKey,
+                        fileName = msg.fileName,
+                        fileType = msg.fileType,
+                        fileSize = msg.fileSize,
                         isRead = msg.isRead,
                         sentAt = msg.sentAt
                     )
@@ -151,17 +301,30 @@ class ChatInboxRepository(
         chatMessageDao.insertOrIgnoreMessage(message)
         val increment = if (ChatSession.activeRoomId == message.roomId) 0 else 1
 
-        // 3. Update the Chat List UI!
         chatDao.updateInboxSnippet(
             roomId = message.roomId,
-            message = message.message,
+            message = message.message ?: message.fileName ?: "File",
             time = message.sentAt,
             incrementBy = increment
         )
     }
 
-    // Takes the incoming read receipt and updates SQLite
     suspend fun markMessageAsReadLocally(messageId: Int) {
         chatMessageDao.markSingleMessageAsRead(messageId)
+    }
+    suspend fun getChatFileViewUrl(
+        token: String,
+        key: String
+    ): String {
+        val response = api.getChatFileViewUrl(
+            token = "Bearer $token",
+            key = key
+        )
+
+        if (!response.isSuccessful || response.body() == null) {
+            throw IllegalStateException("Failed to open file")
+        }
+
+        return response.body()!!.viewUrl
     }
 }

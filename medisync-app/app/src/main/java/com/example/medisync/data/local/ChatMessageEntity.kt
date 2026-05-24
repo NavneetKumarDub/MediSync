@@ -10,7 +10,12 @@ data class ChatMessageEntity(
     val clientTempId: String? = null,
     val roomId: Int,
     val senderId: Int,
-    val message: String,
+    val message: String?,
+    val messageType: String = "text",
+    val fileKey: String? = null,
+    val fileName: String? = null,
+    val fileType: String? = null,
+    val fileSize: Long? = null,
     val isRead: Boolean,
     val sentAt: String,
     val updatedAt: String? = null

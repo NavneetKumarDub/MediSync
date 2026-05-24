@@ -104,10 +104,38 @@ async function handleMessage(ws: Socket, type: string, data: any) {
 
             const serverTimeUTC = new Date().toISOString();
 
+            const messageType = data.messageType ?? 'text'
+            const text = data.text ?? null
+            const fileKey = data.fileKey ?? null
+            const fileName = data.fileName ?? null
+            const fileType = data.fileType ?? null
+            const fileSize = data.fileSize ?? null
+
             const r = await db.query(
-                `INSERT INTO chat_messages (room_id, sender_id, message, sent_at)
-                 VALUES ($1, $2, $3, $4) RETURNING id`,
-                [data.roomId, uid, data.text, serverTimeUTC]
+                `INSERT INTO chat_messages (
+                    room_id,
+                    sender_id,
+                    message,
+                    message_type,
+                    file_key,
+                    file_name,
+                    file_type,
+                    file_size,
+                    sent_at
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                RETURNING id`,
+                [
+                    data.roomId,
+                    uid,
+                    text,
+                    messageType,
+                    fileKey,
+                    fileName,
+                    fileType,
+                    fileSize,
+                    serverTimeUTC
+                ]
             )
             console.log("inserted room message")
 
@@ -119,12 +147,17 @@ async function handleMessage(ws: Socket, type: string, data: any) {
 
             const payloadData = {
                 messageId: r.rows[0].id,
-                clientTempId: clientTempId,
+                clientTempId,
                 roomId: data.roomId,
                 senderId: uid,
-                text: data.text,
+                text,
+                messageType,
+                fileKey,
+                fileName,
+                fileType,
+                fileSize,
                 sentAt: serverTimeUTC,
-            };
+            }
 
             await publisher.publish(channel, JSON.stringify({
                 type: 'chat:message',
@@ -140,13 +173,50 @@ async function handleMessage(ws: Socket, type: string, data: any) {
                 const room = roomRes.rows[0]
                 const otherUserId = room.patient_id === uid ? room.doctor_id : room.patient_id
 
+                if (data.saveAsReport === true && fileKey) {
+                if (ws.role !== 'doctor') {
+                    return send(ws, 'error', { message: 'Only doctors can save files as reports' })
+                }
+
+                const patientId = room.patient_id
+                const doctorId = room.doctor_id
+
+                if (doctorId !== uid) {
+                    return send(ws, 'error', { message: 'Access denied' })
+                }
+
+                await db.query(
+                    `INSERT INTO medical_reports (
+                        patient_id,
+                        uploaded_by,
+                        chat_room_id,
+                        file_key,
+                        file_name,
+                        file_type,
+                        file_size
+                    )
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                    [
+                        patientId,
+                        uid,
+                        data.roomId,
+                        fileKey,
+                        fileName ?? 'file',
+                        fileType,
+                        fileSize
+                    ]
+                )
+            }
+
                 await sendToUser(otherUserId, 'chat:message', payloadData)
 
                 if (!isUserOnline(otherUserId)) {
                     await sendPushNotificationToUser({
                         userId: otherUserId,
                         title: 'New message',
-                        body: data.text,
+                        body: messageType === 'text'
+                            ? (text ?? 'New message')
+                            : `Sent ${fileName ?? 'a file'}`,
                         dataOnly: true,
                         data: {
                             type: 'chat_message',

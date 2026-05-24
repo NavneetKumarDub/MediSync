@@ -36,14 +36,7 @@ export async function sendPushNotificationToUser({
             body
         },
         android: {
-            priority: 'high',
-            notification: {
-                channelId: 'medisync_notifications',
-                priority: 'max',
-                defaultSound: true,
-                defaultVibrateTimings: true,
-                visibility: 'public'
-            }
+            priority: 'high'
         }
     }
 
@@ -51,6 +44,14 @@ export async function sendPushNotificationToUser({
         messagePayload.notification = {
             title,
             body
+        }
+
+        messagePayload.android.notification = {
+            channelId: 'medisync_notifications',
+            priority: 'max',
+            defaultSound: true,
+            defaultVibrateTimings: true,
+            visibility: 'public'
         }
     }
 

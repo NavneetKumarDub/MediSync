@@ -6,6 +6,7 @@ import com.example.medisync.data.TokenManager
 import com.example.medisync.data.local.AppointmentDao
 import com.example.medisync.data.local.AppointmentEntity
 import com.example.medisync.networks.ApiService
+import com.example.medisync.utils.AppointmentReminderScheduler
 import kotlinx.coroutines.flow.Flow
 
 class AppointmentRepository(
@@ -55,6 +56,9 @@ class AppointmentRepository(
                 }
 
                 appointmentDao.insertAppointments(entities)
+                entities.forEach { appointment ->
+                    AppointmentReminderScheduler.scheduleAppointmentReminders(context, appointment)
+                }
                 Log.d("Sync", "Cached ${entities.size} appointments")
             } else {
                 Log.e("Sync", "Server error: ${response.code()}")

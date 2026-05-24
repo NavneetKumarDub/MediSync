@@ -1,5 +1,7 @@
 package com.example.medisync.viewmodels
 
+import android.content.Context
+import android.net.Uri
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
@@ -81,7 +83,51 @@ class ChatViewModel(
 
         }
     }
+    fun openFile(
+        fileKey: String,
+        onUrlReady: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val url = repository.getChatFileViewUrl(
+                    token = token,
+                    key = fileKey
+                )
+                onUrlReady(url)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun sendFile(
+        context: Context,
+        uri: Uri,
+        fileName: String,
+        fileType: String,
+        fileSize: Long?,
+        saveAsReport: Boolean
+    ) {
+        viewModelScope.launch {
+            try {
+                repository.uploadAndSendFileMessage(
+                    context = context,
+                    token = token,
+                    roomId = roomId,
+                    myUserId = myUserId,
+                    uri = uri,
+                    fileName = fileName,
+                    fileType = fileType,
+                    fileSize = fileSize,
+                    saveAsReport = saveAsReport
+                )
+            } catch (e: Exception) {
+                android.util.Log.e("CHAT_FILE_UPLOAD", "Upload failed", e)
+                e.printStackTrace()
+            }
+        }
+    }
     fun markAsRead(messageId: Int) {
         ChatWebSocketManager.send("chat:read", mapOf(
             "roomId" to roomId,

@@ -466,3 +466,16 @@ data class SaveFcmTokenRequest(
     val token: String,
     val platform: String = "android"
 )
+data class ChatFileUploadUrlRequest(
+    val roomId: Int,
+    val fileName: String,
+    val fileType: String
+)
+
+data class ChatFileUploadUrlResponse(
+    val uploadUrl: String,
+    val key: String
+)
+data class ChatFileViewUrlResponse(
+    val viewUrl: String
+)

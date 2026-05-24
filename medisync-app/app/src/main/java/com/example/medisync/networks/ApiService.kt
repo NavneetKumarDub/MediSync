@@ -242,6 +242,18 @@ interface ApiService {
         @Body body: SaveFcmTokenRequest
     ): Response<Unit>
 
+    @POST("api/upload/chat-file/presigned-url")
+    suspend fun getChatFileUploadUrl(
+        @Header("Authorization") token: String,
+        @Body request: ChatFileUploadUrlRequest
+    ): Response<ChatFileUploadUrlResponse>
+
+    @GET("api/upload/chat-file/view-url")
+    suspend fun getChatFileViewUrl(
+        @Header("Authorization") token: String,
+        @Query("key") key: String
+    ): Response<ChatFileViewUrlResponse>
+
 }
 
 

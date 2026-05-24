@@ -3,7 +3,9 @@ import {
     getPresignedUploadUrl,
     confirmProfilePhotoUpload,
     getProfilePhotoUrl,
-    deleteProfilePhoto
+    deleteProfilePhoto,
+    getChatFileUploadUrl,
+    getChatFileViewUrl
 } from '../controllers/upload.controller'
 import { authMiddleware } from '../middlewares/auth.middleware'
 
@@ -15,5 +17,6 @@ router.post('/presigned-url', getPresignedUploadUrl)
 router.post('/confirm', confirmProfilePhotoUpload)
 router.get('/profile/:userId', getProfilePhotoUrl)
 router.delete('/profile/:userId', deleteProfilePhoto)
-
+router.post('/chat-file/presigned-url', getChatFileUploadUrl)
+router.get('/chat-file/view-url', getChatFileViewUrl)
 export default router

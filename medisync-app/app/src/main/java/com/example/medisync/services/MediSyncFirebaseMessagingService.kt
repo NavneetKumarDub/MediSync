@@ -8,6 +8,7 @@ import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.medisync.MainActivity
+import com.example.medisync.MediSyncApplication
 import com.example.medisync.R
 import com.example.medisync.data.TokenManager
 import com.example.medisync.networks.RetrofitInstance
@@ -41,14 +42,13 @@ class MediSyncFirebaseMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
 
-        Log.d("FCM_DATA", "data=${message.data}")
 
-        val title = message.notification?.title
-            ?: message.data["title"]
+        val title = message.data["title"]
+            ?: message.notification?.title
             ?: "MediSync"
 
-        val body = message.notification?.body
-            ?: message.data["body"]
+        val body = message.data["body"]
+            ?: message.notification?.body
             ?: "You have a new notification"
 
         showNotification(
@@ -56,6 +56,12 @@ class MediSyncFirebaseMessagingService : FirebaseMessagingService() {
             body = body,
             data = message.data
         )
+        if (message.data["type"] == "appointment_booked") {
+            CoroutineScope(Dispatchers.IO).launch {
+                val app = applicationContext as MediSyncApplication
+                app.appointmentRepository.syncDoctorAppointments(applicationContext)
+            }
+        }
     }
 
     private fun showNotification(
