@@ -1,4 +1,6 @@
 package com.example.medisync.ui.screens.patient
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -9,6 +11,7 @@ import com.example.medisync.ui.screens.appointment.AppointmentListScreen
 import com.example.medisync.ui.screens.chat.ChatListScreen
 
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)@Composable
 fun PatientNavigationScreen(
     navController: NavController,
@@ -16,7 +19,7 @@ fun PatientNavigationScreen(
     phone: String = "",
     userId: Int
 ) {
-    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(3) }
     // No Scaffold here — each tab manages its own
     when (selectedTab) {
         0 -> HomeContent(
@@ -37,7 +40,7 @@ fun PatientNavigationScreen(
             selectedTab = selectedTab,
             onTabSelected = {selectedTab = it}
         )
-        3 -> RecordsContent(
+        3 -> PatientRecordsContent(
             selectedTab = selectedTab,
             onTabSelected = { selectedTab = it }
         )
@@ -50,6 +53,7 @@ fun PatientNavigationScreen(
 
 
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Preview(showBackground = true)
 @Composable
 fun PatientHomePreview() {

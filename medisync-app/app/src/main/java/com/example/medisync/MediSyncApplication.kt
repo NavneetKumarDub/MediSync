@@ -8,6 +8,7 @@ import com.example.medisync.networks.RetrofitInstance
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
+import com.example.medisync.data.repository.PatientRecordsRepository
 
 class MediSyncApplication : Application() {
 
@@ -40,6 +41,9 @@ class MediSyncApplication : Application() {
             apiService = RetrofitInstance.api,
             appointmentDao = database.appointmentDao()
         )
+    }
+    val patientRecordsRepository by lazy {
+        PatientRecordsRepository(RetrofitInstance.api)
     }
 
     val chatInboxRepository by lazy {

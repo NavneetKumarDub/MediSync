@@ -46,6 +46,7 @@ import com.example.medisync.ui.screens.doctor.DoctorRegularSlotsManage
 import com.example.medisync.ui.screens.doctor.DoctorScheduleScreen
 import com.example.medisync.ui.screens.patient.PatientNavigationScreen
 import com.example.medisync.ui.screens.patient.PatientProfileScreen
+import com.example.medisync.ui.screens.patient.PatientRecordsContent
 import com.example.medisync.ui.screens.patient.SearchScreen
 import com.example.medisync.ui.screens.patient.SlotPickerScreen
 import com.example.medisync.ui.screens.video.VideoRoomPermissionGate
@@ -308,6 +309,7 @@ class MainActivity : ComponentActivity() {
                             userId = backStackEntry.arguments?.getString("userId")?.toIntOrNull() ?: 0
                         )
                     }
+
                 }
 
                 LaunchedEffect(pendingNotificationIntent) {
