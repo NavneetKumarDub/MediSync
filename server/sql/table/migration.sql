@@ -284,3 +284,12 @@ CREATE TABLE IF NOT EXISTS medical_reports (
     file_size BIGINT,
     created_at TIMESTAMP DEFAULT NOW()
 );
+
+ALTER TABLE doctor_clinic
+ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;
+
+ALTER TABLE doctor_clinic
+ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
+
+ALTER TABLE doctor_clinic
+ADD COLUMN IF NOT EXISTS address TEXT;

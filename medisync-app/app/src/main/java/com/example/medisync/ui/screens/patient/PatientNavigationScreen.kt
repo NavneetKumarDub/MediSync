@@ -19,7 +19,7 @@ fun PatientNavigationScreen(
     phone: String = "",
     userId: Int
 ) {
-    var selectedTab by rememberSaveable { mutableIntStateOf(3) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     // No Scaffold here — each tab manages its own
     when (selectedTab) {
         0 -> HomeContent(

@@ -11,9 +11,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,6 +34,7 @@ import com.example.medisync.data.TokenManager
 import com.example.medisync.networks.PatientRecordDto
 import com.example.medisync.ui.components.BottomNavBar
 import com.example.medisync.ui.navigation.NavItems
+import com.example.medisync.ui.theme.natureGreen
 import com.example.medisync.viewmodels.PatientRecordsViewModel
 import java.time.Instant
 import java.time.ZoneId
@@ -69,8 +73,14 @@ fun PatientRecordsContent(
     )
 
     val state by viewModel.uiState.collectAsState()
+    LaunchedEffect(selectedTab) {
+        if (selectedTab == 3) {
+            viewModel.loadRecords()
+        }
+    }
     var selectedFilter by remember { mutableStateOf("All") }
     var search by remember { mutableStateOf("") }
+    var imagePreviewUrl by remember { mutableStateOf<String?>(null) }
 
     val filtered = state.records.filter { record ->
         val matchesSearch = record.fileName.contains(search, ignoreCase = true) ||
@@ -106,7 +116,7 @@ fun PatientRecordsContent(
                 text = "Medical Records",
                 fontSize = MaterialTheme.typography.headlineSmall.fontSize,
                 fontWeight = FontWeight.Bold,
-                color = TextDark
+                color = natureGreen
             )
 
             Spacer(Modifier.height(14.dp))
@@ -121,23 +131,39 @@ fun PatientRecordsContent(
                 shape = RoundedCornerShape(18.dp)
             )
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(1.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("All", "Images", "PDFs").forEach { filter ->
-                    FilterChip(
-                        selected = selectedFilter == filter,
-                        onClick = { selectedFilter = filter },
-                        label = { Text(filter) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Accent,
-                            selectedLabelColor = Color.White
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf("All", "Images", "PDFs").forEach { filter ->
+                        FilterChip(
+                            selected = selectedFilter == filter,
+                            onClick = { selectedFilter = filter },
+                            label = { Text(filter) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Accent,
+                                selectedLabelColor = Color.White
+                            )
                         )
+                    }
+                }
+
+                IconButton(onClick = { viewModel.loadRecords() }) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Refresh",
+                        tint = Accent
                     )
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(2.dp))
 
             when {
                 state.isLoading -> Box(
@@ -165,15 +191,49 @@ fun PatientRecordsContent(
                     items(filtered, key = { it.id }) { record ->
                         RecordCard(record = record) {
                             viewModel.openRecord(record.fileKey) { url ->
-                                val intent = Intent(Intent.ACTION_VIEW).apply {
-                                    setDataAndType(url.toUri(), record.fileType ?: "*/*")
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                if (record.fileType?.startsWith("image/") == true) {
+                                    imagePreviewUrl = url
+                                } else {
+                                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                                        setDataAndType(url.toUri(), record.fileType ?: "*/*")
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                    context.startActivity(Intent.createChooser(intent, "Open record"))
                                 }
-                                context.startActivity(Intent.createChooser(intent, "Open record"))
                             }
                         }
                     }
                 }
+            }
+        }
+    }
+    imagePreviewUrl?.let { url ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+            contentAlignment = Alignment.Center
+        ) {
+            coil.compose.AsyncImage(
+                model = url,
+                contentDescription = "Record image",
+                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            IconButton(
+                onClick = { imagePreviewUrl = null },
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding()
+                    .padding(12.dp)
+                    .background(Color.Black.copy(alpha = 0.45f), CircleShape)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White
+                )
             }
         }
     }

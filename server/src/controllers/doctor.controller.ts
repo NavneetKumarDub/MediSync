@@ -274,3 +274,75 @@ export const getDoctorProfile = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Server error' })
     }
 }
+
+export const updateClinicLocation = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user.id
+        const role = (req as any).user.role
+        const { latitude, longitude, address } = req.body
+
+        if (role !== 'doctor') {
+            return res.status(403).json({ message: 'Only doctors can update clinic location' })
+        }
+
+        if (
+            typeof latitude !== 'number' ||
+            typeof longitude !== 'number' ||
+            !address
+        ) {
+            return res.status(400).json({
+                message: 'latitude, longitude and address are required'
+            })
+        }
+
+        const result = await db.query(
+            `UPDATE doctor_clinic
+             SET latitude = $1,
+                 longitude = $2,
+                 address = $3,
+                 updated_at = NOW()
+             WHERE user_id = $4
+             RETURNING user_id, clinic_name, address, latitude, longitude`,
+            [latitude, longitude, address, userId]
+        )
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Doctor clinic not found' })
+        }
+
+        return res.status(200).json({
+            message: 'Clinic location updated successfully',
+            clinic: result.rows[0]
+        })
+    } catch (error) {
+        console.error('updateClinicLocation error:', error)
+        return res.status(500).json({ message: 'Failed to update clinic location' })
+    }
+}
+
+export const getMyClinicLocation = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user.id
+        const role = (req as any).user.role
+
+        if (role !== 'doctor') {
+            return res.status(403).json({ message: 'Only doctors can view this clinic location' })
+        }
+
+        const result = await db.query(
+            `SELECT clinic_name, address, latitude, longitude
+             FROM doctor_clinic
+             WHERE user_id = $1`,
+            [userId]
+        )
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Doctor clinic not found' })
+        }
+
+        return res.status(200).json(result.rows[0])
+    } catch (error) {
+        console.error('getMyClinicLocation error:', error)
+        return res.status(500).json({ message: 'Failed to fetch clinic location' })
+    }
+}

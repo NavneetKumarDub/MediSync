@@ -30,6 +30,25 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Article
+import androidx.compose.material.icons.filled.HealthAndSafety
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import com.example.medisync.data.TokenManager
+import com.example.medisync.networks.RetrofitInstance
+import com.example.medisync.ui.components.AppDrawerItem
+import com.example.medisync.ui.components.AppSideDrawer
 
 @Composable
 fun HomeContent(
@@ -37,68 +56,115 @@ fun HomeContent(
     name: String = "",
     phone: String = "",
     userId: Int = 0,
-    selectedTab: Int,                // ← passed from PatientHomeScreen
-    onTabSelected: (Int) -> Unit     // ← passed from PatientHomeScreen
+    selectedTab: Int,
+    onTabSelected: (Int) -> Unit
 ) {
-    Scaffold(
-        containerColor = Color(0xFFF6F7F9),
-        topBar = {
-            HomeTopBar(
-                location = "Bangalore",
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+
+    val context = LocalContext.current
+    var profilePhotoUrl by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(userId) {
+        val token = TokenManager.getToken(context)
+        if (token != null && userId != 0) {
+            try {
+                profilePhotoUrl = RetrofitInstance.api
+                    .getProfilePhotoUrl("Bearer $token", userId)
+                    .viewUrl
+            } catch (e: Exception) {
+                profilePhotoUrl = null
+            }
+        }
+    }
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            AppSideDrawer(
+                name = name,
+                phone = phone,
+                photoUrl = profilePhotoUrl,
+                items = listOf(
+
+                    AppDrawerItem(
+                        label = "AI Health Chat",
+                        icon = Icons.Default.HealthAndSafety,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            // navController.navigate("patientAiChat")
+                        }
+                    ),
+                    AppDrawerItem(
+                        label = "Medical Records",
+                        icon = Icons.Default.Article,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onTabSelected(3)
+                        }
+                    )
+                ),
                 onProfileClick = {
+                    scope.launch { drawerState.close() }
                     val encodedName = Uri.encode(name)
-                    Log.d("NAV", "Navigating with: name=$encodedName phone=$phone userId=$userId")
                     navController.navigate("patientProfile/${encodedName}/$phone/$userId")
                 },
-                onLocationClick = { },
-                onNotificationClick = { },
-                onSearchClick = { navController.navigate("search") }
-            )
-        },
-        bottomBar = {
-            BottomNavBar(
-                navItems = NavItems.patient,
-                selectedIndex  = selectedTab,
-                onItemSelected = onTabSelected
+                onLogoutClick = {
+                    scope.launch { drawerState.close() }
+                    scope.launch {
+                        TokenManager.clear(context)
+                        navController.navigate("login") {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                }
             )
         }
-    ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(Color(0xFFF6F7F9))
-        ) {
-            item {
-                GreetingHeader(name)
-            }
-
-//            item {
-//                NextAppointmentCard(
-//                    appt = Appointment(
-//                        id = 1,
-//                        doctorName = "Dr. Anjali Sharma",
-//                        specialty = "Cardiology · General Checkup",
-//                        time = "3:00 pm",
-//                        status = "Upcoming",
-//                        date = "12 Apr 2026",
-//                        mode = "online",
-//                    )
-//                )
-//            }
-
-            item {
-                ConsultationCard(
-                    onPhysicalClick = {},
-                    onVideoClick    = {}
+    ) {
+        Scaffold(
+            containerColor = Color(0xFFF6F7F9),
+            topBar = {
+                HomeTopBar(
+                    location = "Bangalore",
+                    onProfileClick = {
+                        scope.launch { drawerState.open() }
+                    },
+                    onLocationClick = { },
+                    onNotificationClick = { },
+                    onSearchClick = { navController.navigate("search") }
+                )
+            },
+            bottomBar = {
+                BottomNavBar(
+                    navItems = NavItems.patient,
+                    selectedIndex = selectedTab,
+                    onItemSelected = onTabSelected
                 )
             }
+        ) { paddingValues ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .background(Color(0xFFF6F7F9))
+            ) {
+                item {
+                    GreetingHeader(name)
+                }
 
-            item {
-                FindDoctorSection(
-                    onSpecialityClick = {},
-                    onMoreClick       = {}
-                )
+                item {
+                    ConsultationCard(
+                        onPhysicalClick = {},
+                        onVideoClick = {}
+                    )
+                }
+
+                item {
+                    FindDoctorSection(
+                        onSpecialityClick = {},
+                        onMoreClick = {}
+                    )
+                }
             }
         }
     }

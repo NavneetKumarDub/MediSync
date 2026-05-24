@@ -9,9 +9,13 @@ class PatientRecordsRepository(
     suspend fun getPatientRecords(token: String): List<PatientRecordDto> {
         val response = api.getPatientRecords("Bearer $token")
 
+        android.util.Log.d("PATIENT_RECORDS_API", "code=${response.code()} body=${response.body()}")
+
         if (!response.isSuccessful || response.body() == null) {
             throw IllegalStateException("Failed to load patient records")
         }
+
+        android.util.Log.d("PATIENT_RECORDS_API", "records size=${response.body()!!.records.size}")
 
         return response.body()!!.records
     }

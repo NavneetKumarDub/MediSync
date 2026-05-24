@@ -258,6 +258,17 @@ interface ApiService {
         @Header("Authorization") token: String
     ): Response<PatientRecordsResponse>
 
+    @GET("api/doctor/clinic-location")
+    suspend fun getMyClinicLocation(
+        @Header("Authorization") token: String
+    ): Response<ClinicLocationResponse>
+
+    @PUT("api/doctor/clinic-location")
+    suspend fun updateClinicLocation(
+        @Header("Authorization") token: String,
+        @Body request: ClinicLocationRequest
+    ): Response<UpdateClinicLocationResponse>
+
 }
 
 

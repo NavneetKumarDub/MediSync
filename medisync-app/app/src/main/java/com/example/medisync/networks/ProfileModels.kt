@@ -493,3 +493,21 @@ data class PatientRecordDto(
     val uploadedByName: String,
     val createdAt: String
 )
+
+data class ClinicLocationRequest(
+    val latitude: Double,
+    val longitude: Double,
+    val address: String
+)
+
+data class ClinicLocationResponse(
+    val clinicName: String?,
+    val address: String?,
+    val latitude: Double?,
+    val longitude: Double?
+)
+
+data class UpdateClinicLocationResponse(
+    val message: String,
+    val clinic: ClinicLocationResponse
+)

@@ -5,7 +5,9 @@ import {
     updateDoctorClinic,
     updateDoctorAvailability,
     searchDoctors,
-    getDoctorProfile
+    getDoctorProfile,
+    getMyClinicLocation,
+    updateClinicLocation
 } from '../controllers/doctor.controller'
 import { authMiddleware } from '../middlewares/auth.middleware'
 
@@ -21,5 +23,8 @@ router.put('/availability/:userId', updateDoctorAvailability)
 
 router.get('/search',                searchDoctors)
 router.get('/profile/:doctorId',     getDoctorProfile)
+
+router.get('/clinic-location', getMyClinicLocation)
+router.put('/clinic-location', updateClinicLocation)
 
 export default router

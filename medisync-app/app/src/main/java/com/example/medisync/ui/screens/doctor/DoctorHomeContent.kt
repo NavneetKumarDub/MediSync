@@ -16,14 +16,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.medisync.data.TokenManager
+import com.example.medisync.networks.RetrofitInstance
+import com.example.medisync.ui.components.AppDrawerItem
+import com.example.medisync.ui.components.AppSideDrawer
 import com.example.medisync.ui.components.BottomNavBar
 import com.example.medisync.ui.navigation.NavItems
 import com.example.medisync.ui.screens.HomeTopBar
 import com.example.medisync.ui.theme.natureGreen
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -32,47 +38,124 @@ import java.util.Locale
 @Composable
 fun DoctorHomeContent(
     navController: NavController,
-    name         : String,
-    phone        : String,
-    userId       : Int,
-    selectedTab  : Int,
+    name: String,
+    phone: String,
+    userId: Int,
+    selectedTab: Int,
     onTabSelected: (Int) -> Unit
 ) {
-    Scaffold(
-        containerColor = Color(0xFFF6F7F9),
-        topBar = {
-            HomeTopBar(
-                location            = "Bangalore",
-                onProfileClick      = {
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    var profilePhotoUrl by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(userId) {
+        val token = TokenManager.getToken(context)
+        if (token != null && userId != 0) {
+            try {
+                profilePhotoUrl = RetrofitInstance.api
+                    .getProfilePhotoUrl("Bearer $token", userId)
+                    .viewUrl
+            } catch (e: Exception) {
+                profilePhotoUrl = null
+            }
+        }
+    }
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            AppSideDrawer(
+                name = "Dr. $name",
+                phone = phone,
+                photoUrl = profilePhotoUrl,
+                items = listOf(
+                    AppDrawerItem(
+                        label = "Clinic Location",
+                        icon = Icons.Default.LocationOn,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            // navController.navigate("doctorClinicLocation")
+                        }
+                    ),
+                    AppDrawerItem(
+                        label = "Schedule / Slots",
+                        icon = Icons.Default.CalendarToday,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onTabSelected(3)
+                        }
+                    ),
+                    AppDrawerItem(
+                        label = "Appointments",
+                        icon = Icons.Default.EventNote,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onTabSelected(1)
+                        }
+                    ),
+                    AppDrawerItem(
+                        label = "Chat",
+                        icon = Icons.Default.Chat,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onTabSelected(2)
+                        }
+                    )
+                ),
+                onProfileClick = {
+                    scope.launch { drawerState.close() }
                     val encodedName = Uri.encode(name)
                     navController.navigate("doctorProfile/$encodedName/$phone/$userId")
                 },
-                onLocationClick     = { },
-                onNotificationClick = { },
-                onSearchClick       = { }
-            )
-        },
-        bottomBar = {
-            BottomNavBar(
-                navItems       = NavItems.doctor,
-                selectedIndex  = selectedTab,
-                onItemSelected = onTabSelected
+                onLogoutClick = {
+                    scope.launch {
+                        drawerState.close()
+                        TokenManager.clear(context)
+                        navController.navigate("login") {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                }
             )
         }
-    ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(Color(0xFFF6F7F9)),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            item { DoctorGreeting(name = name) }
-            item { TodayStatsRow() }
-            item { NextPatientCard() }
-            item { QuickActionsGrid() }
-            item { RecentAppointmentsCard() }
-            item { Spacer(Modifier.height(12.dp)) }
+    ) {
+        Scaffold(
+            containerColor = Color(0xFFF6F7F9),
+            topBar = {
+                HomeTopBar(
+                    location = "Bangalore",
+                    onProfileClick = {
+                        scope.launch { drawerState.open() }
+                    },
+                    onLocationClick = { },
+                    onNotificationClick = { },
+                    onSearchClick = { }
+                )
+            },
+            bottomBar = {
+                BottomNavBar(
+                    navItems = NavItems.doctor,
+                    selectedIndex = selectedTab,
+                    onItemSelected = onTabSelected
+                )
+            }
+        ) { paddingValues ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .background(Color(0xFFF6F7F9)),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                item { DoctorGreeting(name = name) }
+                item { TodayStatsRow() }
+                item { NextPatientCard() }
+                item { QuickActionsGrid() }
+                item { RecentAppointmentsCard() }
+                item { Spacer(Modifier.height(12.dp)) }
+            }
         }
     }
 }
