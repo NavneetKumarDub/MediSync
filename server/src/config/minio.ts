@@ -1,18 +1,24 @@
 import * as Minio from 'minio'
 
+const minioPort = Number(process.env.MINIO_PORT || 9000)
+const minioUseSSL = process.env.MINIO_USE_SSL === 'true'
+const minioAccessKey = process.env.MINIO_ACCESS_KEY || 'minioadmin'
+const minioSecretKey = process.env.MINIO_SECRET_KEY || 'minioadmin123'
+
 const minioClient = new Minio.Client({
-    endPoint:  process.env.MINIO_ENDPOINT || 'localhost',
-    port:      parseInt(process.env.MINIO_PORT || '9000'),
-    useSSL:    process.env.MINIO_USE_SSL === 'true',
-    accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
-    secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin123'
+    endPoint: process.env.MINIO_ENDPOINT || 'localhost',
+    port: minioPort,
+    useSSL: minioUseSSL,
+    accessKey: minioAccessKey,
+    secretKey: minioSecretKey
 })
+
 export const publicMinioClient = new Minio.Client({
-    endPoint:  '192.168.1.8',
-    port:      9000,
-    useSSL:    false,
-    accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
-    secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin123'
+    endPoint: process.env.MINIO_PUBLIC_HOST || process.env.MINIO_ENDPOINT || 'localhost',
+    port: Number(process.env.MINIO_PUBLIC_PORT || process.env.MINIO_PORT || 9000),
+    useSSL: (process.env.MINIO_PUBLIC_USE_SSL || process.env.MINIO_USE_SSL) === 'true',
+    accessKey: minioAccessKey,
+    secretKey: minioSecretKey
 })
 
 export const BUCKETS = {

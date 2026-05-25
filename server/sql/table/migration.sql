@@ -24,7 +24,7 @@ CREATE TRIGGER trg_update_modtime BEFORE UPDATE ON users FOR EACH ROW EXECUTE PR
 CREATE TABLE IF NOT EXISTS patient_personal
 (
     id                SERIAL PRIMARY KEY,
-    user_id           INTEGER REFERENCES users ON DELETE CASCADE,
+    user_id           INTEGER UNIQUE REFERENCES users ON DELETE CASCADE,
     email             VARCHAR(100),
     gender            VARCHAR(10),
     dob               VARCHAR(20),
@@ -44,7 +44,7 @@ CREATE TRIGGER trg_update_modtime BEFORE UPDATE ON patient_personal FOR EACH ROW
 CREATE TABLE IF NOT EXISTS patient_medical
 (
     id                  SERIAL PRIMARY KEY,
-    user_id             INTEGER REFERENCES users ON DELETE CASCADE,
+    user_id             INTEGER UNIQUE REFERENCES users ON DELETE CASCADE,
     allergies           TEXT,
     current_medications TEXT,
     past_medications    TEXT,
@@ -77,7 +77,7 @@ CREATE TRIGGER trg_update_modtime BEFORE UPDATE ON patient_lifestyle FOR EACH RO
 CREATE TABLE IF NOT EXISTS doctor_personal
 (
     id             SERIAL PRIMARY KEY,
-    user_id        INTEGER REFERENCES users ON DELETE CASCADE,
+    user_id        INTEGER UNIQUE REFERENCES users ON DELETE CASCADE,
     email          VARCHAR(100),
     gender         VARCHAR(10),
     dob            VARCHAR(20),
@@ -94,7 +94,7 @@ CREATE TRIGGER trg_update_modtime BEFORE UPDATE ON doctor_personal FOR EACH ROW 
 CREATE TABLE IF NOT EXISTS doctor_professional
 (
     id                SERIAL PRIMARY KEY,
-    user_id           INTEGER REFERENCES users ON DELETE CASCADE,
+    user_id           INTEGER UNIQUE REFERENCES users ON DELETE CASCADE,
     license_number    VARCHAR(50) UNIQUE NOT NULL,
     speciality        VARCHAR(100),
     sub_speciality    VARCHAR(100),
@@ -199,7 +199,12 @@ CREATE TABLE IF NOT EXISTS appointment_slots
     UNIQUE (doctor_id, date, start_time)
 );
 
-ALTER TABLE appointments ADD CONSTRAINT fk_slot FOREIGN KEY (slot_id) REFERENCES appointment_slots(id) ON DELETE CASCADE;
+ALTER TABLE appointments DROP CONSTRAINT IF EXISTS fk_slot;
+ALTER TABLE appointments
+    ADD CONSTRAINT fk_slot
+    FOREIGN KEY (slot_id)
+    REFERENCES appointment_slots(id)
+    ON DELETE CASCADE;
 
 DROP TRIGGER IF EXISTS trg_update_modtime ON appointments;
 CREATE TRIGGER trg_update_modtime BEFORE UPDATE ON appointments FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
@@ -277,6 +282,9 @@ CREATE TABLE if not exists user_fcm_tokens (
 CREATE INDEX IF NOT EXISTS idx_user_fcm_tokens_user_id
 ON user_fcm_tokens(user_id);
 
+DROP TRIGGER IF EXISTS trg_update_modtime ON user_fcm_tokens;
+CREATE TRIGGER trg_update_modtime BEFORE UPDATE ON user_fcm_tokens FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
+
 CREATE TABLE IF NOT EXISTS medical_reports (
     id SERIAL PRIMARY KEY,
     patient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -289,6 +297,12 @@ CREATE TABLE IF NOT EXISTS medical_reports (
     file_size BIGINT,
     created_at TIMESTAMP DEFAULT NOW()
 );
+CREATE INDEX IF NOT EXISTS idx_medical_reports_patient_id
+ON medical_reports(patient_id);
+
+CREATE INDEX IF NOT EXISTS idx_medical_reports_chat_room_id
+ON medical_reports(chat_room_id);
+
 CREATE TABLE IF NOT EXISTS doctor_ratings (
     id SERIAL PRIMARY KEY,
 
@@ -310,7 +324,3 @@ CREATE TRIGGER trg_update_modtime
 BEFORE UPDATE ON doctor_ratings
 FOR EACH ROW
 EXECUTE PROCEDURE update_modified_column();
-
-DROP TRIGGER IF EXISTS trg_update_modtime ON doctor_ratings;
-
-
