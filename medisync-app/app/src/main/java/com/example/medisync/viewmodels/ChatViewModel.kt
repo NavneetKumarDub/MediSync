@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.medisync.data.local.ChatMessageEntity
 import com.example.medisync.data.repository.ChatInboxRepository
 import com.example.medisync.networks.ChatWebSocketManager
+import com.example.medisync.utils.FileCacheManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -94,6 +95,34 @@ class ChatViewModel(
                     key = fileKey
                 )
                 onUrlReady(url)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun openFileCached(
+        context: Context,
+        fileKey: String,
+        fileName: String,
+        fileType: String?,
+        onFileReady: (Uri) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val appContext = context.applicationContext
+                val file = FileCacheManager.getOrDownloadFile(
+                    context = appContext,
+                    fileKey = fileKey,
+                    fileName = fileName,
+                    fileType = fileType
+                ) {
+                    repository.getChatFileViewUrl(
+                        token = token,
+                        key = fileKey
+                    )
+                }
+                onFileReady(FileCacheManager.contentUri(appContext, file))
             } catch (e: Exception) {
                 e.printStackTrace()
             }

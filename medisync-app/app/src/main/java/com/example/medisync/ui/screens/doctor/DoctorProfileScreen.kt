@@ -34,7 +34,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
+import com.example.medisync.MediSyncApplication
 import com.example.medisync.data.TokenManager
+import com.example.medisync.data.local.ProfileCacheEntity
 import com.example.medisync.networks.ConfirmUploadRequest
 import com.example.medisync.networks.DoctorClinicRequest
 import com.example.medisync.networks.DoctorPersonalRequest
@@ -46,7 +48,10 @@ import com.example.medisync.ui.components.DropdownField
 import com.example.medisync.ui.components.ProfileRow
 import com.example.medisync.ui.components.RadioButton
 import com.example.medisync.ui.theme.natureGreen
+import com.example.medisync.utils.DoctorProfileCacheData
+import com.example.medisync.utils.FileCacheManager
 import com.example.medisync.viewmodels.UserViewModel
+import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -100,6 +105,8 @@ fun DoctorProfileScreen(
 ) {
 
     val context = LocalContext.current
+    val app = context.applicationContext as MediSyncApplication
+    val gson = remember { Gson() }
     val snackbarHostState = remember { SnackbarHostState() }
     var selectedTab  by remember { mutableIntStateOf(0) }
     val tabs          = listOf("Personal", "Professional", "Clinic")
@@ -138,8 +145,49 @@ fun DoctorProfileScreen(
 
     var clinicName by remember { mutableStateOf("") }
 
+    fun applyCachedProfile(cache: DoctorProfileCacheData) {
+        email = cache.email
+        gender = cache.gender
+        dob = cache.dob
+        maritalStatus = cache.maritalStatus
+        about = cache.about
+        licenseNumber = cache.licenseNumber
+        speciality = cache.speciality
+        subSpeciality = cache.subSpeciality
+        qualification = cache.qualification
+        experienceYears = cache.experienceYears
+        languages = cache.languages
+        consultationFee = cache.consultationFee
+        consultationType = cache.consultationType
+        clinicName = cache.clinicName
+    }
+
+    fun currentCacheData() = DoctorProfileCacheData(
+        email = email,
+        gender = gender,
+        dob = dob,
+        maritalStatus = maritalStatus,
+        about = about,
+        licenseNumber = licenseNumber,
+        speciality = speciality,
+        subSpeciality = subSpeciality,
+        qualification = qualification,
+        experienceYears = experienceYears,
+        languages = languages,
+        consultationFee = consultationFee,
+        consultationType = consultationType,
+        clinicName = clinicName
+    )
 
     LaunchedEffect(key1 = userId) {
+        val cachedProfile = app.database.profileCacheDao().getProfile(userId, "doctor")
+        cachedProfile?.let { cache ->
+            runCatching {
+                gson.fromJson(cache.dataJson, DoctorProfileCacheData::class.java)
+            }.getOrNull()?.let(::applyCachedProfile)
+            profilePhotoUrl = cache.photoUri
+        }
+
         try {
             val token = "Bearer ${TokenManager.getToken(context) ?: ""}"
 
@@ -171,13 +219,34 @@ fun DoctorProfileScreen(
 
             try {
                 val photoResponse = RetrofitInstance.api.getProfilePhotoUrl(token,userId)
-                profilePhotoUrl = photoResponse.viewUrl
+                val photoFile = FileCacheManager.getOrDownloadFile(
+                    context = context.applicationContext,
+                    fileKey = "doctor_profile_photo_$userId",
+                    fileName = "doctor_profile_$userId.jpg",
+                    fileType = "image/jpeg",
+                    forceRefresh = profilePhotoUrl == null
+                ) {
+                    photoResponse.viewUrl
+                }
+                profilePhotoUrl = FileCacheManager.contentUri(context.applicationContext, photoFile).toString()
             } catch (e: Exception) {
-                profilePhotoUrl = null
+                if (profilePhotoUrl == null) profilePhotoUrl = cachedProfile?.photoUri
             }
 
+            app.database.profileCacheDao().upsertProfile(
+                ProfileCacheEntity(
+                    userId = userId,
+                    role = "doctor",
+                    dataJson = gson.toJson(currentCacheData()),
+                    photoUri = profilePhotoUrl,
+                    updatedAt = System.currentTimeMillis()
+                )
+            )
+
         } catch (e: Exception) {
-            errorMessage = "Network error: ${e.message}"
+            if (cachedProfile == null) {
+                errorMessage = "Network error: ${e.message}"
+            }
         }
     }
 
@@ -369,6 +438,8 @@ fun DoctorProfileScreen(
                                     if (shouldDeletePhoto && profilePhotoUri == null) {
                                         RetrofitInstance.api.deleteProfilePhoto(token, userId)
                                         userViewModel.updateProfilePhotoUrl(null)
+                                        profilePhotoUrl = null
+                                        app.database.profileCacheDao().clearPhoto(userId, "doctor", System.currentTimeMillis())
                                         shouldDeletePhoto = false
                                     }
 
@@ -403,6 +474,18 @@ fun DoctorProfileScreen(
                                                 )
                                             )
                                             userViewModel.refreshProfilePhoto()
+                                            val photoResponse = RetrofitInstance.api.getProfilePhotoUrl(token, userId)
+                                            val photoFile = FileCacheManager.getOrDownloadFile(
+                                                context = context.applicationContext,
+                                                fileKey = "doctor_profile_photo_$userId",
+                                                fileName = "doctor_profile_$userId.jpg",
+                                                fileType = mimeType,
+                                                forceRefresh = true
+                                            ) {
+                                                photoResponse.viewUrl
+                                            }
+                                            profilePhotoUrl = FileCacheManager.contentUri(context.applicationContext, photoFile).toString()
+                                            profilePhotoUri = null
                                         } else {
                                             errorMessage = "Photo upload failed"
                                             isSaving = false
@@ -441,6 +524,15 @@ fun DoctorProfileScreen(
                                         request = DoctorClinicRequest(
                                             clinic_name = clinicName,
 
+                                        )
+                                    )
+                                    app.database.profileCacheDao().upsertProfile(
+                                        ProfileCacheEntity(
+                                            userId = userId,
+                                            role = "doctor",
+                                            dataJson = gson.toJson(currentCacheData()),
+                                            photoUri = profilePhotoUrl,
+                                            updatedAt = System.currentTimeMillis()
                                         )
                                     )
                                     navController.popBackStack()

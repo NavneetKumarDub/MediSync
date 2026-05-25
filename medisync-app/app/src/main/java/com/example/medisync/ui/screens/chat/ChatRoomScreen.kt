@@ -40,7 +40,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -202,7 +201,7 @@ fun ChatScreen(
         topBar = {
             ChatTopBar(
                 name = otherUserName,
-                subtitle = uiState.headerStatus,
+                subtitle = if (uiState.isConnected) "Online" else "",
                 photoUrl = photoUrl,
                 onBack = { navController.popBackStack() },
                 onJoin = {
@@ -214,35 +213,21 @@ fun ChatScreen(
             )
         },
         bottomBar = {
-            Column {
-                if (uiState.isReconnecting) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .imePadding()
-                            .background(Color(0xFFFFA726))
-                            .padding(6.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("Reconnecting…", fontSize = 12.sp, color = Color.White)
+            ChatInputBar(
+                value = inputText,
+                onValueChange = { inputText = it },
+                onSend = {
+                    val trimmed = inputText.trim()
+                    if (trimmed.isNotBlank()) {
+                        chatViewModel.sendMessage(trimmed)
+                        inputText = ""
                     }
-                }
-                ChatInputBar(
-                    value = inputText,
-                    onValueChange = { inputText = it },
-                    onSend = {
-                        val trimmed = inputText.trim()
-                        if (trimmed.isNotBlank()) {
-                            chatViewModel.sendMessage(trimmed)
-                            inputText = ""
-                        }
-                    },
-                    onAttachClick = {
-                        filePickerLauncher.launch(arrayOf("image/*", "application/pdf"))
-                    },
-                    focusRequester = focusRequester
-                )
-            }
+                },
+                onAttachClick = {
+                    filePickerLauncher.launch(arrayOf("image/*", "application/pdf"))
+                },
+                focusRequester = focusRequester
+            )
         }
     ) { padding ->
         LazyColumn(
@@ -268,8 +253,13 @@ fun ChatScreen(
                         fileKey != null &&
                         imageUrls[fileKey] == null
                     ) {
-                        chatViewModel.openFile(fileKey) { url ->
-                            imageUrls = imageUrls + (fileKey to url)
+                        chatViewModel.openFileCached(
+                            context = context,
+                            fileKey = fileKey,
+                            fileName = msg.fileName ?: "image",
+                            fileType = msg.fileType
+                        ) { uri ->
+                            imageUrls = imageUrls + (fileKey to uri.toString())
                         }
                     }
                 }
@@ -284,12 +274,18 @@ fun ChatScreen(
                         }
                     },
                     onFileClick = { fileKey, fileType ->
-                        chatViewModel.openFile(fileKey) { url ->
+                        chatViewModel.openFileCached(
+                            context = context,
+                            fileKey = fileKey,
+                            fileName = msg.fileName ?: "File",
+                            fileType = fileType
+                        ) { uri ->
                             if (fileType?.startsWith("image/") == true) {
-                                imagePreviewUrl = url
+                                imagePreviewUrl = uri.toString()
                             } else {
                                 val openIntent = Intent(Intent.ACTION_VIEW).apply {
-                                    setDataAndType(url.toUri(), fileType ?: "application/pdf")
+                                    setDataAndType(uri, fileType ?: "application/pdf")
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                 }
                                 context.startActivity(Intent.createChooser(openIntent, "Open file"))
@@ -498,16 +494,6 @@ private fun MessageBubble(
                                     .width(220.dp)
                                     .height(260.dp)
                                     .clip(RoundedCornerShape(10.dp))
-                            )
-
-                            Spacer(Modifier.height(4.dp))
-
-                            Text(
-                                text = message.fileName ?: "Image",
-                                fontSize = 11.sp,
-                                color = if (isMine) MyBubbleText else OtherBubbleText,
-                                maxLines = 1,
-                                modifier = Modifier.width(220.dp)
                             )
                         }
                     } else {

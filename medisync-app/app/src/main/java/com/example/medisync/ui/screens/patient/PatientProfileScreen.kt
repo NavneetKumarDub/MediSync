@@ -33,6 +33,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
+import com.example.medisync.MediSyncApplication
+import com.example.medisync.data.local.ProfileCacheEntity
 import com.example.medisync.data.TokenManager
 import com.example.medisync.networks.ConfirmUploadRequest
 import com.example.medisync.networks.LifestyleProfileRequest
@@ -46,7 +48,10 @@ import com.example.medisync.ui.components.ProfileRow
 import com.example.medisync.ui.components.RadioButton
 import com.example.medisync.ui.components.StepperField
 import com.example.medisync.ui.theme.natureGreen
+import com.example.medisync.utils.FileCacheManager
+import com.example.medisync.utils.PatientProfileCacheData
 import com.example.medisync.viewmodels.UserViewModel
+import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -106,6 +111,8 @@ fun PatientProfileScreen(
     userViewModel: UserViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val app = context.applicationContext as MediSyncApplication
+    val gson = remember { Gson() }
     var shouldDeletePhoto by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     var selectedTab  by remember { mutableIntStateOf(0) }
@@ -151,7 +158,62 @@ fun PatientProfileScreen(
     var foodPreference by remember { mutableStateOf("") }
     var occupation     by remember { mutableStateOf("") }
 
+    fun applyCachedProfile(cache: PatientProfileCacheData) {
+        myName = cache.name.ifBlank { name }
+        email = cache.email
+        gender = cache.gender
+        dob = cache.dob
+        bloodGroup = cache.bloodGroup
+        maritalStatus = cache.maritalStatus
+        height = cache.height
+        weight = cache.weight
+        emergencyContact = cache.emergencyContact
+        allergies = cache.allergies
+        currentMedications = cache.currentMedications
+        pastMedications = cache.pastMedications
+        chronicDiseases = cache.chronicDiseases
+        injuries = cache.injuries
+        surgeries = cache.surgeries
+        smoking = cache.smoking
+        alcohol = cache.alcohol
+        activityLevel = cache.activityLevel
+        foodPreference = cache.foodPreference
+        occupation = cache.occupation
+    }
+
+    fun currentCacheData() = PatientProfileCacheData(
+        name = myName,
+        email = email,
+        gender = gender,
+        dob = dob,
+        bloodGroup = bloodGroup,
+        maritalStatus = maritalStatus,
+        height = height,
+        weight = weight,
+        emergencyContact = emergencyContact,
+        allergies = allergies,
+        currentMedications = currentMedications,
+        pastMedications = pastMedications,
+        chronicDiseases = chronicDiseases,
+        injuries = injuries,
+        surgeries = surgeries,
+        smoking = smoking,
+        alcohol = alcohol,
+        activityLevel = activityLevel,
+        foodPreference = foodPreference,
+        occupation = occupation
+    )
+
     LaunchedEffect(userId) {
+        val cachedProfile = app.database.profileCacheDao().getProfile(userId, "patient")
+        cachedProfile?.let { cache ->
+            runCatching {
+                gson.fromJson(cache.dataJson, PatientProfileCacheData::class.java)
+            }.getOrNull()?.let(::applyCachedProfile)
+            profilePhotoUrl = cache.photoUri
+            isLoading = false
+        }
+
         try {
             val token = "Bearer ${TokenManager.getToken(context) ?: ""}"
             val personalResponse  = RetrofitInstance.api.getPersonalProfile(token,userId)
@@ -189,13 +251,34 @@ fun PatientProfileScreen(
 
             try {
                 val photoResponse = RetrofitInstance.api.getProfilePhotoUrl(token,userId)
-                profilePhotoUrl = photoResponse.viewUrl
+                val photoFile = FileCacheManager.getOrDownloadFile(
+                    context = context.applicationContext,
+                    fileKey = "patient_profile_photo_$userId",
+                    fileName = "patient_profile_$userId.jpg",
+                    fileType = "image/jpeg",
+                    forceRefresh = profilePhotoUrl == null
+                ) {
+                    photoResponse.viewUrl
+                }
+                profilePhotoUrl = FileCacheManager.contentUri(context.applicationContext, photoFile).toString()
             } catch (e: Exception) {
-                profilePhotoUrl = null
+                if (profilePhotoUrl == null) profilePhotoUrl = cachedProfile?.photoUri
             }
 
+            app.database.profileCacheDao().upsertProfile(
+                ProfileCacheEntity(
+                    userId = userId,
+                    role = "patient",
+                    dataJson = gson.toJson(currentCacheData()),
+                    photoUri = profilePhotoUrl,
+                    updatedAt = System.currentTimeMillis()
+                )
+            )
+
         } catch (e: Exception) {
-            errorMessage = "Failed to load profile"
+            if (cachedProfile == null) {
+                errorMessage = "Failed to load profile"
+            }
         } finally {
             isLoading = false
         }
@@ -301,6 +384,8 @@ fun PatientProfileScreen(
                                         if (shouldDeletePhoto && profilePhotoUri == null) {
                                             RetrofitInstance.api.deleteProfilePhoto(token, userId)
                                             userViewModel.updateProfilePhotoUrl(null)
+                                            profilePhotoUrl = null
+                                            app.database.profileCacheDao().clearPhoto(userId, "patient", System.currentTimeMillis())
                                             shouldDeletePhoto = false
                                         }
 
@@ -335,6 +420,18 @@ fun PatientProfileScreen(
                                                     )
                                                 )
                                                 userViewModel.refreshProfilePhoto()
+                                                val photoResponse = RetrofitInstance.api.getProfilePhotoUrl(token, userId)
+                                                val photoFile = FileCacheManager.getOrDownloadFile(
+                                                    context = context.applicationContext,
+                                                    fileKey = "patient_profile_photo_$userId",
+                                                    fileName = "patient_profile_$userId.jpg",
+                                                    fileType = mimeType,
+                                                    forceRefresh = true
+                                                ) {
+                                                    photoResponse.viewUrl
+                                                }
+                                                profilePhotoUrl = FileCacheManager.contentUri(context.applicationContext, photoFile).toString()
+                                                profilePhotoUri = null
                                             } else {
                                                 errorMessage = "Photo upload failed"
                                                 isSaving = false
@@ -378,6 +475,15 @@ fun PatientProfileScreen(
                                                 activity_level  = activityLevel,
                                                 food_preference = foodPreference,
                                                 occupation      = occupation,
+                                            )
+                                        )
+                                        app.database.profileCacheDao().upsertProfile(
+                                            ProfileCacheEntity(
+                                                userId = userId,
+                                                role = "patient",
+                                                dataJson = gson.toJson(currentCacheData()),
+                                                photoUri = profilePhotoUrl,
+                                                updatedAt = System.currentTimeMillis()
                                             )
                                         )
                                         navController.popBackStack()

@@ -62,10 +62,16 @@ val sampleDoctors = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchScreen(navController: NavController) {
+fun SearchScreen(
+    navController: NavController,
+    initialQuery: String = "",
+    initialConsultationType: String? = null
+) {
     val context = LocalContext.current
-    var query          by remember { mutableStateOf("") }
-    var filters        by remember { mutableStateOf(SearchFilters()) }
+    var query          by remember(initialQuery) { mutableStateOf(initialQuery) }
+    var filters        by remember(initialConsultationType) {
+        mutableStateOf(SearchFilters(consultationType = initialConsultationType?.takeIf { it.isNotBlank() }))
+    }
     var results        by remember { mutableStateOf(sampleDoctors) }
     var showFilters    by remember { mutableStateOf(false) }
     var isLoading      by remember { mutableStateOf(false) }

@@ -1,36 +1,39 @@
 package com.example.medisync.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.medisync.ui.theme.natureGreen
 
 // ─────────────────────────────────────────────
 //  Colors
 // ─────────────────────────────────────────────
-val TopBarText    = Color(0xFFFFFFFF)
-val SearchBarBg   = Color(0xFFFFFFFF)
+val TopBarText    = Color(0xFF0288D1)
+val SearchBarBg   = Color(0xEEFFFFFF)
 val SearchHint    = Color(0xFF9CA3AF)
+private val HeaderGlassTop = Color(0xFF03A9F4)
+private val HeaderGlassMid = Color(0xA84DBFF8)
+private val HeaderGlassBottom = Color(0x40EAF8FF)
+private val HeaderGlassBorder = Color(0x552A9DF4)
 
 // ─────────────────────────────────────────────
 //  HomeTopBar
@@ -47,6 +50,12 @@ fun HomeTopBar(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .shadow(
+                elevation = 12.dp,
+                shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp),
+                ambientColor = Color(0x1A03A9F4),
+                spotColor = Color(0x2603A9F4)
+            )
             .graphicsLayer {
                 shape = RoundedCornerShape(
                     bottomStart = 24.dp,
@@ -54,27 +63,50 @@ fun HomeTopBar(
                 )
                 clip = true
             }
-            .background(natureGreen)
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        HeaderGlassTop,
+                        HeaderGlassMid,
+                        Color(0x78CDEFFF),
+                        HeaderGlassBottom
+                    )
+                )
+            )
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.92f),
+                        HeaderGlassBorder
+                    )
+                ),
+                shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
+            )
             .statusBarsPadding()
             .padding(
                 start  = 16.dp,
                 end    = 16.dp,
-                top    = 16.dp,
-                bottom = 24.dp
+                top    = 22.dp,
+                bottom = 18.dp
             )
     ) {
-        // ── Row 1: Profile | Location | Notification ──
+        // ── Profile + Search ──────────────────────────
         Row(
             modifier              = Modifier.fillMaxWidth(),
             verticalAlignment     = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Profile icon circle
             Box(
                 modifier = Modifier
                     .size(42.dp)
                     .clip(CircleShape)
-                    .background(Color(0x33FFFFFF))
+                    .background(SearchBarBg)
+                    .border(
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.86f),
+                        shape = CircleShape
+                    )
                     .clickable { onProfileClick() },
                 contentAlignment = Alignment.Center
             ) {
@@ -86,94 +118,34 @@ fun HomeTopBar(
                 )
             }
 
-            // Location — centred
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(horizontal = 12.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable { onLocationClick() },
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(SearchBarBg)
+                    .border(
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.86f),
+                        shape = RoundedCornerShape(18.dp)
+                    )
+                    .clickable { onSearchClick() }
+                    .padding(horizontal = 14.dp, vertical = 13.dp),
                 verticalAlignment     = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Icon(
-                    imageVector        = Icons.Default.LocationOn,
+                    imageVector        = Icons.Default.Search,
                     contentDescription = null,
-                    tint               = TopBarText,
-                    modifier           = Modifier.size(18.dp)
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    text       = location,
-                    fontSize   = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color      = TopBarText
-                )
-                Spacer(Modifier.width(2.dp))
-                Icon(
-                    imageVector        = Icons.Default.KeyboardArrowDown,
-                    contentDescription = null,
-                    tint               = TopBarText,
+                    tint               = SearchHint,
                     modifier           = Modifier.size(20.dp)
                 )
-            }
-
-            // Notification bell with red dot
-            Box(
-                modifier         = Modifier.size(42.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(CircleShape)
-                        .background(Color(0x33FFFFFF))
-                        .clickable { onNotificationClick() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector        = Icons.Default.Notifications,
-                        contentDescription = "Notifications",
-                        tint               = TopBarText,
-                        modifier           = Modifier.size(22.dp)
-                    )
-                }
-                // Red dot badge
-                Box(
-                    modifier = Modifier
-                        .size(9.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFD94040))
-                        .align(Alignment.TopEnd)
+                Text(
+                    text       = "Search doctors, specialities...",
+                    fontSize   = 14.sp,
+                    color      = SearchHint,
+                    fontWeight = FontWeight.Normal
                 )
             }
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        // ── Row 2: Search Bar ──────────────────────
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(SearchBarBg)
-                .clickable { onSearchClick() }
-                .padding(horizontal = 14.dp, vertical = 13.dp),
-            verticalAlignment     = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Icon(
-                imageVector        = Icons.Default.Search,
-                contentDescription = null,
-                tint               = SearchHint,
-                modifier           = Modifier.size(20.dp)
-            )
-            Text(
-                text       = "Search doctors, specialities...",
-                fontSize   = 14.sp,
-                color      = SearchHint,
-                fontWeight = FontWeight.Normal
-            )
         }
     }
 }

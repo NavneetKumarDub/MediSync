@@ -4,20 +4,21 @@ import android.content.Intent
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,12 +28,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.medisync.MediSyncApplication
 import com.example.medisync.data.TokenManager
 import com.example.medisync.networks.PatientRecordDto
 import com.example.medisync.ui.components.BottomNavBar
+import com.example.medisync.ui.components.SearchBar
 import com.example.medisync.ui.navigation.NavItems
 import com.example.medisync.ui.theme.natureGreen
 import com.example.medisync.viewmodels.PatientRecordsViewModel
@@ -40,9 +41,14 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-private val ScreenBg = Color(0xFFE7F0F4)
+private val ScreenBg = Color.White
 private val Accent = Color(0xFF2A9DF4)
 private val TextDark = Color(0xFF111B21)
+private val TextMuted = Color(0xFF6B7280)
+private val ChipActiveBg = natureGreen.copy(alpha = 0.1f)
+private val ChipActiveBorder = natureGreen.copy(alpha = 0.3f)
+private val ChipIdleBg = Color(0xFFF3F4F6)
+private val RecordFilters = listOf("All", "Images", "PDFs")
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -67,6 +73,7 @@ fun PatientRecordsContent(
 
     val viewModel: PatientRecordsViewModel = viewModel(
         factory = PatientRecordsViewModel.Factory(
+            context = context,
             repository = app.patientRecordsRepository,
             token = token!!
         )
@@ -78,21 +85,27 @@ fun PatientRecordsContent(
             viewModel.loadRecords()
         }
     }
+
+    LaunchedEffect(state.records) {
+        if (state.records.isNotEmpty()) {
+            viewModel.cacheRecords(context)
+        }
+    }
+
     var selectedFilter by remember { mutableStateOf("All") }
     var search by remember { mutableStateOf("") }
     var imagePreviewUrl by remember { mutableStateOf<String?>(null) }
 
-    val filtered = state.records.filter { record ->
-        val matchesSearch = record.fileName.contains(search, ignoreCase = true) ||
-                record.uploadedByName.contains(search, ignoreCase = true)
+    val filtered = remember(state.records, selectedFilter, search) {
+        state.records.filter { record ->
+            val matchesFilter = when (selectedFilter) {
+                "Images" -> record.fileType?.startsWith("image/") == true
+                "PDFs" -> record.fileType == "application/pdf"
+                else -> true
+            }
 
-        val matchesFilter = when (selectedFilter) {
-            "Images" -> record.fileType?.startsWith("image/") == true
-            "PDFs" -> record.fileType == "application/pdf"
-            else -> true
+            matchesFilter && record.matchesRecordSearch(search)
         }
-
-        matchesSearch && matchesFilter
     }
 
     Scaffold(
@@ -110,7 +123,7 @@ fun PatientRecordsContent(
                 .fillMaxSize()
                 .background(ScreenBg)
                 .padding(paddingValues)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp, vertical = 16.dp)
         ) {
             Text(
                 text = "Medical Records",
@@ -121,40 +134,26 @@ fun PatientRecordsContent(
 
             Spacer(Modifier.height(14.dp))
 
-            OutlinedTextField(
+            SearchBar(
                 value = search,
                 onValueChange = { search = it },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                placeholder = { Text("Search records") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp)
+                placeholder = "Search records",
+                modifier = Modifier
             )
 
-            Spacer(Modifier.height(1.dp))
+            Spacer(Modifier.height(12.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    listOf("All", "Images", "PDFs").forEach { filter ->
-                        FilterChip(
-                            selected = selectedFilter == filter,
-                            onClick = { selectedFilter = filter },
-                            label = { Text(filter) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Accent,
-                                selectedLabelColor = Color.White
-                            )
-                        )
-                    }
-                }
+                RecordFilterRow(
+                    active = selectedFilter,
+                    onSelect = { selectedFilter = it },
+                    modifier = Modifier.weight(1f)
+                )
 
-                IconButton(onClick = { viewModel.loadRecords() }) {
+                IconButton(onClick = { viewModel.refreshRecords() }) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
                         contentDescription = "Refresh",
@@ -163,7 +162,7 @@ fun PatientRecordsContent(
                 }
             }
 
-            Spacer(Modifier.height(2.dp))
+            Spacer(Modifier.height(8.dp))
 
             when {
                 state.isLoading -> Box(
@@ -189,16 +188,26 @@ fun PatientRecordsContent(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(filtered, key = { it.id }) { record ->
+                        val cachedUri = state.cachedRecordUris[record.fileKey]
                         RecordCard(record = record) {
-                            viewModel.openRecord(record.fileKey) { url ->
+                            fun openRecordUri(uriString: String) {
                                 if (record.fileType?.startsWith("image/") == true) {
-                                    imagePreviewUrl = url
+                                    imagePreviewUrl = uriString
                                 } else {
                                     val intent = Intent(Intent.ACTION_VIEW).apply {
-                                        setDataAndType(url.toUri(), record.fileType ?: "*/*")
+                                        setDataAndType(android.net.Uri.parse(uriString), record.fileType ?: "*/*")
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                     }
                                     context.startActivity(Intent.createChooser(intent, "Open record"))
+                                }
+                            }
+
+                            if (cachedUri != null) {
+                                openRecordUri(cachedUri)
+                            } else {
+                                viewModel.openRecordCached(context, record) { uri ->
+                                    openRecordUri(uri.toString())
                                 }
                             }
                         }
@@ -233,6 +242,74 @@ fun PatientRecordsContent(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = "Back",
                     tint = Color.White
+                )
+            }
+        }
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+private fun PatientRecordDto.matchesRecordSearch(query: String): Boolean {
+    val cleanQuery = query.trim()
+    if (cleanQuery.isBlank()) return true
+
+    val fileKind = when {
+        fileType?.startsWith("image/") == true -> "image images photo picture"
+        fileType == "application/pdf" -> "pdf document"
+        else -> "file record"
+    }
+
+    val searchableText = listOfNotNull(
+        fileName,
+        uploadedByName,
+        fileType,
+        fileKind,
+        createdAt,
+        formatRecordDate(createdAt),
+        fileSize?.toString(),
+        id.toString()
+    ).joinToString(" ")
+
+    return searchableText.contains(cleanQuery, ignoreCase = true)
+}
+
+@Composable
+private fun RecordFilterRow(
+    active: String,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        RecordFilters.forEach { filter ->
+            val isActive = active == filter
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(if (isActive) ChipActiveBg else ChipIdleBg)
+                    .then(
+                        if (isActive) {
+                            Modifier.border(
+                                width = 1.dp,
+                                color = ChipActiveBorder,
+                                shape = RoundedCornerShape(24.dp)
+                            )
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .clickable { onSelect(filter) }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = filter,
+                    fontSize = MaterialTheme.typography.bodyMedium.fontSize,
+                    fontWeight = FontWeight.Medium,
+                    color = if (isActive) natureGreen else TextMuted
                 )
             }
         }

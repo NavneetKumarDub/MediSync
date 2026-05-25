@@ -15,7 +15,9 @@ import com.example.medisync.ui.theme.MediSyncTheme
 class VideoCallActivity : ComponentActivity() {
 
     private val isInPipModeState = mutableStateOf(false)
+    private val isPipModeRequestedState = mutableStateOf(false)
     private var hasRemoteVideo = false
+    private var preparePipUi: (() -> Unit)? = null
 
     private fun buildPipParams(): PictureInPictureParams? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return null
@@ -36,10 +38,18 @@ class VideoCallActivity : ComponentActivity() {
         }
     }
 
-    private fun enterPipMode() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !isFinishing && hasRemoteVideo) {
-            isInPipModeState.value = true
-            buildPipParams()?.let { enterPictureInPictureMode(it) }
+    private fun prepareForPip() {
+        isPipModeRequestedState.value = true
+        preparePipUi?.invoke()
+        updatePipParams()
+    }
+
+    private fun requestPip() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && hasRemoteVideo && !isFinishing) {
+            prepareForPip()
+            buildPipParams()?.let { params ->
+                enterPictureInPictureMode(params)
+            }
         }
     }
 
@@ -56,10 +66,12 @@ class VideoCallActivity : ComponentActivity() {
                     navController = rememberNavController(),
                     roomId = roomId,
                     isInPipMode = isInPipModeState.value,
-                    onRequestPip = { enterPipMode() },
+                    isPipModeRequested = isPipModeRequestedState.value,
+                    onRequestPip = { requestPip() },
                     onRemoteVideoAvailabilityChanged = { available ->
                         hasRemoteVideo = available
                     },
+                    onPreparePipUiChanged = { preparePipUi = it },
                     onNavigateBack = { finish() }
                 )
             }
@@ -68,7 +80,9 @@ class VideoCallActivity : ComponentActivity() {
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        enterPipMode()
+        if (hasRemoteVideo) {
+            prepareForPip()
+        }
     }
 
     override fun onPictureInPictureModeChanged(
@@ -77,5 +91,9 @@ class VideoCallActivity : ComponentActivity() {
     ) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
         isInPipModeState.value = isInPictureInPictureMode
+
+        if (!isInPictureInPictureMode) {
+            isPipModeRequestedState.value = false
+        }
     }
 }

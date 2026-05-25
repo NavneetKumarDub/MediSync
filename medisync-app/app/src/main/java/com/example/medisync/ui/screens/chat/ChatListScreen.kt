@@ -15,9 +15,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
-
-import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -94,11 +91,13 @@ fun ChatListScreen(
 ) {
     val context = LocalContext.current
     var activeFilter by remember { mutableStateOf("All") }
+    var searchQuery by remember { mutableStateOf("") }
 
     // avatar popup state
     var showAvatarDialog by remember { mutableStateOf(false) }
     var selectedAvatarUrl by remember { mutableStateOf<String?>(null) }
     var selectedAvatarName by remember { mutableStateOf("") }
+    var selectedAvatarRoomId by remember { mutableStateOf<Int?>(null) }
 
     val chats by viewModel.inboxChats.collectAsState()
     LaunchedEffect(Unit) {
@@ -110,13 +109,15 @@ fun ChatListScreen(
 
 
 
-    val list = remember(activeFilter, chats) {
-        when (activeFilter) {
+    val list = remember(activeFilter, chats, searchQuery) {
+        val filteredByTab = when (activeFilter) {
             "All" -> chats
             "Unread" -> chats.filter { it.unreadCount > 0 }
 
             else -> chats
         }
+
+        filteredByTab.filter { it.matchesChatSearch(searchQuery) }
     }
 
     var userRole by remember { mutableStateOf("patient") }
@@ -160,7 +161,11 @@ fun ChatListScreen(
             ) {
                 // Removed the top divider to match WhatsApp
                 Spacer(Modifier.height(8.dp))
-                SearchBar()
+                SearchBar(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = "Search chats"
+                )
                 Spacer(Modifier.height(12.dp))
                 FilterRow(active = activeFilter, onSelect = { activeFilter = it })
                 Spacer(Modifier.height(8.dp))
@@ -169,9 +174,10 @@ fun ChatListScreen(
                 ChatList(
                     list = list,
                     navController = navController,
-                    onAvatarClick = { name, photoUrl ->
-                        selectedAvatarName = name
-                        selectedAvatarUrl = photoUrl
+                    onAvatarClick = { chat ->
+                        selectedAvatarRoomId = chat.roomId
+                        selectedAvatarName = chat.displayName
+                        selectedAvatarUrl = chat.photoUrl
                         showAvatarDialog = true
                     }
                 )
@@ -252,36 +258,47 @@ fun ChatListScreen(
                             horizontalArrangement = Arrangement.SpaceEvenly,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = Icons.Outlined.ChatBubbleOutline,
-                                contentDescription = "Chat",
-                                tint = natureGreen, // Updated to your theme color
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clickable { showAvatarDialog = false }
-                            )
-                            Icon(
-                                imageVector = Icons.Default.Videocam,
-                                contentDescription = "Video Call",
-                                tint = natureGreen, // Updated to your theme color
-                                modifier = Modifier
-                                    .size(26.dp)
-                                    .clickable { showAvatarDialog = false }
-                            )
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = "Info",
-                                tint = natureGreen, // Updated to your theme color
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clickable { showAvatarDialog = false }
-                            )
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.clickable {
+                                    val roomId = selectedAvatarRoomId
+                                    if (roomId != null) {
+                                        showAvatarDialog = false
+                                        val encodedName = Uri.encode(selectedAvatarName)
+                                        val encodedUrl = Uri.encode(selectedAvatarUrl)
+                                        navController.navigate("chat/$roomId?name=$encodedName&photoUrl=$encodedUrl")
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.ChatBubbleOutline,
+                                    contentDescription = "Chat",
+                                    tint = natureGreen,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = "Chat",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = natureGreen
+                                )
+                            }
                         }
                     }
                 }
             }
         }
     }
+}
+
+private fun ChatInboxEntity.matchesChatSearch(query: String): Boolean {
+    val cleanQuery = query.trim()
+    if (cleanQuery.isBlank()) return true
+
+    return displayName.contains(cleanQuery, ignoreCase = true) ||
+            lastMessage.orEmpty().contains(cleanQuery, ignoreCase = true) ||
+            roomId.toString().contains(cleanQuery)
 }
 
 
@@ -327,7 +344,7 @@ fun FilterRow(active: String, onSelect: (String) -> Unit) {
 fun ChatList(
     list: List<ChatInboxEntity>,
     navController: NavController,
-    onAvatarClick: (name: String, photoUrl: String?) -> Unit
+    onAvatarClick: (ChatInboxEntity) -> Unit
 ) {
     if (list.isEmpty()) {
         Box(
@@ -366,7 +383,7 @@ fun ChatList(
             itemsIndexed(list, key = { _, chat -> chat.roomId }) { index, chat ->
                 ChatItemCard(
                     chat = chat,
-                    onAvatarClick = { onAvatarClick(chat.displayName, chat.photoUrl) },
+                    onAvatarClick = { onAvatarClick(chat) },
                     onClick = {
                         val encodedName = Uri.encode(chat.displayName)
                         val encodedUrl = Uri.encode(chat.photoUrl)

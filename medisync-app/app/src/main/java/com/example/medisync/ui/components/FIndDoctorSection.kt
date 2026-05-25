@@ -1,37 +1,46 @@
 package com.example.medisync.ui.components
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.medisync.R
+import coil.ImageLoader
+import coil.compose.AsyncImage
+import coil.decode.SvgDecoder
+
+private val TileGlass = Color(0xCCF2FAFF)
+private val TileBlue = Color(0xFF2F95F6)
+private val MoreTileBg = Color(0xFFF6FAFE)
 
 data class Speciality(
     val name: String,
-    val imageRes: Int,
+    val iconAsset: String,
     val bgColor: Color
 )
 
 val specialityList = listOf(
-    Speciality("General Physician", R.drawable.general_physician, Color(0xFFEDF7F1)),
-    Speciality("Skin & Hair",       R.drawable.skin,              Color(0xFFFFF0F5)),
-    Speciality("Women's Health",    R.drawable.women_health,      Color(0xFFFFE4EE)),
-    Speciality("Dental Care",       R.drawable.dental,            Color(0xFFE8F4FF)),
-    Speciality("Child Specialist",  R.drawable.child,             Color(0xFFFFF8E1)),
-    Speciality("Ear Nose Throat",   R.drawable.ear,               Color(0xFFEDF7F1)),
-    Speciality("Mental Wellness",   R.drawable.mental,            Color(0xFFEDE9FE)),
-    Speciality("More",              R.drawable.more,              Color(0xFFF1F1F1)),
+    Speciality("General Physician", "newIcons/4_General_Physician.svg", Color(0xFFE0F2FE)),
+    Speciality("Skin & Hair", "newIcons/2_Skin_Hair.svg", Color(0xFFE0F2FE)),
+    Speciality("Child Specialist", "newIcons/10_Child_Specialist.svg", Color(0xFFE0F2FE)),
+    Speciality("Dental Care", "newIcons/5_Dental_Care.svg", Color(0xFFE0F2FE)),
+    Speciality("Women's Health", "newIcons/3_Womens_Health.svg", Color(0xFFE0F2FE)),
+    Speciality("Mental Wellness", "newIcons/7_Mental_Wellness.svg", Color(0xFFE0F2FE)),
+    Speciality("Ear Nose Throat", "newIcons/8_ENT.svg", Color(0xFFE0F2FE)),
+    Speciality("More", "", MoreTileBg),
 )
 
 @Composable
@@ -104,29 +113,44 @@ fun SpecialityItem(
     speciality: Speciality,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val svgImageLoader = remember {
+        ImageLoader.Builder(context)
+            .components { add(SvgDecoder.Factory()) }
+            .build()
+    }
+
     Column(
         modifier = Modifier.clickable { onClick() },
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Card(
-            modifier = Modifier.size(68.dp),
+            modifier = Modifier
+                .size(68.dp)
+                .shadow(
+                    elevation = 10.dp,
+                    shape = RoundedCornerShape(16.dp),
+                    ambientColor = Color(0x1A03A9F4),
+                    spotColor = Color(0x2203A9F4)
+                ),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = speciality.bgColor
-            ),
+            colors = CardDefaults.cardColors(containerColor = Color.Transparent),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.BottomCenter
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(TileGlass)
+                    .padding(7.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Image(
-                    painter = painterResource(id = speciality.imageRes),
+                AsyncImage(
+                    model = "file:///android_asset/${speciality.iconAsset}",
                     contentDescription = speciality.name,
+                    imageLoader = svgImageLoader,
                     contentScale = ContentScale.Fit,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(54.dp)
+                    modifier = Modifier.size(56.dp)
                 )
             }
         }
@@ -155,15 +179,23 @@ fun MoreItem(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Card(
-            modifier = Modifier.size(68.dp),
+            modifier = Modifier
+                .size(68.dp)
+                .shadow(
+                    elevation = 10.dp,
+                    shape = RoundedCornerShape(16.dp),
+                    ambientColor = Color(0x1A03A9F4),
+                    spotColor = Color(0x2203A9F4)
+                ),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color(0xFFF1F1F1)
-            ),
+            colors = CardDefaults.cardColors(containerColor = MoreTileBg),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MoreTileBg),
                 contentAlignment = Alignment.Center
             ) {
                 Column(
@@ -173,12 +205,12 @@ fun MoreItem(
                         text = "20+",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0D6E40)
+                        color = TileBlue
                     )
                     Text(
                         text = "more",
                         fontSize = 10.sp,
-                        color = Color(0xFF0D6E40)
+                        color = TileBlue
                     )
                 }
             }

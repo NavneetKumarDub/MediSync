@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import android.Manifest
 import android.content.pm.PackageManager
+import android.view.View
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
@@ -47,14 +48,17 @@ import com.example.medisync.viewmodels.AudioOutputKind
 import com.example.medisync.viewmodels.VideoCallViewModel
 import org.webrtc.RendererCommon
 import org.webrtc.SurfaceViewRenderer
+import io.getstream.webrtc.android.ui.VideoTextureViewRenderer
 
 @Composable
 fun VideoRoomPermissionGate(
     navController: NavController,
     roomId: Int,
     isInPipMode: Boolean = false,
+    isPipModeRequested: Boolean = false,
     onRequestPip: () -> Unit = {},
     onRemoteVideoAvailabilityChanged: (Boolean) -> Unit = {},
+    onPreparePipUiChanged: ((() -> Unit)?) -> Unit = {},
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -79,8 +83,10 @@ fun VideoRoomPermissionGate(
             navController = navController,
             roomId = roomId,
             isInPipMode = isInPipMode,
+            isPipModeRequested = isPipModeRequested,
             onRequestPip = onRequestPip,
             onRemoteVideoAvailabilityChanged = onRemoteVideoAvailabilityChanged,
+            onPreparePipUiChanged = onPreparePipUiChanged,
             onHangUp = onNavigateBack,
             onBack = onNavigateBack
         )
@@ -129,9 +135,11 @@ fun VideoRoomScreen(
     navController: NavController,
     roomId: Int = 0,
     isInPipMode: Boolean = false,
+    isPipModeRequested: Boolean = false,
     viewModel: VideoCallViewModel = viewModel(),
     onRequestPip: () -> Unit = {},
     onRemoteVideoAvailabilityChanged: (Boolean) -> Unit = {},
+    onPreparePipUiChanged: ((() -> Unit)?) -> Unit = {},
     onBack: () -> Unit = {},
     onHangUp: () -> Unit = {}
 ){
@@ -144,10 +152,14 @@ fun VideoRoomScreen(
     val selectedAudioOutput by viewModel.selectedAudioOutput.collectAsState()
     val localVideoTrack by viewModel.localVideoTrack.collectAsState()
     val latestAudioOutputs by rememberUpdatedState(audioOutputs)
+    val latestLocalVideoTrack by rememberUpdatedState(localVideoTrack)
+    val latestRemoteVideoTrack by rememberUpdatedState(remoteVideoTrack)
 
     var offset by remember { mutableStateOf(Offset.Zero) }
     var isControlsVisible by remember { mutableStateOf(true) }
     var isPreparingForPip by remember { mutableStateOf(false) }
+    val isPipLayout = isInPipMode || isPipModeRequested || isPreparingForPip
+    val shouldShowFullCallUi = !isPipLayout
 
     fun endActiveCall() {
         VideoCallForegroundService.stop(context)
@@ -178,8 +190,8 @@ fun VideoRoomScreen(
         onRemoteVideoAvailabilityChanged(remoteVideoTrack != null)
     }
 
-    LaunchedEffect(isInPipMode) {
-        if (!isInPipMode) {
+    LaunchedEffect(isInPipMode, isPipModeRequested) {
+        if (!isInPipMode && !isPipModeRequested) {
             isPreparingForPip = false
         }
     }
@@ -221,12 +233,21 @@ fun VideoRoomScreen(
     val maxY = screenHeightPx - pipHeightPx - (marginPx * 2)
 
     val localRenderer = remember {
-        SurfaceViewRenderer(context).apply {
-            init(viewModel.eglBaseContext, null)
+        VideoTextureViewRenderer(context).apply {
+            init(
+                viewModel.eglBaseContext,
+                object : RendererCommon.RendererEvents {
+                    override fun onFirstFrameRendered() = Unit
+
+                    override fun onFrameResolutionChanged(
+                        videoWidth: Int,
+                        videoHeight: Int,
+                        rotation: Int
+                    ) = Unit
+                }
+            )
             setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
-            setEnableHardwareScaler(true)
             setMirror(true)
-            setZOrderMediaOverlay(true)
         }
     }
 
@@ -238,26 +259,56 @@ fun VideoRoomScreen(
             setMirror(false)
         }
     }
-    LaunchedEffect(isInPipMode) {
+
+    DisposableEffect(localRenderer) {
+        onPreparePipUiChanged {
+            isPreparingForPip = true
+            latestLocalVideoTrack?.removeSink(localRenderer)
+            localRenderer.pauseVideo()
+            localRenderer.visibility = View.GONE
+
+            remoteRenderer.visibility = View.VISIBLE
+            latestRemoteVideoTrack?.removeSink(remoteRenderer)
+            latestRemoteVideoTrack?.addSink(remoteRenderer)
+        }
+
+        onDispose {
+            onPreparePipUiChanged(null)
+        }
+    }
+
+    LaunchedEffect(isPipLayout) {
         remoteRenderer.setScalingType(
-            if (isInPipMode) {
+            if (isPipLayout) {
                 RendererCommon.ScalingType.SCALE_ASPECT_FIT
             } else {
                 RendererCommon.ScalingType.SCALE_ASPECT_FILL
             }
         )
+
+        delay(250)
+        remoteVideoTrack?.removeSink(remoteRenderer)
+        remoteVideoTrack?.addSink(remoteRenderer)
     }
-    LaunchedEffect(localVideoTrack, isInPipMode) {
-        if (localVideoTrack != null && !isInPipMode) {
-            delay(300)
+    LaunchedEffect(localVideoTrack, isPipLayout) {
+        if (isPipLayout) {
             localVideoTrack?.removeSink(localRenderer)
-            localVideoTrack?.addSink(localRenderer)
+            localRenderer.pauseVideo()
+            localRenderer.visibility = View.GONE
         } else {
-            localVideoTrack?.removeSink(localRenderer)
+            localRenderer.visibility = View.VISIBLE
+            localRenderer.resumeVideo()
+            delay(300)
+            if (localVideoTrack != null) {
+                localVideoTrack?.removeSink(localRenderer)
+                localVideoTrack?.addSink(localRenderer)
+            }
         }
     }
 
-    LaunchedEffect(remoteVideoTrack) {
+    LaunchedEffect(remoteVideoTrack, isPipLayout) {
+        remoteRenderer.visibility = View.VISIBLE
+        remoteVideoTrack?.removeSink(remoteRenderer)
         remoteVideoTrack?.addSink(remoteRenderer)
     }
 
@@ -270,7 +321,7 @@ fun VideoRoomScreen(
     LaunchedEffect(remoteVideoTrack) {
         if (remoteVideoTrack != null) {
             delay(500)
-            if (!isInPipMode) {
+            if (shouldShowFullCallUi) {
                 localVideoTrack?.removeSink(localRenderer)
                 localVideoTrack?.addSink(localRenderer)
             }
@@ -282,9 +333,8 @@ fun VideoRoomScreen(
             remoteVideoTrack?.removeSink(remoteRenderer)
 
             Thread.sleep(100)
-            localRenderer.clearImage()
+            localRenderer.pauseVideo()
             remoteRenderer.clearImage()
-            localRenderer.release()
             remoteRenderer.release()
         }
     }
@@ -344,7 +394,7 @@ fun VideoRoomScreen(
             }
 
             AnimatedVisibility(
-                visible = isControlsVisible && !isInPipMode && !isPreparingForPip,
+                visible = isControlsVisible && shouldShowFullCallUi,
                 enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
                 exit = fadeOut() + slideOutVertically(targetOffsetY = { -it }),
                 modifier = Modifier
@@ -361,7 +411,7 @@ fun VideoRoomScreen(
                 }
             }
 
-            if (!isInPipMode && !isPreparingForPip) {
+            if (shouldShowFullCallUi) {
                 Card(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
@@ -406,7 +456,7 @@ fun VideoRoomScreen(
 
             // LAYER 4: Bottom Bar
             AnimatedVisibility(
-                visible = isControlsVisible && !isInPipMode && !isPreparingForPip,
+                visible = isControlsVisible && shouldShowFullCallUi,
                 enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
                 exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
                 modifier = Modifier.align(Alignment.BottomCenter)

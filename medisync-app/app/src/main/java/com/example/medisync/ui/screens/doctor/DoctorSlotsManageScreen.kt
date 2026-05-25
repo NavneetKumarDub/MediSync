@@ -1,17 +1,20 @@
 package com.example.medisync.ui.screens.doctor
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.EditCalendar
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -21,12 +24,13 @@ import androidx.navigation.compose.rememberNavController
 import com.example.medisync.ui.components.BottomNavBar
 import com.example.medisync.ui.navigation.NavItems
 import com.example.medisync.ui.theme.natureGreen
-private val ScreenBg      = Color(0xFFEEF5F3)   // same as screen background
-private val TopBarBg1= natureGreen
-private val ScreenBg1 = Color(0xFFF6F7F9)
-private val CardBg1 = Color(0xFFFFFFFF)
-private val TextPrimary1 = Color(0xFF111827)
-private val TextSecondary1 = Color(0xFF6B7280)
+
+private val ScheduleScreenBg = Color(0xFFF6F8FA)
+private val ScheduleCardBg = Color.White
+private val ScheduleBorder = Color(0xFFE5E7EB)
+private val ScheduleTextPrimary = Color(0xFF111827)
+private val ScheduleTextSecondary = Color(0xFF6B7280)
+private val ScheduleSoftBlue = natureGreen.copy(alpha = 0.10f)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,28 +40,21 @@ fun DoctorScheduleScreen(
     onTabSelected: (Int) -> Unit,
     userId: Int
 ) {
-    val context = LocalContext.current
-
     Scaffold(
-        containerColor = ScreenBg,
+        containerColor = ScheduleScreenBg,
         topBar = {
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(120.dp)
-                    .background(TopBarBg1)
+                    .background(natureGreen)
                     .statusBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 18.dp)
             ) {
-
-                Box(
-                    modifier = Modifier.fillMaxSize()
-                    .padding(horizontal = 20.dp, vertical = 4.dp),
-                    contentAlignment = Alignment.CenterStart
-                ){
+                Column {
                     Text(
-                        text = "Slots Management",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        text = "Slot Management",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
                 }
@@ -71,75 +68,80 @@ fun DoctorScheduleScreen(
             )
         }
     ) { paddingValues ->
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(ScreenBg1)
+                .background(ScheduleScreenBg)
                 .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = 16.dp, vertical = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            ScheduleOptionCard(
+            ScheduleActionCard(
                 title = "Weekly Template",
+                leadingIcon = Icons.Default.Repeat,
                 onClick = {
                     navController.navigate("doctorWeeklyTemplate/$userId")
                 }
             )
 
-            ScheduleOptionCard(
+            ScheduleActionCard(
                 title = "Custom Schedule",
+                leadingIcon = Icons.Default.EditCalendar,
                 onClick = {
                     navController.navigate("CustomEditSlot/$userId")
                 }
             )
-
-            // future content below cards (reminders etc) goes here
         }
     }
 }
 
 @Composable
-fun ScheduleOptionCard(
+private fun ScheduleActionCard(
     title: String,
+    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit
 ) {
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBg1),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(ScheduleCardBg)
+            .border(1.dp, ScheduleBorder, RoundedCornerShape(8.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 18.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .size(42.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(ScheduleSoftBlue),
+            contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = title,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
-                color = TextPrimary1
-            )
             Icon(
-                imageVector = Icons.Default.ArrowBack,
+                imageVector = leadingIcon,
                 contentDescription = null,
-                tint = TextSecondary1,
-                modifier = Modifier
-                    .size(18.dp)
-                    .then(Modifier.padding(0.dp))
-                    .run {
-                        this
-                    }
+                tint = natureGreen,
+                modifier = Modifier.size(22.dp)
             )
         }
+
+        Spacer(Modifier.width(14.dp))
+
+        Text(
+            text = title,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = ScheduleTextPrimary,
+            modifier = Modifier.weight(1f)
+        )
+
+        Icon(
+            imageVector = Icons.Default.KeyboardArrowRight,
+            contentDescription = null,
+            tint = ScheduleTextSecondary,
+            modifier = Modifier.size(22.dp)
+        )
     }
 }
 

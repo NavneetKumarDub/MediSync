@@ -32,9 +32,9 @@ import java.util.Date
 import java.util.Locale
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Article
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.EventNote
 import androidx.compose.material.icons.filled.HealthAndSafety
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.rememberDrawerState
@@ -86,6 +86,22 @@ fun HomeContent(
                 phone = phone,
                 photoUrl = profilePhotoUrl,
                 items = listOf(
+                    AppDrawerItem(
+                        label = "Appointments",
+                        icon = Icons.Default.EventNote,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onTabSelected(1)
+                        }
+                    ),
+                    AppDrawerItem(
+                        label = "Chat",
+                        icon = Icons.Default.Chat,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onTabSelected(2)
+                        }
+                    ),
 
                     AppDrawerItem(
                         label = "AI Health Chat",
@@ -122,7 +138,7 @@ fun HomeContent(
         }
     ) {
         Scaffold(
-            containerColor = Color(0xFFF6F7F9),
+            containerColor = Color.White,
             topBar = {
                 HomeTopBar(
                     location = "Bangalore",
@@ -146,7 +162,7 @@ fun HomeContent(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .background(Color(0xFFF6F7F9))
+                    .background(Color.White)
             ) {
                 item {
                     GreetingHeader(name)
@@ -154,15 +170,23 @@ fun HomeContent(
 
                 item {
                     ConsultationCard(
-                        onPhysicalClick = {},
-                        onVideoClick = {}
+                        onPhysicalClick = {
+                            navController.navigate("search?type=offline")
+                        },
+                        onVideoClick = {
+                            navController.navigate("search?type=online")
+                        }
                     )
                 }
 
                 item {
                     FindDoctorSection(
-                        onSpecialityClick = {},
-                        onMoreClick = {}
+                        onSpecialityClick = { speciality ->
+                            navController.navigate("search?speciality=${Uri.encode(speciality.name)}")
+                        },
+                        onMoreClick = {
+                            navController.navigate("patientSpecialities")
+                        }
                     )
                 }
             }

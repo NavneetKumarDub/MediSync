@@ -170,6 +170,7 @@ export const getDoctorAppointments = async (req: Request, res: Response) => {
                 u.name AS display_name, 
                 u.profile_photo_key AS profile_photo,
                 a.id AS appointment_id,
+                a.doctor_id,
                 a.patient_id, 
                 a.status, 
                 a.type, 

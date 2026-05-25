@@ -50,6 +50,7 @@ import com.example.medisync.ui.screens.patient.PatientNavigationScreen
 import com.example.medisync.ui.screens.patient.PatientAiChatScreen
 import com.example.medisync.ui.screens.patient.PatientProfileScreen
 import com.example.medisync.ui.screens.patient.PatientRecordsContent
+import com.example.medisync.ui.screens.patient.PatientSpecialitiesScreen
 import com.example.medisync.ui.screens.patient.SearchScreen
 import com.example.medisync.ui.screens.patient.SlotPickerScreen
 import com.example.medisync.ui.screens.video.VideoRoomPermissionGate
@@ -215,8 +216,28 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    composable("search") {
-                        SearchScreen(navController = navController)
+                    composable(
+                        route = "search?speciality={speciality}&type={type}",
+                        arguments = listOf(
+                            navArgument("speciality") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                            navArgument("type") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            }
+                        )
+                    ) { backStackEntry ->
+                        SearchScreen(
+                            navController = navController,
+                            initialQuery = backStackEntry.arguments?.getString("speciality") ?: "",
+                            initialConsultationType = backStackEntry.arguments?.getString("type")
+                        )
+                    }
+
+                    composable("patientSpecialities") {
+                        PatientSpecialitiesScreen(navController = navController)
                     }
 
                     composable("patientAiChat") {

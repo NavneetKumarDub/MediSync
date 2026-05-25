@@ -9,7 +9,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -94,9 +93,11 @@ fun AppointmentListScreen(
 
     var userRole           by remember { mutableStateOf("patient") }
     var activeFilter       by remember { mutableStateOf("All") }
+    var searchQuery        by remember { mutableStateOf("") }
     var showAvatarDialog   by remember { mutableStateOf(false) }
     var selectedAvatarUrl  by remember { mutableStateOf<String?>(null) }
     var selectedAvatarName by remember { mutableStateOf("") }
+    var selectedAvatarAppointmentId by remember { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(Unit) {
         userRole = TokenManager.getRole(context) ?: "patient"
@@ -110,7 +111,7 @@ fun AppointmentListScreen(
     val appointments = viewModel.appointments
     val navItems     = if (userRole == "doctor") NavItems.doctor else NavItems.patient
 
-    val filteredList = remember(activeFilter, appointments) {
+    val filteredList = remember(activeFilter, appointments, searchQuery) {
         val upcoming = appointments.filter {
             val d = try { LocalDate.parse(it.date) } catch (e: Exception) { today }
             !d.isBefore(today)
@@ -121,13 +122,15 @@ fun AppointmentListScreen(
             d.isBefore(today)
         }.sortedByDescending { it.date }
 
-        when (activeFilter) {
+        val filteredByTab = when (activeFilter) {
             "Upcoming" -> upcoming
             "Past"     -> past
             "Online"   -> (upcoming + past).filter { it.type.equals("online", ignoreCase = true) }
             "Offline"  -> (upcoming + past).filter { it.type.contains("offline", ignoreCase = true) }
             else       -> upcoming + past
         }
+
+        filteredByTab.filter { it.matchesAppointmentSearch(searchQuery) }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -156,7 +159,11 @@ fun AppointmentListScreen(
         ) { paddingValues ->
             Column(modifier = Modifier.padding(paddingValues)) {
                 Spacer(Modifier.height(8.dp))
-                SearchBar()
+                SearchBar(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = "Search appointments"
+                )
                 Spacer(Modifier.height(12.dp))
                 FilterRow(active = activeFilter, onSelect = { activeFilter = it })
                 Spacer(Modifier.height(8.dp))
@@ -168,10 +175,11 @@ fun AppointmentListScreen(
                 } else {
                     AppointmentLazyList(
                         list         = filteredList,
-                        onAvatarClick = { name, url ->
-                            selectedAvatarName = name
-                            selectedAvatarUrl  = url
-                            showAvatarDialog   = true
+                        onAvatarClick = { appt ->
+                            selectedAvatarName = appt.displayName
+                            selectedAvatarUrl = appt.photoUrl
+                            selectedAvatarAppointmentId = appt.id
+                            showAvatarDialog = true
                         },
                         onCardClick = { appt ->
                             navController.navigate("patientAppointmentDetail/${appt.id}")
@@ -185,10 +193,38 @@ fun AppointmentListScreen(
             AvatarPopup(
                 name      = selectedAvatarName,
                 url       = selectedAvatarUrl,
-                onDismiss = { showAvatarDialog = false }
+                onDismiss = { showAvatarDialog = false },
+                onInfoClick = {
+                    val appointmentId = selectedAvatarAppointmentId
+                    if (appointmentId != null) {
+                        showAvatarDialog = false
+                        navController.navigate("patientAppointmentDetail/$appointmentId")
+                    }
+                }
             )
         }
     }
+}
+
+private fun AppointmentEntity.matchesAppointmentSearch(query: String): Boolean {
+    val cleanQuery = query.trim()
+    if (cleanQuery.isBlank()) return true
+
+    val searchableText = listOfNotNull(
+        displayName,
+        subtitle,
+        status,
+        type,
+        date,
+        formatSmartDate(date),
+        time,
+        consultationFee?.toString(),
+        roomId?.toString(),
+        doctorId?.toString(),
+        patientId?.toString()
+    ).joinToString(" ")
+
+    return searchableText.contains(cleanQuery, ignoreCase = true)
 }
 
 @Composable
@@ -231,7 +267,7 @@ fun FilterRow(active: String, onSelect: (String) -> Unit) {
 @Composable
 fun AppointmentLazyList(
     list          : List<AppointmentEntity>,
-    onAvatarClick : (String, String?) -> Unit,
+    onAvatarClick : (AppointmentEntity) -> Unit,
     onCardClick   : (AppointmentEntity) -> Unit
 ) {
     if (list.isEmpty()) {
@@ -243,7 +279,7 @@ fun AppointmentLazyList(
             items(list, key = { it.id }) { appt ->
                 AppointmentCard(
                     appt         = appt,
-                    onAvatarClick = onAvatarClick,
+                    onAvatarClick = { _, _ -> onAvatarClick(appt) },
                     onClick       = { onCardClick(appt) }
                 )
             }
@@ -252,7 +288,12 @@ fun AppointmentLazyList(
 }
 
 @Composable
-fun AvatarPopup(name: String, url: String?, onDismiss: () -> Unit) {
+fun AvatarPopup(
+    name: String,
+    url: String?,
+    onDismiss: () -> Unit,
+    onInfoClick: () -> Unit
+) {
     Box(
         modifier         = Modifier
             .fillMaxSize()
@@ -305,8 +346,24 @@ fun AvatarPopup(name: String, url: String?, onDismiss: () -> Unit) {
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment     = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Outlined.Visibility, null, tint = natureGreen, modifier = Modifier.size(24.dp).clickable { onDismiss() })
-                    Icon(Icons.Default.Info, null, tint = natureGreen, modifier = Modifier.size(24.dp).clickable { onDismiss() })
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.clickable { onInfoClick() }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "Info",
+                            tint = natureGreen,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "Info",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = natureGreen
+                        )
+                    }
                 }
             }
         }
