@@ -1,6 +1,7 @@
 package com.example.medisync.ui.screens.video
 
 import android.annotation.SuppressLint
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -39,6 +40,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.example.medisync.services.VideoCallAction
+import com.example.medisync.services.VideoCallActionBus
+import com.example.medisync.services.VideoCallForegroundService
+import com.example.medisync.viewmodels.AudioOutputKind
 import com.example.medisync.viewmodels.VideoCallViewModel
 import org.webrtc.RendererCommon
 import org.webrtc.SurfaceViewRenderer
@@ -47,6 +52,9 @@ import org.webrtc.SurfaceViewRenderer
 fun VideoRoomPermissionGate(
     navController: NavController,
     roomId: Int,
+    isInPipMode: Boolean = false,
+    onRequestPip: () -> Unit = {},
+    onRemoteVideoAvailabilityChanged: (Boolean) -> Unit = {},
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -70,8 +78,11 @@ fun VideoRoomPermissionGate(
         VideoRoomScreen(
             navController = navController,
             roomId = roomId,
-            onHangUp = { navController.popBackStack() },
-            onBack = { navController.popBackStack() }
+            isInPipMode = isInPipMode,
+            onRequestPip = onRequestPip,
+            onRemoteVideoAvailabilityChanged = onRemoteVideoAvailabilityChanged,
+            onHangUp = onNavigateBack,
+            onBack = onNavigateBack
         )
     } else {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -117,25 +128,74 @@ fun VideoRoomPermissionGate(
 fun VideoRoomScreen(
     navController: NavController,
     roomId: Int = 0,
+    isInPipMode: Boolean = false,
     viewModel: VideoCallViewModel = viewModel(),
+    onRequestPip: () -> Unit = {},
+    onRemoteVideoAvailabilityChanged: (Boolean) -> Unit = {},
     onBack: () -> Unit = {},
     onHangUp: () -> Unit = {}
-) {
+){
     val context = LocalContext.current
+    val remoteVideoTrack by viewModel.remoteVideoTrack.collectAsState()
     val isPeerConnected by viewModel.isPeerConnected.collectAsState()
     val isLocalVideoOn by viewModel.isLocalVideoOn.collectAsState()
     val isMicOn by viewModel.isMicOn.collectAsState()
-    val remoteVideoTrack by viewModel.remoteVideoTrack.collectAsState()
     val audioOutputs by viewModel.audioOutputs.collectAsState()
     val selectedAudioOutput by viewModel.selectedAudioOutput.collectAsState()
     val localVideoTrack by viewModel.localVideoTrack.collectAsState()
+    val latestAudioOutputs by rememberUpdatedState(audioOutputs)
 
     var offset by remember { mutableStateOf(Offset.Zero) }
     var isControlsVisible by remember { mutableStateOf(true) }
+    var isPreparingForPip by remember { mutableStateOf(false) }
+
+    fun endActiveCall() {
+        VideoCallForegroundService.stop(context)
+        viewModel.endCall()
+        onHangUp()
+    }
+
+    fun requestPipOrEndWaitingCall() {
+        if (remoteVideoTrack != null) {
+            isPreparingForPip = true
+            onRequestPip()
+        } else {
+            endActiveCall()
+        }
+    }
+
+    BackHandler {
+        requestPipOrEndWaitingCall()
+    }
 
     LaunchedEffect(roomId) {
+        VideoCallForegroundService.start(context, roomId)
         viewModel.refreshAudioOutputs()
         viewModel.connect(roomId)
+    }
+
+    LaunchedEffect(remoteVideoTrack) {
+        onRemoteVideoAvailabilityChanged(remoteVideoTrack != null)
+    }
+
+    LaunchedEffect(isInPipMode) {
+        if (!isInPipMode) {
+            isPreparingForPip = false
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        VideoCallActionBus.actions.collect { action ->
+            when (action) {
+                VideoCallAction.TOGGLE_MIC -> viewModel.toggleMic()
+                VideoCallAction.USE_SPEAKER -> {
+                    latestAudioOutputs
+                        .firstOrNull { it.kind == AudioOutputKind.SPEAKER }
+                        ?.let { viewModel.selectAudioOutput(it) }
+                }
+                VideoCallAction.END_CALL -> endActiveCall()
+            }
+        }
     }
 
 
@@ -166,26 +226,34 @@ fun VideoRoomScreen(
             setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
             setEnableHardwareScaler(true)
             setMirror(true)
-            setZOrderMediaOverlay(true)  // ← add this
+            setZOrderMediaOverlay(true)
         }
     }
 
     val remoteRenderer = remember {
         SurfaceViewRenderer(context).apply {
             init(viewModel.eglBaseContext, null)
-            setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
+            setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT)
             setEnableHardwareScaler(true)
             setMirror(false)
         }
     }
-
-    // FIXED: Attach localVideoTrack (not localPreviewTrack) to the local renderer.
-    // We delay slightly to ensure the renderer is fully initialized before adding the sink.
-    LaunchedEffect(localVideoTrack) {
-        if (localVideoTrack != null) {
+    LaunchedEffect(isInPipMode) {
+        remoteRenderer.setScalingType(
+            if (isInPipMode) {
+                RendererCommon.ScalingType.SCALE_ASPECT_FIT
+            } else {
+                RendererCommon.ScalingType.SCALE_ASPECT_FILL
+            }
+        )
+    }
+    LaunchedEffect(localVideoTrack, isInPipMode) {
+        if (localVideoTrack != null && !isInPipMode) {
             delay(300)
             localVideoTrack?.removeSink(localRenderer)
             localVideoTrack?.addSink(localRenderer)
+        } else {
+            localVideoTrack?.removeSink(localRenderer)
         }
     }
 
@@ -193,7 +261,6 @@ fun VideoRoomScreen(
         remoteVideoTrack?.addSink(remoteRenderer)
     }
 
-    // Re-attach local sink after peer connects (renegotiation can sometimes drop sinks)
     LaunchedEffect(isPeerConnected) {
         if (isPeerConnected) {
             delay(1500)
@@ -203,21 +270,20 @@ fun VideoRoomScreen(
     LaunchedEffect(remoteVideoTrack) {
         if (remoteVideoTrack != null) {
             delay(500)
-            localVideoTrack?.removeSink(localRenderer)
-            localVideoTrack?.addSink(localRenderer)
+            if (!isInPipMode) {
+                localVideoTrack?.removeSink(localRenderer)
+                localVideoTrack?.addSink(localRenderer)
+            }
         }
     }
     DisposableEffect(Unit) {
         onDispose {
-            // Step 1: remove sinks first — stops WebRTC pushing frames into renderers
             localVideoTrack?.removeSink(localRenderer)
             remoteVideoTrack?.removeSink(remoteRenderer)
 
-            // Step 2: small breathing room for in-flight frames to drain
             Thread.sleep(100)
-            localRenderer.clearImage()   // ← flush pending frame
+            localRenderer.clearImage()
             remoteRenderer.clearImage()
-            // Step 3: now safe to release
             localRenderer.release()
             remoteRenderer.release()
         }
@@ -230,7 +296,6 @@ fun VideoRoomScreen(
                 .clickable { isControlsVisible = !isControlsVisible }
         ) {
 
-            // LAYER 1: Remote Video
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -278,9 +343,8 @@ fun VideoRoomScreen(
                 }
             }
 
-            // LAYER 2: Back Button
             AnimatedVisibility(
-                visible = isControlsVisible,
+                visible = isControlsVisible && !isInPipMode && !isPreparingForPip,
                 enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
                 exit = fadeOut() + slideOutVertically(targetOffsetY = { -it }),
                 modifier = Modifier
@@ -288,45 +352,53 @@ fun VideoRoomScreen(
                     .padding(top = 48.dp, start = 16.dp)
             ) {
                 IconButton(
-                    onClick = { onBack() },
+                    onClick = {
+                        requestPipOrEndWaitingCall()
+                    },
                     modifier = Modifier.background(Color(0x66000000), shape = RoundedCornerShape(100.dp))
                 ) {
                     Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
                 }
             }
 
-            // LAYER 3: Local PiP
-            Card(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset { IntOffset(offset.x.roundToInt(), offset.y.roundToInt()) }
-                    .padding(top = 48.dp, end = 16.dp)
-                    .size(width = 100.dp, height = 150.dp)
-                    .pointerInput(Unit) {
-                        detectDragGestures { change, dragAmount ->
-                            change.consume()
-                            val newX = (offset.x + dragAmount.x).coerceIn(minX, maxX)
-                            val newY = (offset.y + dragAmount.y).coerceIn(minY, maxY)
-                            offset = Offset(newX, newY)
-                        }
-                    },
-                shape = RoundedCornerShape(12.dp),
-                elevation = CardDefaults.cardElevation(8.dp)
-            ) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    AndroidView(
-                        factory = { localRenderer },
-                        update = {},
-                        modifier = Modifier.fillMaxSize()
-                    )
-                    if (!isLocalVideoOn) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.Black),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("You", color = Color.White, style = MaterialTheme.typography.labelSmall)
+            if (!isInPipMode && !isPreparingForPip) {
+                Card(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset { IntOffset(offset.x.roundToInt(), offset.y.roundToInt()) }
+                        .padding(top = 48.dp, end = 16.dp)
+                        .size(width = 100.dp, height = 150.dp)
+                        .pointerInput(Unit) {
+                            detectDragGestures { change, dragAmount ->
+                                change.consume()
+                                val newX = (offset.x + dragAmount.x).coerceIn(minX, maxX)
+                                val newY = (offset.y + dragAmount.y).coerceIn(minY, maxY)
+                                offset = Offset(newX, newY)
+                            }
+                        },
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(8.dp)
+                ) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        AndroidView(
+                            factory = { localRenderer },
+                            update = {},
+                            modifier = Modifier.fillMaxSize()
+                        )
+
+                        if (!isLocalVideoOn) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "You",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
                         }
                     }
                 }
@@ -334,7 +406,7 @@ fun VideoRoomScreen(
 
             // LAYER 4: Bottom Bar
             AnimatedVisibility(
-                visible = isControlsVisible,
+                visible = isControlsVisible && !isInPipMode && !isPreparingForPip,
                 enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
                 exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
                 modifier = Modifier.align(Alignment.BottomCenter)
@@ -347,10 +419,7 @@ fun VideoRoomScreen(
                     onMicToggle = { viewModel.toggleMic() },
                     onVideoToggle = { viewModel.toggleVideo() },
                     onAudioOutputSelected = { viewModel.selectAudioOutput(it) },
-                    onEndCall = {
-                        viewModel.endCall()
-                        onHangUp()
-                    },
+                    onEndCall = { endActiveCall() },
                     onFlipCamera = { viewModel.flipCamera() },
                     modifier = Modifier.background(Color.Transparent)
                 )

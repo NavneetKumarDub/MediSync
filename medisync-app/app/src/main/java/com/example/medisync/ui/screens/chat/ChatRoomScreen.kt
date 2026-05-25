@@ -45,6 +45,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.medisync.MediSyncApplication
+import com.example.medisync.VideoCallActivity
 import com.example.medisync.data.TokenManager
 import com.example.medisync.data.local.ChatMessageEntity
 import com.example.medisync.networks.RetrofitInstance
@@ -204,7 +205,12 @@ fun ChatScreen(
                 subtitle = uiState.headerStatus,
                 photoUrl = photoUrl,
                 onBack = { navController.popBackStack() },
-                onJoin = { navController.navigate("video_room/$roomId") }
+                onJoin = {
+                    val intent = Intent(context, VideoCallActivity::class.java).apply {
+                        putExtra("roomId", roomId)
+                    }
+                    context.startActivity(intent)
+                }
             )
         },
         bottomBar = {

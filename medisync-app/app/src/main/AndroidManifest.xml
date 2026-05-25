@@ -17,6 +17,9 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <application
         android:usesCleartextTraffic="true"
         android:allowBackup="true"
@@ -43,6 +46,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".VideoCallActivity"
+            android:supportsPictureInPicture="true"
+            android:resizeableActivity="true"
+            android:exported="false"
+            android:theme="@style/Theme.MediSync" />
+
         <service
             android:name=".services.MediSyncFirebaseMessagingService"
             android:exported="false">
@@ -56,9 +66,16 @@
         <receiver
             android:name=".services.AppointmentReminderReceiver"
             android:exported="false" />
+        <receiver
+            android:name=".services.VideoCallActionReceiver"
+            android:exported="false" />
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyAyWkbGyZzhZom61yGWomYaKoxC52AwXfw" />
+        <service
+            android:name=".services.VideoCallForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="camera|microphone" />
     </application>
 
 </manifest>

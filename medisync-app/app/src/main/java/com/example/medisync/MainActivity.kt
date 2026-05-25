@@ -337,6 +337,12 @@ class MainActivity : ComponentActivity() {
                     val notificationType = clickIntent.getStringExtra("notification_type")
                     val roomId = clickIntent.getStringExtra("roomId")?.toIntOrNull()
 
+                    if (notificationType == "video_call" && roomId != null) {
+                        navController.navigate("video_room/$roomId")
+                        pendingNotificationIntent = null
+                        return@LaunchedEffect
+                    }
+
                     if (notificationType == "chat_message" && roomId != null) {
                         val token = TokenManager.getToken(context)
                         if (token != null) {
