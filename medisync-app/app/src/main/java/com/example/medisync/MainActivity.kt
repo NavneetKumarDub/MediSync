@@ -34,6 +34,7 @@ import androidx.navigation.navArgument
 import com.example.medisync.data.TokenManager
 import com.example.medisync.networks.ChatNotificationManager
 import com.example.medisync.networks.ChatWebSocketManager
+import com.example.medisync.ui.screens.appointment.PatientAppointmentDetailScreen
 import com.example.medisync.ui.screens.auth.LoginScreen
 import com.example.medisync.ui.screens.auth.OtpScreen
 import com.example.medisync.ui.screens.auth.RegisterScreen
@@ -46,6 +47,7 @@ import com.example.medisync.ui.screens.doctor.DoctorProfileScreen
 import com.example.medisync.ui.screens.doctor.DoctorRegularSlotsManage
 import com.example.medisync.ui.screens.doctor.DoctorScheduleScreen
 import com.example.medisync.ui.screens.patient.PatientNavigationScreen
+import com.example.medisync.ui.screens.patient.PatientAiChatScreen
 import com.example.medisync.ui.screens.patient.PatientProfileScreen
 import com.example.medisync.ui.screens.patient.PatientRecordsContent
 import com.example.medisync.ui.screens.patient.SearchScreen
@@ -217,6 +219,10 @@ class MainActivity : ComponentActivity() {
                         SearchScreen(navController = navController)
                     }
 
+                    composable("patientAiChat") {
+                        PatientAiChatScreen(navController = navController)
+                    }
+
                     composable("doctorProfile/{doctorId}") { backStackEntry ->
                         DoctorProfileScreen(
                             doctorId = backStackEntry.arguments?.getString("doctorId")?.toIntOrNull() ?: 0,
@@ -312,6 +318,16 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("doctorClinicLocation") {
                         DoctorClinicLocationScreen(navController = navController)
+                    }
+                    composable("patientAppointmentDetail/{appointmentId}") { backStackEntry ->
+                        val appointmentId = backStackEntry.arguments
+                            ?.getString("appointmentId")
+                            ?.toIntOrNull() ?: 0
+
+                        PatientAppointmentDetailScreen(
+                            navController = navController,
+                            appointmentId = appointmentId
+                        )
                     }
 
                 }

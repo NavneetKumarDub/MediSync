@@ -173,7 +173,9 @@ fun AppointmentListScreen(
                             selectedAvatarUrl  = url
                             showAvatarDialog   = true
                         },
-                        onCardClick  = { }
+                        onCardClick = { appt ->
+                            navController.navigate("patientAppointmentDetail/${appt.id}")
+                        }
                     )
                 }
             }

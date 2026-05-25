@@ -14,6 +14,7 @@ import chatRoutes from './src/routes/chat.route'
 import { initMinIO } from './src/config/minio'
 import uploadRoutes from './src/routes/upload.route'
 import recordsRoutes from './src/routes/records.route'
+import ratingRoutes from './src/routes/rating.route'
 
 import { startSlotGeneratorJob, generateSlotsForNextDay } from './src/jobs/slot.generator'
 
@@ -32,6 +33,7 @@ app.use('/api/appointments', appointmentRoutes)
 app.use('/api/chat', chatRoutes)
 app.use('/api/upload', uploadRoutes)
 app.use('/api/records', recordsRoutes)
+app.use('/api/ratings', ratingRoutes)
 
 
 

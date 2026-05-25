@@ -20,4 +20,7 @@ interface AppointmentDao {
     // Delete: Clears the cache on logout
     @Query("DELETE FROM appointments_table")
     suspend fun clearAll()
+
+    @Query("SELECT * FROM appointments_table WHERE appointment_id = :appointmentId LIMIT 1")
+    fun getAppointmentById(appointmentId: Int): Flow<AppointmentEntity?>
 }

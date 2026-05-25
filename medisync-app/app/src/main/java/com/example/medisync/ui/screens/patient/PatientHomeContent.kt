@@ -92,7 +92,7 @@ fun HomeContent(
                         icon = Icons.Default.HealthAndSafety,
                         onClick = {
                             scope.launch { drawerState.close() }
-                            // navController.navigate("patientAiChat")
+                            navController.navigate("patientAiChat")
                         }
                     ),
                     AppDrawerItem(

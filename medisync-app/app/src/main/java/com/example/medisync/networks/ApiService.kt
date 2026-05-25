@@ -269,6 +269,24 @@ interface ApiService {
         @Body request: ClinicLocationRequest
     ): Response<UpdateClinicLocationResponse>
 
+    @POST("api/ratings")
+    suspend fun submitDoctorRating(
+        @Header("Authorization") token: String,
+        @Body request: SubmitDoctorRatingRequest
+    ): Response<SubmitDoctorRatingResponse>
+
+    @GET("api/ratings/appointment/{appointmentId}")
+    suspend fun getAppointmentRating(
+        @Header("Authorization") token: String,
+        @Path("appointmentId") appointmentId: Int
+    ): Response<AppointmentRatingResponse>
+
+    @GET("api/ratings/doctor/{doctorId}/summary")
+    suspend fun getDoctorRatingSummary(
+        @Header("Authorization") token: String,
+        @Path("doctorId") doctorId: Int
+    ): Response<DoctorRatingSummaryResponse>
+
 }
 
 

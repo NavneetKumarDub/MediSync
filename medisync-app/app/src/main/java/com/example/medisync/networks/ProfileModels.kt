@@ -117,8 +117,8 @@ data class DoctorDetail(
     @SerializedName("address")           val address         : String? = null,
     @SerializedName("city")              val city            : String? = null,
     @SerializedName("pincode")           val pincode         : String? = null,
-    @SerializedName("lat")               val lat             : Double? = null,
-    @SerializedName("lng")               val lng             : Double? = null
+    @SerializedName("latitude")          val latitude        : Double? = null,
+    @SerializedName("longitude")         val longitude       : Double? = null
 )
 
 
@@ -127,7 +127,9 @@ data class SlotItem(
     @SerializedName("start_time")       val startTime      : String,
     @SerializedName("end_time")         val endTime        : String,
     @SerializedName("consultation_fee") val consultationFee: String,
-    @SerializedName("status")           val status         : String
+    @SerializedName("status")           val status         : String,
+    @SerializedName("consultation_type") val consultationType: String? = null,
+    @SerializedName("slot_duration_minutes") val slotDurationMinutes: Int? = null
 )
 
 data class SlotsResponse(
@@ -508,4 +510,32 @@ data class ClinicLocationResponse(
 data class UpdateClinicLocationResponse(
     val message: String,
     val clinic: ClinicLocationResponse
+)
+
+data class SubmitDoctorRatingRequest(
+    val appointmentId: Int,
+    val rating: Int,
+    val comment: String?
+)
+
+data class DoctorRatingDto(
+    val id: Int,
+    val rating: Int,
+    val comment: String?,
+    val createdAt: String?,
+    val updatedAt: String?
+)
+
+data class AppointmentRatingResponse(
+    val rating: DoctorRatingDto?
+)
+
+data class DoctorRatingSummaryResponse(
+    val average: Double,
+    val count: Int
+)
+
+data class SubmitDoctorRatingResponse(
+    val message: String,
+    val rating: DoctorRatingDto
 )

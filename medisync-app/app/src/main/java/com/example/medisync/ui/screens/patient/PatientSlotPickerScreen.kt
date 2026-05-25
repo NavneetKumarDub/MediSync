@@ -65,6 +65,30 @@ private fun formatDateDisplay(dateStr: String?): String {
     } catch (_: Exception) { dateStr }
 }
 
+private fun slotTypeLabel(slot: SlotItem): String? {
+    val value = slot.consultationType
+        ?.takeIf { it.isNotBlank() && it.lowercase() != "null" }
+        ?: return null
+
+    return if (value.lowercase().contains("online")) "Online" else "Offline"
+}
+
+private fun slotDurationLabel(slot: SlotItem): String? =
+    (slot.slotDurationMinutes ?: calculateSlotDurationMinutes(slot.startTime, slot.endTime))
+        .takeIf { it > 0 }
+        ?.let { "$it min" }
+
+private fun calculateSlotDurationMinutes(startTime: String, endTime: String): Int {
+    return try {
+        val parser = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+        val start = parser.parse(startTime)?.time ?: return 0
+        val end = parser.parse(endTime)?.time ?: return 0
+        ((end - start) / 60000L).toInt().coerceAtLeast(0)
+    } catch (_: Exception) {
+        0
+    }
+}
+
 private val previewSlots = listOf(
     SlotItem(1,  "09:00:00", "09:15:00", "500.00", "available"),
     SlotItem(2,  "09:15:00", "09:30:00", "500.00", "booked"),
@@ -400,23 +424,44 @@ fun SlotPickerContent(
 
                             Spacer(Modifier.height(16.dp))
 
-                            Row(
-                                modifier              = Modifier.fillMaxWidth(),
-                                verticalAlignment     = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    InfoPill(Icons.Default.CalendarToday, formatDateDisplay(selectedDate))
-                                    InfoPill(Icons.Default.Schedule, formatTime(selectedSlot.startTime))
+                                Row(
+                                    modifier              = Modifier.fillMaxWidth(),
+                                    verticalAlignment     = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        InfoPill(Icons.Default.CalendarToday, formatDateDisplay(selectedDate))
+                                        InfoPill(Icons.Default.Schedule, formatTime(selectedSlot.startTime))
+                                    }
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text("Fee", fontSize = 10.sp, color = SlotTextHint)
+                                        Text(
+                                            "₹${selectedSlot.consultationFee.toDouble().toInt()}",
+                                            fontSize   = 18.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color      = SlotTextPrimary
+                                        )
+                                    }
                                 }
-                                Column(horizontalAlignment = Alignment.End) {
-                                    Text("Fee", fontSize = 10.sp, color = SlotTextHint)
-                                    Text(
-                                        "₹${selectedSlot.consultationFee.toDouble().toInt()}",
-                                        fontSize   = 18.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color      = SlotTextPrimary
-                                    )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    slotTypeLabel(selectedSlot)?.let { type ->
+                                        InfoPill(
+                                            icon = if (type == "Online") Icons.Default.Videocam else Icons.Default.LocalHospital,
+                                            text = type
+                                        )
+                                    }
+                                    slotDurationLabel(selectedSlot)?.let { duration ->
+                                        InfoPill(Icons.Default.Timer, duration)
+                                    }
                                 }
                             }
 

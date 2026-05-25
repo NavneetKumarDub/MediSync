@@ -44,6 +44,8 @@ export const getDoctorSlots = async (req: Request, res: Response) => {
                 start_time,
                 end_time,
                 consultation_fee,
+                consultation_type,
+                slot_duration_minutes,
                 status
              FROM appointment_slots
              WHERE doctor_id = $1

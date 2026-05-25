@@ -23,6 +23,9 @@ class AppointmentRepository(
     suspend fun syncDoctorAppointments(context: Context) {
         sync(context, isDoctor = true)
     }
+    fun getAppointmentById(appointmentId: Int): Flow<AppointmentEntity?> {
+        return appointmentDao.getAppointmentById(appointmentId)
+    }
 
     private suspend fun sync(context: Context, isDoctor: Boolean) {
         try {

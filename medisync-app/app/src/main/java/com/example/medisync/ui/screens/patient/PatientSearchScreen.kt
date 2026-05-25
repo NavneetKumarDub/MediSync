@@ -37,19 +37,16 @@ private val DividerCol        = Color(0xFFE4E7EC)
 private val TextPrimCol       = Color(0xFF111827)
 private val TextSecondCol     = Color(0xFF6B7280)
 private val TextHintCol       = Color(0xFF9CA3AF)
-private val GreenCol          = Color(0xFF27AE7A)
-private val GreenLightCol     = Color(0xFFE6F7F0)
-private val GreenTextCol      = Color(0xFF1A8C61)
+private val ActionBlue        = Color(0xFF03A9F4)
+private val ActionBlueLight   = Color(0xFFE3F6FE)
+private val ActionBlueText    = Color(0xFF0288D1)
 private val ChipBg            = Color(0xFFEEF0F3)
-private val OnlineChipBg      = Color(0xFFE6F7F0)
-private val OfflineChipBg     = Color(0xFFFFF3E0)
 private val ErrorBannerBg     = Color(0xFFFFF3E0)
 private val ErrorBannerText   = Color(0xFFE65100)
-private val FilterActiveColor = Color(0xFF27AE7A)
+private val FilterActiveColor = ActionBlue
 private val FilterIdleColor   = Color(0xFF6B7280)
-private val AvatarBg          = Color(0xFFE6F7F0)
-private val AvatarText        = Color(0xFF1A8C61)
-private val OfflineText       = Color(0xFFB45309)
+private val AvatarBg          = Color(0xFFE3F6FE)
+private val AvatarText        = ActionBlueText
 
 // ── Sample fallback ────────────────────────────
 val sampleDoctors = listOf(
@@ -166,7 +163,7 @@ fun SearchScreen(navController: NavController) {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(10.dp))
-                            .background(if (filtersActive) GreenLightCol else ChipBg)
+                            .background(if (filtersActive) ActionBlueLight else ChipBg)
                             .clickable { showFilters = true }
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {
@@ -191,7 +188,7 @@ fun SearchScreen(navController: NavController) {
                                     modifier = Modifier
                                         .size(6.dp)
                                         .clip(CircleShape)
-                                        .background(GreenCol)
+                                        .background(ActionBlue)
                                 )
                             }
                         }
@@ -216,7 +213,7 @@ fun SearchScreen(navController: NavController) {
                         Text(
                             text       = "Clear all",
                             fontSize   = 12.sp,
-                            color      = GreenCol,
+                            color      = ActionBlue,
                             fontWeight = FontWeight.SemiBold,
                             modifier   = Modifier.clickable { filters = SearchFilters() }
                         )
@@ -236,7 +233,7 @@ fun SearchScreen(navController: NavController) {
                         .padding(paddingValues),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = GreenCol)
+                    CircularProgressIndicator(color = ActionBlue)
                 }
             }
 
@@ -361,9 +358,9 @@ fun DoctorCard(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text       = (doctor.doctorName ?: "?")
+                    text       = formattedDoctorName(doctor.doctorName)
                         .split(" ")
-                        .filter { it.isNotEmpty() }
+                        .filter { it.isNotEmpty() && it != "Dr." }
                         .take(2)
                         .joinToString("") { it.first().uppercase() }
                         .ifEmpty { "?" },
@@ -385,7 +382,7 @@ fun DoctorCard(
                     verticalAlignment     = Alignment.CenterVertically
                 ) {
                     Text(
-                        text       = doctor.doctorName ?: "Unknown Doctor",
+                        text       = formattedDoctorName(doctor.doctorName),
                         fontSize   = 15.sp,
                         fontWeight = FontWeight.SemiBold,
                         color      = TextPrimCol,
@@ -417,22 +414,6 @@ fun DoctorCard(
                     doctor.experienceYears?.let {
                         InfoChip(text = "$it yrs exp")
                     }
-                    if (!doctor.consultationType.isNullOrEmpty()) {
-                        InfoChip(
-                            text      = doctor.consultationType
-                                .replaceFirstChar { it.uppercase() },
-                            textColor = when (doctor.consultationType) {
-                                "online"  -> GreenTextCol
-                                "offline" -> OfflineText
-                                else      -> TextSecondCol
-                            },
-                            bgColor   = when (doctor.consultationType) {
-                                "online"  -> OnlineChipBg
-                                "offline" -> OfflineChipBg
-                                else      -> ChipBg
-                            }
-                        )
-                    }
                 }
 
                 HorizontalDivider(
@@ -441,7 +422,6 @@ fun DoctorCard(
                     thickness = 0.8.dp
                 )
 
-                // Fee + Book
                 Row(
                     modifier              = Modifier
                         .fillMaxWidth()
@@ -449,23 +429,12 @@ fun DoctorCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment     = Alignment.CenterVertically
                 ) {
-                    doctor.consultationFee?.let {
-                        Text(
-                            text       = "₹${it.toInt()} per consult",
-                            fontSize   = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color      = GreenCol
-                        )
-                    } ?: Text(
-                        text     = "Fee not listed",
-                        fontSize = 13.sp,
-                        color    = TextHintCol
-                    )
+                    Spacer(Modifier.weight(1f))
 
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(GreenCol)
+                            .background(ActionBlue)
                             .clickable { onClick() }
                             .padding(horizontal = 14.dp, vertical = 6.dp)
                     ) {
@@ -549,7 +518,7 @@ fun FilterBottomSheet(
                     maxFee           = ""
                     languages        = ""
                 }) {
-                    Text(text = "Reset all", color = GreenCol)
+                    Text(text = "Reset all", color = ActionBlue)
                 }
             }
 
@@ -628,7 +597,7 @@ fun FilterBottomSheet(
                     .fillMaxWidth()
                     .height(52.dp),
                 shape  = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = GreenCol)
+                colors = ButtonDefaults.buttonColors(containerColor = ActionBlue)
             ) {
                 Text(
                     text       = "Apply Filters",
@@ -670,7 +639,7 @@ fun FilterChipItem(
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(if (isSelected) GreenLightCol else ChipBg)
+            .background(if (isSelected) ActionBlueLight else ChipBg)
             .clickable { onClick() }
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
@@ -678,8 +647,30 @@ fun FilterChipItem(
             text       = label,
             fontSize   = 13.sp,
             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-            color      = if (isSelected) GreenTextCol else TextSecondCol
+            color      = if (isSelected) ActionBlueText else TextSecondCol
         )
+    }
+}
+
+private fun formattedDoctorName(name: String?): String {
+    val formattedName = name
+        ?.trim()
+        ?.split(Regex("\\s+"))
+        ?.filter { it.isNotBlank() }
+        ?.joinToString(" ") { part ->
+            part.lowercase().replaceFirstChar { char -> char.titlecase() }
+        }
+        .orEmpty()
+
+    if (formattedName.isBlank()) return "Doctor"
+
+    return if (
+        formattedName.startsWith("Dr", ignoreCase = true) ||
+        formattedName.startsWith("Doctor", ignoreCase = true)
+    ) {
+        formattedName
+    } else {
+        "Dr. $formattedName"
     }
 }
 

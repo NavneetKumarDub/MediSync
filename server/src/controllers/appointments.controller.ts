@@ -18,7 +18,7 @@ export const bookAppointment = async (req: Request, res: Response) => {
             `UPDATE appointment_slots
                 SET status = 'booked'
               WHERE id = $1 AND status = 'available'
-          RETURNING id, doctor_id, date, start_time, end_time, consultation_fee`,
+          RETURNING id, doctor_id, date, start_time, end_time, consultation_fee, consultation_type`,
             [slotId]
         );
 
@@ -28,13 +28,8 @@ export const bookAppointment = async (req: Request, res: Response) => {
         }
         const slot = slotRes.rows[0];
         const doctorId = slot.doctor_id;
-
-        const docRes = await client.query(
-            `SELECT consultation_type FROM doctor_professional WHERE user_id = $1`,
-            [doctorId]
-        );
-        const consultType = docRes.rows[0]?.consultation_type ?? 'both';
-        const apptType = consultType === 'offline' ? 'in_person' : 'online';
+        const consultType = String(slot.consultation_type || 'Offline').toLowerCase();
+        const apptType = consultType.includes('online') ? 'online' : 'offline';
 
         const apptRes = await client.query(
             `INSERT INTO appointments (patient_id, doctor_id, type, slot_id)
@@ -127,8 +122,6 @@ export const bookAppointment = async (req: Request, res: Response) => {
 export const getPatientAppointments = async (req: Request, res: Response) => {
     console.log("Inside getPatientAppointments controller");
     const patientId = (req as any).user.id;
-    
-    const lastSync = (req.query.since as string) || '1970-01-01T00:00:00Z';
 
     try {
         const result = await db.query(
@@ -143,16 +136,17 @@ export const getPatientAppointments = async (req: Request, res: Response) => {
                 s.start_time,
                 s.end_time,
                 s.date,
+                s.consultation_fee AS fee,
                 cr.id AS room_id,
                 a.updated_at 
             FROM appointments AS a 
             JOIN users AS u ON a.doctor_id = u.id
             LEFT JOIN doctor_professional AS dp ON u.id = dp.user_id
             LEFT JOIN appointment_slots AS s ON a.slot_id = s.id
-            LEFT JOIN chat_rooms AS cr ON a.id = cr.appointment_id
-            WHERE a.patient_id = $1 AND a.updated_at > $2
-            ORDER BY a.updated_at ASC`, 
-            [patientId, lastSync]
+            LEFT JOIN chat_rooms AS cr ON cr.patient_id = a.patient_id AND cr.doctor_id = a.doctor_id
+            WHERE a.patient_id = $1
+            ORDER BY s.date ASC, s.start_time ASC`, 
+            [patientId]
         );
 
         if(result.rowCount === 0){
@@ -169,8 +163,6 @@ export const getPatientAppointments = async (req: Request, res: Response) => {
 export const getDoctorAppointments = async (req: Request, res: Response) => {
     console.log("Inside getDoctorAppointments controller");
     const doctorId = (req as any).user.id;
-    
-    const lastSync = (req.query.since as string) || '1970-01-01T00:00:00Z';
 
     try {
         const result = await db.query(
@@ -184,15 +176,16 @@ export const getDoctorAppointments = async (req: Request, res: Response) => {
                 s.start_time,
                 s.end_time,
                 s.date,
+                s.consultation_fee AS fee,
                 cr.id AS room_id,
                 a.updated_at
             FROM appointments AS a 
             JOIN users AS u ON a.patient_id = u.id
             LEFT JOIN appointment_slots AS s ON a.slot_id = s.id
-            LEFT JOIN chat_rooms AS cr ON a.id = cr.appointment_id
-            WHERE a.doctor_id = $1 AND a.updated_at > $2
-            ORDER BY a.updated_at ASC`,
-            [doctorId, lastSync]
+            LEFT JOIN chat_rooms AS cr ON cr.patient_id = a.patient_id AND cr.doctor_id = a.doctor_id
+            WHERE a.doctor_id = $1
+            ORDER BY s.date ASC, s.start_time ASC`,
+            [doctorId]
         );
 
         if(result.rowCount === 0) return res.json({ appointments: [] });
