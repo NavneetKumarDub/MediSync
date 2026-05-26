@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -149,6 +151,18 @@ fun HomeContent(
                     onNotificationClick = { },
                     onSearchClick = { navController.navigate("search") }
                 )
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = { navController.navigate("patientAiChat") },
+                    containerColor = Color(0xFF03A9F4),
+                    contentColor = Color.White
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.HealthAndSafety,
+                        contentDescription = "AI Health Chat"
+                    )
+                }
             },
             bottomBar = {
                 BottomNavBar(

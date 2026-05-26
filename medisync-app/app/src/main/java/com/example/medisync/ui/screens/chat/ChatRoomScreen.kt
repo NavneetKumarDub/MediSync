@@ -7,6 +7,7 @@ import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,11 +20,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
-import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.EmojiEmotions
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -56,19 +55,20 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 // ── WhatsApp-style color palette with your blue accent ──
-private val ChatBg         = Color(0xFFE7F0F4)
-private val MyBubble       = Color(0xFF2A9DF4)
-private val MyBubbleText   = Color.White
+private val ChatBg         = Color(0xFFF2FAFF)
+private val MyBubble       = Color(0xFFE5F5FF)
+private val MyBubbleText   = Color(0xFF111B21)
 private val OtherBubble    = Color.White
 private val OtherBubbleText = Color(0xFF111B21)
-private val TimeTextMine   = Color.White.copy(alpha = 0.75f)
+private val TimeTextMine   = Color(0xFF667781)
 private val TimeTextOther  = Color(0xFF667781)
-private val HeaderBg       = Color(0xFF2A9DF4)
+private val HeaderBg       = Color(0xFF38BDF8)
 private val HeaderText     = Color.White
-private val InputBarBg     = Color(0xFFF5F6F6)
+private val InputBarBg     = Color.White
 private val DateChipBg     = Color(0xFFD1E7F0)
 private val DateChipText   = Color(0xFF1F4D6B)
 private val ReadTick       = Color(0xFF53BDEB)
+private val MediaBorder    = Color(0xFFE2E8F0)
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -449,25 +449,36 @@ private fun MessageBubble(
 
     LaunchedEffect(message.id) { onVisible() }
 
+    val isMediaMessage = message.messageType != "text"
+    val bubbleShape = RoundedCornerShape(
+        topStart = 14.dp,
+        topEnd = 14.dp,
+        bottomStart = if (isMine) 14.dp else 2.dp,
+        bottomEnd = if (isMine) 2.dp else 14.dp
+    )
+    val bubbleBg = if (isMediaMessage) Color.White else if (isMine) MyBubble else OtherBubble
+    val contentTextColor = if (isMine && !isMediaMessage) MyBubbleText else OtherBubbleText
+    val timeTextColor = if (isMine && !isMediaMessage) TimeTextMine else TimeTextOther
+
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 1.dp),
         horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start
     ) {
         Column(
-            modifier = Modifier.widthIn(max = if (message.messageType == "image") 230.dp else 300.dp),
+            modifier = Modifier.widthIn(max = if (message.messageType == "image") 230.dp else 246.dp),
             horizontalAlignment = if (isMine) Alignment.End else Alignment.Start
         ) {
             Box(
                 modifier = Modifier
-                    .clip(
-                        RoundedCornerShape(
-                            topStart = 14.dp,
-                            topEnd = 14.dp,
-                            bottomStart = if (isMine) 14.dp else 2.dp,
-                            bottomEnd = if (isMine) 2.dp else 14.dp
-                        )
+                    .clip(bubbleShape)
+                    .background(bubbleBg)
+                    .then(
+                        if (isMediaMessage) {
+                            Modifier.border(0.6.dp, MediaBorder, bubbleShape)
+                        } else {
+                            Modifier
+                        }
                     )
-                    .background(if (isMine) MyBubble else OtherBubble)
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
                 Column {
@@ -475,7 +486,7 @@ private fun MessageBubble(
                         Text(
                             text = message.message ?: "",
                             fontSize = 14.5.sp,
-                            color = if (isMine) MyBubbleText else OtherBubbleText,
+                            color = contentTextColor,
                             lineHeight = 20.sp
                         )
                     } else if (message.messageType == "image") {
@@ -500,7 +511,7 @@ private fun MessageBubble(
                         Text(
                             text = message.fileName ?: "File",
                             fontSize = 14.5.sp,
-                            color = if (isMine) MyBubbleText else OtherBubbleText,
+                            color = contentTextColor,
                             lineHeight = 20.sp,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.clickable {
@@ -513,12 +524,12 @@ private fun MessageBubble(
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.End,
-                        modifier = Modifier.fillMaxWidth().padding(top = 2.dp)
+                        modifier = Modifier.align(Alignment.End).padding(top = 2.dp)
                     ) {
                         Text(
                             text = timeFormatted,
                             fontSize = 10.sp,
-                            color = if (isMine) TimeTextMine else TimeTextOther
+                            color = timeTextColor
                         )
                         if (isMine) {
                             Spacer(Modifier.width(4.dp))
@@ -628,29 +639,19 @@ private fun ChatInputBar(
                     modifier = Modifier.size(20.dp)
                 )
             }
-            if (value.isBlank()) {
-                IconButton(onClick = { }, modifier = Modifier.size(36.dp)) {
-                    Icon(
-                        Icons.Default.CameraAlt,
-                        contentDescription = "Camera",
-                        tint = Color(0xFF8696A0),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
         }
 
         Box(
             modifier = Modifier
                 .size(46.dp)
                 .clip(CircleShape)
-                .background(MyBubble),
+                .background(if (value.isNotBlank()) HeaderBg else Color(0xFFCFEFFF)),
             contentAlignment = Alignment.Center
         ) {
             IconButton(onClick = onSend, modifier = Modifier.size(46.dp)) {
                 Icon(
-                    imageVector = if (value.isNotBlank()) Icons.AutoMirrored.Filled.Send else Icons.Default.Mic,
-                    contentDescription = if (value.isNotBlank()) "Send" else "Voice",
+                    imageVector = Icons.AutoMirrored.Filled.Send,
+                    contentDescription = "Send",
                     tint = Color.White,
                     modifier = Modifier.size(22.dp)
                 )

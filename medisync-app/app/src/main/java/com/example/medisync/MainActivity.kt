@@ -124,35 +124,32 @@ class MainActivity : ComponentActivity() {
                             val phone = TokenManager.getPhone(context)
 
                             val notificationType = intent.getStringExtra("notification_type")
-                            val notificationRoomId = intent.getStringExtra("roomId")?.toIntOrNull()
 
                             if (token != null && role != null && userId != null) {
                                 ChatWebSocketManager.connect(context)
 
-                                if (notificationType == "chat_message" && notificationRoomId != null) {
-                                    navController.navigate(
-                                        "chat/$notificationRoomId?name=${Uri.encode("Unknown")}&photoUrl="
-                                    ) {
-                                        popUpTo("auth_check") { inclusive = true }
+                                val initialTab = when (notificationType) {
+                                    "chat_message" -> 2
+                                    "appointment_reminder", "appointment_booked" -> 1
+                                    else -> 0
+                                }
+
+                                when (role) {
+                                    "patient" -> {
+                                        navController.navigate("patientHome/${Uri.encode(name)}/${Uri.encode(phone)}/$userId?tab=$initialTab") {
+                                            popUpTo("auth_check") { inclusive = true }
+                                        }
                                     }
-                                } else {
-                                    when (role) {
-                                        "patient" -> {
-                                            navController.navigate("patientHome/$name/$phone/$userId") {
-                                                popUpTo("auth_check") { inclusive = true }
-                                            }
-                                        }
 
-                                        "doctor" -> {
-                                            navController.navigate("doctorHome/$name/$phone/$userId") {
-                                                popUpTo("auth_check") { inclusive = true }
-                                            }
+                                    "doctor" -> {
+                                        navController.navigate("doctorHome/${Uri.encode(name)}/${Uri.encode(phone)}/$userId?tab=$initialTab") {
+                                            popUpTo("auth_check") { inclusive = true }
                                         }
+                                    }
 
-                                        else -> {
-                                            navController.navigate("login") {
-                                                popUpTo("auth_check") { inclusive = true }
-                                            }
+                                    else -> {
+                                        navController.navigate("login") {
+                                            popUpTo("auth_check") { inclusive = true }
                                         }
                                     }
                                 }
@@ -198,12 +195,21 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    composable("patientHome/{name}/{phone}/{userId}") { backStackEntry ->
+                    composable(
+                        route = "patientHome/{name}/{phone}/{userId}?tab={tab}",
+                        arguments = listOf(
+                            navArgument("tab") {
+                                type = NavType.IntType
+                                defaultValue = 0
+                            }
+                        )
+                    ) { backStackEntry ->
                         PatientNavigationScreen(
                             navController = navController,
                             name = backStackEntry.arguments?.getString("name") ?: "",
                             phone = backStackEntry.arguments?.getString("phone") ?: "",
-                            userId = backStackEntry.arguments?.getString("userId")?.toIntOrNull() ?: 0
+                            userId = backStackEntry.arguments?.getString("userId")?.toIntOrNull() ?: 0,
+                            initialTab = backStackEntry.arguments?.getInt("tab") ?: 0
                         )
                     }
 
@@ -259,12 +265,21 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    composable("doctorHome/{name}/{phone}/{userId}") { backStackEntry ->
+                    composable(
+                        route = "doctorHome/{name}/{phone}/{userId}?tab={tab}",
+                        arguments = listOf(
+                            navArgument("tab") {
+                                type = NavType.IntType
+                                defaultValue = 0
+                            }
+                        )
+                    ) { backStackEntry ->
                         DoctorNavigationScreen(
                             navController = navController,
                             name = backStackEntry.arguments?.getString("name") ?: "",
                             phone = backStackEntry.arguments?.getString("phone") ?: "",
-                            userId = backStackEntry.arguments?.getString("userId")?.toIntOrNull() ?: 0
+                            userId = backStackEntry.arguments?.getString("userId")?.toIntOrNull() ?: 0,
+                            initialTab = backStackEntry.arguments?.getInt("tab") ?: 0
                         )
                     }
 
@@ -364,12 +379,29 @@ class MainActivity : ComponentActivity() {
                         return@LaunchedEffect
                     }
 
-                    if (notificationType == "chat_message" && roomId != null) {
+                    if (notificationType == "chat_message" || notificationType == "appointment_reminder" || notificationType == "appointment_booked") {
                         val token = TokenManager.getToken(context)
-                        if (token != null) {
-                            navController.navigate(
-                                "chat/$roomId?name=${Uri.encode("Unknown")}&photoUrl="
-                            )
+                        val role = TokenManager.getRole(context)
+                        val userId = TokenManager.getUserId(context)
+                        val name = TokenManager.getName(context).orEmpty()
+                        val phone = TokenManager.getPhone(context).orEmpty()
+
+                        if (token != null && role != null && userId != null) {
+                            val initialTab = when (notificationType) {
+                                "chat_message" -> 2
+                                else -> 1
+                            }
+                            val homeRoute = when (role) {
+                                "patient" -> "patientHome/${Uri.encode(name)}/${Uri.encode(phone)}/$userId?tab=$initialTab"
+                                "doctor" -> "doctorHome/${Uri.encode(name)}/${Uri.encode(phone)}/$userId?tab=$initialTab"
+                                else -> null
+                            }
+                            if (homeRoute != null) {
+                                navController.navigate(homeRoute) {
+                                    popUpTo("auth_check") { inclusive = false }
+                                    launchSingleTop = true
+                                }
+                            }
                             pendingNotificationIntent = null
                         }
                     }

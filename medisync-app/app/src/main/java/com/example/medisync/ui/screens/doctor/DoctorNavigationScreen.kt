@@ -1,6 +1,7 @@
 package com.example.medisync.ui.screens.doctor
 
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.annotation.RequiresApi
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,9 +19,14 @@ fun DoctorNavigationScreen(
     navController: NavController,
     name: String = "",
     phone: String = "",
-    userId: Int
+    userId: Int,
+    initialTab: Int = 0
 ) {
-    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    var selectedTab by rememberSaveable(initialTab) { mutableIntStateOf(initialTab.coerceIn(0, 3)) }
+
+    BackHandler(enabled = selectedTab != 0) {
+        selectedTab = 0
+    }
 
     when (selectedTab) {
         0 -> DoctorHomeContent(

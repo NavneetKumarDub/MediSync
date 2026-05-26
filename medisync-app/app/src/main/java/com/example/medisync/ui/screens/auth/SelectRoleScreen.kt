@@ -1,19 +1,38 @@
 package com.example.medisync.ui.screens.auth
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.MedicalServices
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -21,143 +40,148 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import com.example.medisync.ui.components.RoleCard
 import com.example.medisync.ui.theme.natureGreen
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SelectRoleScreen(
     navController: NavController,
-    phone        : String
+    phone: String
 ) {
     var selectedRole by remember { mutableStateOf("") }
 
-    Scaffold(containerColor = Color(0xFFFAFBFC)) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
+    Scaffold(containerColor = AuthBg) { padding ->
+        AuthScreenFrame(
+            showBack = true,
+            onBack = { navController.popBackStack() }
         ) {
-            // ── Back ─────────────────────────────
-            Row(
-                modifier          = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(
-                        imageVector        = Icons.Default.ArrowBack,
-                        contentDescription = "Back",
-                        tint               = Color(0xFF0F172A)
-                    )
-                }
-            }
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 28.dp)
+                    .padding(padding)
+                    .statusBarsPadding()
+                    .padding(horizontal = 28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(106.dp))
 
-                // ── Icon ─────────────────────────
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(CircleShape)
-                        .background(natureGreen.copy(alpha = 0.12f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector        = Icons.Outlined.Person,
-                        contentDescription = null,
-                        tint               = natureGreen,
-                        modifier           = Modifier.size(28.dp)
-                    )
-                }
-
-                Spacer(Modifier.height(20.dp))
-
-                Text(
-                    text       = "Who are you?",
-                    fontSize   = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color      = Color(0xFF0F172A)
+                AuthHeader(
+                    title = "Choose your role",
+                    subtitle = "MediSync will tailor your workspace",
+                    showLogo = true
                 )
 
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(38.dp))
 
-                Text(
-                    text     = "Choose your role to get started",
-                    fontSize = 13.sp,
-                    color    = Color(0xFF64748B)
-                )
-
-                Spacer(Modifier.height(40.dp))
-
-                // ── Role cards ───────────────────
-                RoleCard(
-                    title      = "Doctor",
-                    subtitle   = "Healthcare provider",
-                    icon       = Icons.Outlined.MedicalServices,
-                    iconBg     = natureGreen.copy(alpha = 0.12f),
-                    iconTint   = natureGreen,
+                AuthRoleCard(
+                    title = "Doctor",
+                    subtitle = "Manage appointments, slots, reports, and patient chats",
+                    icon = Icons.Outlined.MedicalServices,
                     isSelected = selectedRole == "doctor",
-                    onClick    = { selectedRole = "doctor" }
+                    onClick = { selectedRole = "doctor" }
                 )
 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(14.dp))
 
-                RoleCard(
-                    title      = "Patient",
-                    subtitle   = "Seeking care",
-                    icon       = Icons.Outlined.Person,
-                    iconBg     = Color(0xFFF1F5F9),
-                    iconTint   = Color(0xFF475569),
+                AuthRoleCard(
+                    title = "Patient",
+                    subtitle = "Book consultations, store records, and chat with doctors",
+                    icon = Icons.Outlined.Person,
                     isSelected = selectedRole == "patient",
-                    onClick    = { selectedRole = "patient" }
+                    onClick = { selectedRole = "patient" }
                 )
 
                 Spacer(Modifier.weight(1f))
 
                 Text(
-                    text       = "This cannot be changed later",
-                    fontSize   = 11.sp,
-                    color      = Color(0xFF94A3B8),
-                    textAlign  = TextAlign.Center,
-                    modifier   = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp)
+                    text = "Choose carefully. This role shapes your app experience.",
+                    fontSize = 11.sp,
+                    color = Color(0xFF94A3B8),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
 
-                Button(
-                    onClick = { navController.navigate("register/$phone/$selectedRole") },
-                    enabled = selectedRole.isNotEmpty(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(54.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor         = natureGreen,
-                        disabledContainerColor = natureGreen.copy(alpha = 0.4f)
-                    ),
-                    elevation = ButtonDefaults.buttonElevation(
-                        defaultElevation  = 0.dp,
-                        pressedElevation  = 0.dp,
-                        disabledElevation = 0.dp
-                    )
-                ) {
-                    Text(
-                        text       = "Continue",
-                        fontSize   = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color      = Color.White
-                    )
-                }
+                Spacer(Modifier.height(14.dp))
 
-                Spacer(Modifier.height(24.dp))
+                AuthPrimaryButton(
+                    text = "Continue",
+                    enabled = selectedRole.isNotEmpty(),
+                    onClick = { navController.navigate("register/$phone/$selectedRole") }
+                )
+
+                Spacer(Modifier.height(26.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun AuthRoleCard(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val border = if (isSelected) natureGreen else AuthBorder
+    val background = if (isSelected) Color(0xFFE0F2FE) else Color.White
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(22.dp))
+            .background(background)
+            .border(1.dp, border, RoundedCornerShape(22.dp))
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(50.dp)
+                .clip(CircleShape)
+                .background(if (isSelected) Color.White.copy(alpha = 0.85f) else Color(0xFFE0F2FE)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = natureGreen,
+                modifier = Modifier.size(25.dp)
+            )
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = AuthTextPrimary
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = subtitle,
+                fontSize = 12.sp,
+                lineHeight = 17.sp,
+                color = AuthTextSecondary
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(if (isSelected) natureGreen else Color.Transparent)
+                .border(1.dp, if (isSelected) natureGreen else AuthBorder, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(15.dp)
+                )
             }
         }
     }
@@ -168,6 +192,6 @@ fun SelectRoleScreen(
 fun RolePreview() {
     SelectRoleScreen(
         navController = rememberNavController(),
-        phone         = "9122349557"
+        phone = "9122349557"
     )
 }

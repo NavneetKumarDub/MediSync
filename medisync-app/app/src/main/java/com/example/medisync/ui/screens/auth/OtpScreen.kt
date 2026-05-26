@@ -3,15 +3,33 @@ package com.example.medisync.ui.screens.auth
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Sms
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -22,42 +40,38 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.example.medisync.data.TokenManager
-import com.example.medisync.networks.RetrofitInstance
-import com.example.medisync.networks.VerifyOtpRequest
 import com.example.medisync.networks.ChatWebSocketManager
+import com.example.medisync.networks.RetrofitInstance
+import com.example.medisync.networks.SaveFcmTokenRequest
+import com.example.medisync.networks.VerifyOtpRequest
 import com.example.medisync.ui.theme.natureGreen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.PhoneAuthProvider
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.navigation.compose.rememberNavController
-import com.google.firebase.messaging.FirebaseMessaging
-import com.example.medisync.networks.SaveFcmTokenRequest
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OtpScreen(
-    navController : NavController,
+    navController: NavController,
     verificationId: String,
-    phoneNumber   : String
+    phoneNumber: String
 ) {
-    var otp          by remember { mutableStateOf("") }
-    var timeLeft     by remember { mutableIntStateOf(30) }
-    var canResend    by remember { mutableStateOf(false) }
+    var otp by remember { mutableStateOf("") }
+    var timeLeft by remember { mutableIntStateOf(30) }
+    var canResend by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
-    var isVerifying  by remember { mutableStateOf(false) }
+    var isVerifying by remember { mutableStateOf(false) }
 
     val focusRequester = remember { FocusRequester() }
-    val scope          = rememberCoroutineScope()
-    val context        = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         while (timeLeft > 0) {
@@ -67,80 +81,33 @@ fun OtpScreen(
         canResend = true
     }
 
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
 
-    Scaffold(containerColor = Color(0xFFFAFBFC)) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
+    Scaffold(containerColor = AuthBg) { padding ->
+        AuthScreenFrame(
+            showBack = true,
+            onBack = { navController.popBackStack() }
         ) {
-            // ── Back ─────────────────────────────
-            Row(
-                modifier          = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(
-                        imageVector        = Icons.Default.ArrowBack,
-                        contentDescription = "Back",
-                        tint               = Color(0xFF0F172A)
-                    )
-                }
-            }
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .padding(padding)
+                    .statusBarsPadding()
                     .padding(horizontal = 28.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // ── Icon ─────────────────────────
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(CircleShape)
-                        .background(natureGreen.copy(alpha = 0.12f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector        = Icons.Default.Sms,
-                        contentDescription = null,
-                        tint               = natureGreen,
-                        modifier           = Modifier.size(32.dp)
-                    )
-                }
+                Spacer(Modifier.height(112.dp))
 
-                Spacer(Modifier.height(24.dp))
-
-                Text(
-                    text       = "Verification code",
-                    fontSize   = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color      = Color(0xFF0F172A)
+                AuthHeader(
+                    title = "Verify number",
+                    subtitle = "Code sent to +91 $phoneNumber",
+                    showLogo = true
                 )
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(42.dp))
 
-                Text(
-                    text     = "Enter the 6-digit code sent to",
-                    fontSize = 13.sp,
-                    color    = Color(0xFF64748B)
-                )
-                Text(
-                    text       = "+91 $phoneNumber",
-                    fontSize   = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color      = Color(0xFF0F172A)
-                )
-
-                Spacer(Modifier.height(40.dp))
-
-                // ── OTP boxes ─────────────────────
                 Box {
                     OutlinedTextField(
                         value = otp,
@@ -156,53 +123,52 @@ fun OtpScreen(
                             .alpha(0f),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        (0 until 6).forEach { index ->
-                            val char       = otp.getOrNull(index)?.toString() ?: ""
-                            val isFilled   = char.isNotEmpty()
-                            val isFocused  = index == otp.length
 
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(9.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        repeat(6) { index ->
+                            val char = otp.getOrNull(index)?.toString().orEmpty()
+                            val active = index == otp.length || char.isNotEmpty()
                             Box(
                                 modifier = Modifier
-                                    .size(width = 46.dp, height = 56.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(Color.White)
+                                    .size(width = 44.dp, height = 56.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(AuthFieldBg)
                                     .border(
-                                        width = if (isFocused || isFilled) 1.5.dp else 1.dp,
+                                        width = if (active) 1.5.dp else 1.dp,
                                         color = when {
-                                            errorMessage.isNotEmpty() -> Color(0xFFDC2626)
-                                            isFocused || isFilled     -> natureGreen
-                                            else                      -> Color(0xFFE2E8F0)
+                                            errorMessage.isNotBlank() -> Color(0xFFDC2626)
+                                            active -> natureGreen
+                                            else -> AuthBorder
                                         },
-                                        shape = RoundedCornerShape(12.dp)
+                                        shape = RoundedCornerShape(16.dp)
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text       = char,
-                                    fontSize   = 20.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color      = Color(0xFF0F172A)
+                                    text = char,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AuthTextPrimary
                                 )
                             }
                         }
                     }
                 }
 
-                Spacer(Modifier.height(12.dp))
-
-                if (errorMessage.isNotEmpty()) {
-                    Text(
-                        text     = errorMessage,
-                        color    = Color(0xFFDC2626),
-                        fontSize = 12.sp
-                    )
+                if (errorMessage.isNotBlank()) {
+                    Spacer(Modifier.height(10.dp))
+                    Text(text = errorMessage, color = Color(0xFFDC2626), fontSize = 12.sp)
                 }
 
                 Spacer(Modifier.height(28.dp))
 
-                // ── Verify button ────────────────
-                Button(
+                AuthPrimaryButton(
+                    text = if (isVerifying) "Verifying" else "Verify",
+                    enabled = otp.length == 6 && !isVerifying,
+                    loading = isVerifying,
                     onClick = {
                         isVerifying = true
                         errorMessage = ""
@@ -216,15 +182,17 @@ fun OtpScreen(
                                         errorMessage = "Failed to get Firebase token"
                                         return@addOnSuccessListener
                                     }
+
                                     scope.launch {
                                         try {
                                             val response = RetrofitInstance.api.verifyOtp(
                                                 VerifyOtpRequest(idToken = firebaseIdToken)
                                             )
                                             Log.d("verifyOtp", response.toString())
+
                                             TokenManager.saveToken(context, response.token)
                                             FirebaseMessaging.getInstance().token.addOnSuccessListener { fcmToken ->
-                                                coroutineScope.launch {
+                                                scope.launch {
                                                     runCatching {
                                                         RetrofitInstance.api.saveFcmToken(
                                                             token = "Bearer ${response.token}",
@@ -236,9 +204,10 @@ fun OtpScreen(
                                             TokenManager.saveUserId(context, response.user.id)
                                             response.user.role?.let { TokenManager.saveRole(context, it) }
                                             response.user.name?.let { TokenManager.saveName(context, it) }
-                                            response.user.phone.let { TokenManager.savePhone(context, it) }
+                                            TokenManager.savePhone(context, response.user.phone)
                                             ChatWebSocketManager.connect(context)
 
+                                            isVerifying = false
                                             if (response.isNewUser || response.user.name == null) {
                                                 navController.navigate("selectRole/$phoneNumber")
                                             } else {
@@ -248,8 +217,7 @@ fun OtpScreen(
                                                     )
                                                     "doctor" -> navController.navigate(
                                                         "doctorHome/${response.user.name}/${response.user.phone}/${response.user.id}"
-                                                    )
-                                                    {
+                                                    ) {
                                                         popUpTo("login") { inclusive = true }
                                                     }
                                                     else -> navController.navigate("selectRole/$phoneNumber")
@@ -263,67 +231,47 @@ fun OtpScreen(
                                 }
                             }
                             .addOnFailureListener {
-                                otp         = ""
+                                otp = ""
                                 isVerifying = false
                                 errorMessage = "Invalid OTP, try again"
                             }
                     },
-                    enabled = otp.length == 6 && !isVerifying,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(54.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor         = natureGreen,
-                        disabledContainerColor = natureGreen.copy(alpha = 0.4f)
-                    )
-                ) {
-                    if (isVerifying) {
-                        CircularProgressIndicator(
-                            color       = Color.White,
-                            strokeWidth = 2.dp,
-                            modifier    = Modifier.size(22.dp)
-                        )
-                    } else {
-                        Text(
-                            text       = "Verify",
-                            fontSize   = 15.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color      = Color.White
-                        )
+                    trailing = {
+                        if (isVerifying) {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
-                }
+                )
 
                 Spacer(Modifier.height(20.dp))
 
-                // ── Resend ───────────────────────
                 Row(
-                    verticalAlignment     = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text(
-                        text     = "Didn't receive the code?",
-                        fontSize = 13.sp,
-                        color    = Color(0xFF64748B)
-                    )
+                    Text("Didn't receive the code?", fontSize = 13.sp, color = AuthTextSecondary)
                     if (canResend) {
                         TextButton(
-                            onClick = { /* TODO: resend */ },
+                            onClick = {},
                             contentPadding = PaddingValues(horizontal = 4.dp)
                         ) {
                             Text(
-                                text       = "Resend",
-                                fontSize   = 13.sp,
+                                text = "Resend",
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color      = natureGreen
+                                color = natureGreen
                             )
                         }
                     } else {
                         Text(
-                            text       = "Resend in ${timeLeft}s",
-                            fontSize   = 13.sp,
+                            text = "Resend in ${timeLeft}s",
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color      = Color(0xFF94A3B8)
+                            color = Color(0xFF94A3B8)
                         )
                     }
                 }
@@ -332,14 +280,12 @@ fun OtpScreen(
     }
 }
 
-
-
 @Preview(showBackground = true)
 @Composable
 fun OtpScreenPreview() {
     OtpScreen(
-        navController  = rememberNavController(),
+        navController = rememberNavController(),
         verificationId = "preview-verification-id",
-        phoneNumber    = "9122349557"
+        phoneNumber = "9122349557"
     )
 }

@@ -74,6 +74,7 @@ private val MediChipActiveBorder = natureGreen.copy(alpha = 0.3f)
 private val MediChipActiveText = natureGreen
 private val MediChipIdleBg = Color(0xFFF3F4F6)
 private val MediChipIdleText = MediTextMuted
+private val MediActionBlue = Color(0xFF38BDF8)
 
 private val filterTabs = listOf("All", "Unread", "Favourites", "Groups") // Updated to match WhatsApp screenshot
 
@@ -254,7 +255,7 @@ fun ChatListScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(Color.White)
-                                .padding(vertical = 14.dp),
+                                .padding(vertical = 8.dp),
                             horizontalArrangement = Arrangement.SpaceEvenly,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -273,15 +274,15 @@ fun ChatListScreen(
                                 Icon(
                                     imageVector = Icons.Outlined.ChatBubbleOutline,
                                     contentDescription = "Chat",
-                                    tint = natureGreen,
-                                    modifier = Modifier.size(24.dp)
+                                    tint = MediActionBlue,
+                                    modifier = Modifier.size(20.dp)
                                 )
-                                Spacer(Modifier.height(4.dp))
+                                Spacer(Modifier.height(2.dp))
                                 Text(
                                     text = "Chat",
-                                    fontSize = 12.sp,
+                                    fontSize = 11.sp,
                                     fontWeight = FontWeight.Medium,
-                                    color = natureGreen
+                                    color = MediActionBlue
                                 )
                             }
                         }

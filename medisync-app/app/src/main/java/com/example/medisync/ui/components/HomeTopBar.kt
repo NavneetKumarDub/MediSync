@@ -15,10 +15,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -31,9 +29,8 @@ val TopBarText    = Color(0xFF0288D1)
 val SearchBarBg   = Color(0xEEFFFFFF)
 val SearchHint    = Color(0xFF9CA3AF)
 private val HeaderGlassTop = Color(0xFF03A9F4)
-private val HeaderGlassMid = Color(0xA84DBFF8)
-private val HeaderGlassBottom = Color(0x40EAF8FF)
-private val HeaderGlassBorder = Color(0x552A9DF4)
+private val HeaderFadeMid = Color(0xFF78D7FF)
+private val HeaderFadeBottom = Color(0xFFF7FCFF)
 
 // ─────────────────────────────────────────────
 //  HomeTopBar
@@ -46,49 +43,24 @@ fun HomeTopBar(
     onNotificationClick : () -> Unit = {},
     onSearchClick       : () -> Unit = {}
 ) {
-    // graphicsLayer → background → padding (correct order)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = 12.dp,
-                shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp),
-                ambientColor = Color(0x1A03A9F4),
-                spotColor = Color(0x2603A9F4)
-            )
-            .graphicsLayer {
-                shape = RoundedCornerShape(
-                    bottomStart = 24.dp,
-                    bottomEnd   = 24.dp
-                )
-                clip = true
-            }
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
                         HeaderGlassTop,
-                        HeaderGlassMid,
-                        Color(0x78CDEFFF),
-                        HeaderGlassBottom
+                        HeaderFadeMid,
+                        HeaderFadeBottom
                     )
                 )
-            )
-            .border(
-                width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.92f),
-                        HeaderGlassBorder
-                    )
-                ),
-                shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
             )
             .statusBarsPadding()
             .padding(
                 start  = 16.dp,
                 end    = 16.dp,
-                top    = 22.dp,
-                bottom = 18.dp
+                top    = 18.dp,
+                bottom = 20.dp
             )
     ) {
         // ── Profile + Search ──────────────────────────
