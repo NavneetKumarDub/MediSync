@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1150" height="760" viewBox="0 0 1150 760">
+<style>
+.box{fill:#f8fbff;stroke:#1aaee8;stroke-width:2;rx:12}.head{font:bold 18px Arial;fill:#101828}.txt{font:14px Arial;fill:#344054}.rel{stroke:#667085;stroke-width:2;marker-end:url(#a)}
+</style><defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#667085"/></marker></defs>
+<rect class="box" x="450" y="25" width="250" height="115"/><text class="head" x="475" y="55">users</text><text class="txt" x="475" y="82">id, phone, name, role</text><text class="txt" x="475" y="105">profile_photo_key, status</text>
+<rect class="box" x="35" y="185" width="250" height="125"/><text class="head" x="60" y="215">patient_personal</text><text class="txt" x="60" y="242">user_id, gender, dob</text><text class="txt" x="60" y="265">blood_group, height</text>
+<rect class="box" x="315" y="185" width="250" height="125"/><text class="head" x="340" y="215">doctor_professional</text><text class="txt" x="340" y="242">speciality, qualification</text><text class="txt" x="340" y="265">experience, type</text>
+<rect class="box" x="595" y="185" width="250" height="125"/><text class="head" x="620" y="215">doctor_clinic</text><text class="txt" x="620" y="242">clinic_name, address</text><text class="txt" x="620" y="265">latitude, longitude</text>
+<rect class="box" x="875" y="185" width="240" height="125"/><text class="head" x="900" y="215">doctor_slot_settings</text><text class="txt" x="900" y="242">day, start/end time</text><text class="txt" x="900" y="265">duration, fee, type</text>
+<rect class="box" x="165" y="385" width="250" height="125"/><text class="head" x="190" y="415">appointment_slots</text><text class="txt" x="190" y="442">doctor_id, date, time</text><text class="txt" x="190" y="465">status, appointment_id</text>
+<rect class="box" x="465" y="385" width="250" height="125"/><text class="head" x="490" y="415">appointments</text><text class="txt" x="490" y="442">patient_id, doctor_id</text><text class="txt" x="490" y="465">slot_id, status, type</text>
+<rect class="box" x="765" y="385" width="250" height="125"/><text class="head" x="790" y="415">doctor_ratings</text><text class="txt" x="790" y="442">doctor_id, patient_id</text><text class="txt" x="790" y="465">appointment_id, rating</text>
+<rect class="box" x="315" y="585" width="250" height="125"/><text class="head" x="340" y="615">chat_rooms</text><text class="txt" x="340" y="642">patient_id, doctor_id</text><text class="txt" x="340" y="665">appointment_id</text>
+<rect class="box" x="595" y="585" width="250" height="125"/><text class="head" x="620" y="615">chat_messages</text><text class="txt" x="620" y="642">room_id, sender_id</text><text class="txt" x="620" y="665">message/file metadata</text>
+<rect class="box" x="875" y="585" width="240" height="125"/><text class="head" x="900" y="615">medical_reports</text><text class="txt" x="900" y="642">patient_id, uploaded_by</text><text class="txt" x="900" y="665">file metadata</text>
+<line class="rel" x1="520" y1="140" x2="190" y2="185"/><line class="rel" x1="555" y1="140" x2="450" y2="185"/><line class="rel" x1="610" y1="140" x2="705" y2="185"/><line class="rel" x1="660" y1="140" x2="970" y2="185"/>
+<line class="rel" x1="950" y1="310" x2="330" y2="385"/><line class="rel" x1="290" y1="510" x2="510" y2="385"/><line class="rel" x1="590" y1="510" x2="445" y2="585"/><line class="rel" x1="715" y1="448" x2="765" y2="448"/><line class="rel" x1="565" y1="650" x2="595" y2="650"/><line class="rel" x1="845" y1="650" x2="875" y2="650"/>
+</svg>

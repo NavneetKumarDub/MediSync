@@ -12,7 +12,7 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import java.util.concurrent.TimeUnit
 
-// All possible states of WebSocket connection
+
 sealed class WsState {
     object Connecting  : WsState()
     object Connected   : WsState()
@@ -21,7 +21,7 @@ sealed class WsState {
     object Closed      : WsState()
 }
 
-// All message types coming FROM server
+
 sealed class ServerMessage {
     data class Joined(val roomId: Int) : ServerMessage()
     data class NewMessage(
@@ -36,14 +36,14 @@ sealed class ServerMessage {
 }
 
 class ChatWebSocket(
-    private val serverUrl: String  // e.g. "ws://192.168.x.x:3000/ws/chat"
+    private val serverUrl: String  
 ) {
     private val gson = Gson()
     private var webSocket: WebSocket? = null
     private var reconnectAttempts = 0
     private val maxReconnectAttempts = 5
 
-    // Flows the ViewModel will collect
+    
     private val _messages = MutableSharedFlow<ServerMessage>(replay = 0)
     val messages: SharedFlow<ServerMessage> = _messages
 
@@ -51,7 +51,7 @@ class ChatWebSocket(
     val state: SharedFlow<WsState> = _state
 
     private val client = OkHttpClient.Builder()
-        .pingInterval(30, TimeUnit.SECONDS)  // auto heartbeat
+        .pingInterval(30, TimeUnit.SECONDS)  
         .connectTimeout(10, TimeUnit.SECONDS)
         .build()
 
@@ -112,7 +112,7 @@ class ChatWebSocket(
         })
     }
 
-    // ── Send helpers ────────────────────────────────────────
+    
 
     fun sendJoin(roomId: Int, token: String) {
         send(mapOf("type" to "join", "roomId" to roomId, "token" to token))
@@ -130,7 +130,7 @@ class ChatWebSocket(
         webSocket?.send(gson.toJson(data))
     }
 
-    // ── Reconnect logic ──────────────────────────────────────
+    
 
     private fun tryReconnect() {
         if (reconnectAttempts >= maxReconnectAttempts) {
@@ -140,7 +140,7 @@ class ChatWebSocket(
         reconnectAttempts++
         _state.tryEmit(WsState.Reconnecting)
 
-        // Wait 3 seconds then reconnect
+        
         Thread.sleep(3000)
         connect()
     }

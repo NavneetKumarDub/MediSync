@@ -71,7 +71,7 @@ class VideoCallViewModel(application: Application) : AndroidViewModel(applicatio
     private var videoCapturer: CameraVideoCapturer? = null
     private var localAudioTrack: AudioTrack? = null
 
-    // ─── WebSocket Manager ────────────────────────────────────────────────────
+    
     private val wsManager = VideoWebSocketManager()
     private var currentRoomId: Int = -1
     private var remotePeerId: String? = null
@@ -99,14 +99,14 @@ class VideoCallViewModel(application: Application) : AndroidViewModel(applicatio
 
         refreshAudioOutputs(autoSelect = true)
     }
-    // ─── Connect to Room ──────────────────────────────────────────────────────
+    
     fun connect(roomId: Int) {
         currentRoomId = roomId
         wsManager.connect(roomId)
         observeSignals()
     }
 
-    // ─── Observe Incoming Signals ─────────────────────────────────────────────
+    
     fun refreshAudioOutputs(autoSelect: Boolean = false) {
         val audioManager = getApplication<Application>()
             .getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -287,7 +287,7 @@ class VideoCallViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    // ─── PeerConnection Setup ─────────────────────────────────────────────────
+    
     private fun createPeerConnection() {
         val factory = peerConnectionFactory ?: return
 
@@ -368,7 +368,7 @@ class VideoCallViewModel(application: Application) : AndroidViewModel(applicatio
         _localVideoTrack.value = currentTrack
     }
 
-    // ─── WebRTC Offer / Answer / ICE ──────────────────────────────────────────
+    
     private fun createOffer(targetId: String) {
         val constraints = MediaConstraints().apply {
             mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
@@ -470,7 +470,7 @@ class VideoCallViewModel(application: Application) : AndroidViewModel(applicatio
         }, constraints)
     }
 
-    // ─── Local Video Setup ────────────────────────────────────────────────────
+    
     private fun initializeWebRTC(context: Context) {
         val initializationOptions = PeerConnectionFactory.InitializationOptions.builder(context)
             .setEnableInternalTracer(true)
@@ -483,7 +483,7 @@ class VideoCallViewModel(application: Application) : AndroidViewModel(applicatio
             .createAudioDeviceModule()
 
         val options = PeerConnectionFactory.Options()
-        // FIXED: Both encoder and decoder now use the same single eglBaseContext
+        
         val defaultVideoEncoderFactory = DefaultVideoEncoderFactory(eglBaseContext, true, true)
         val defaultVideoDecoderFactory = DefaultVideoDecoderFactory(eglBaseContext)
 
@@ -504,13 +504,13 @@ class VideoCallViewModel(application: Application) : AndroidViewModel(applicatio
         videoCapturer = createCameraCapturer(context)
         localVideoSource = factory.createVideoSource(videoCapturer!!.isScreencast)
 
-        // FIXED: SurfaceTextureHelper uses the same shared eglBaseContext
+        
         val surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBaseContext)
         videoCapturer?.initialize(surfaceTextureHelper, context, localVideoSource!!.capturerObserver)
         videoCapturer?.startCapture(1280, 720, 30)
 
-        // FIXED: Single video track — no separate "preview track" needed.
-        // The same track can have multiple sinks added to it (local renderer + peer connection).
+        
+        
         val videoTrack = factory.createVideoTrack("local_video_track", localVideoSource)
         _localVideoTrack.value = videoTrack
 
@@ -529,7 +529,7 @@ class VideoCallViewModel(application: Application) : AndroidViewModel(applicatio
         return null
     }
 
-    // ─── User Actions ─────────────────────────────────────────────────────────
+    
     fun toggleMic() {
         _isMicOn.value = !_isMicOn.value
         localAudioTrack?.setEnabled(_isMicOn.value)
@@ -552,17 +552,17 @@ class VideoCallViewModel(application: Application) : AndroidViewModel(applicatio
         _localVideoTrack.value = currentTrack
     }
 
-    // ─── End Call ─────────────────────────────────────────────────────────────
+    
     fun endCall() {
-        viewModelScope.launch(Dispatchers.IO) {  // ← off the main thread
+        viewModelScope.launch(Dispatchers.IO) {  
             try { videoCapturer?.stopCapture() } catch (e: Exception) { e.printStackTrace() }
 
-            // Disable tracks before closing — stops frame flow cleanly
+            
             _localVideoTrack.value?.setEnabled(false)
 
             peerConnection?.close()
-            // Do NOT call dispose() here — let onCleared() handle full teardown
-            // after the ViewModel lifecycle ends naturally
+            
+            
 
             wsManager.leaveRoom(currentRoomId)
             wsManager.disconnect()

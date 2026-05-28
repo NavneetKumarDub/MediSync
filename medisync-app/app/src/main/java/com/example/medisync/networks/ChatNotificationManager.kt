@@ -20,10 +20,10 @@ import java.time.Instant
 
 class ChatNotificationManager(
     private val repository: ChatInboxRepository,
-    private val context: Context // Pass context here once
+    private val context: Context 
     ) {
     private var listeningJob: Job? = null
-    private var myUserId: Int? = null // Store the ID internally
+    private var myUserId: Int? = null 
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun startListening(scope: CoroutineScope) {

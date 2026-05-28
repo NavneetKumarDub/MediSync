@@ -103,7 +103,7 @@ fun AppointmentListScreen(
     LaunchedEffect(Unit) {
         userRole = TokenManager.getRole(context) ?: "patient"
         if (viewModel.appointments.isEmpty()) {
-            viewModel.isLoading = true  // only show spinner if no cached data
+            viewModel.isLoading = true  
         }
         if (userRole == "doctor") viewModel.fetchDoctorAppointments(context)
         else viewModel.fetchPatientAppointments(context)

@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.sp
 import com.example.medisync.R
 import com.example.medisync.ui.theme.natureGreen
 
-// ── COLORS ──
+
 private val DurationGreen = Color(0xFFE5E7EB)
 private val StepperColor = Color.Black
 private val DurationBorder = Color(0xFFE5E7EB)
@@ -49,7 +49,7 @@ fun DurationSliderField(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
 
-        // ── LABEL ──
+        
         Text(
             text = label,
             fontSize = 14.sp,
@@ -57,7 +57,7 @@ fun DurationSliderField(
             modifier = Modifier.width(60.dp)
         )
 
-        // ── SLIDER ──
+        
         Slider(
             value = value.toFloat(),
             onValueChange = { onValueChange(it.toInt()) },
@@ -71,7 +71,7 @@ fun DurationSliderField(
             )
         )
 
-        // ── STEPPER BOX ──
+        
         Column(
             modifier = Modifier
                 .width(64.dp),
@@ -96,9 +96,9 @@ fun DurationSliderField(
                     .width(50.dp).height(30.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // up arrow
+                
 
-                // editable text field
+                
                 BasicTextField(
                     value = value.toString(),
                     onValueChange = { input ->
@@ -138,7 +138,7 @@ fun DurationSliderField(
 
         }
 
-        // ── UNIT ──
+        
         Text(
             text = unit,
             fontSize = 13.sp,

@@ -45,7 +45,7 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 
-// ── Palette ────────────────────────────────────
+
 private val ScreenBg    = Color(0xFFE7F0F4)
 private  val TextHint = Color(0xFF6B7280)
 private val TextPrimary = Color(0xFF1C3A34)
@@ -61,7 +61,7 @@ private val ChipOnlineBg   = Color(0xFFECFDF5); private val ChipOnlineText  = Co
 private val ChipOfflineBg  = Color(0xFFF1F5F9); private val ChipOfflineText = Color(0xFF334155)
 private val ChipBothBg     = natureGreen.copy(alpha = 0.12f)
 
-// ── Preview data ──────────────────────────────
+
 private val previewDoctor = DoctorDetail(
     doctorId         = 1,
     doctorName       = "Dr. Ravi Sharma",
@@ -83,7 +83,7 @@ private val previewDoctor = DoctorDetail(
 
 
 
-// ── Main Screen ───────────────────────────────
+
 @Composable
 fun DoctorProfileScreen(
     doctorId     : Int,
@@ -160,7 +160,7 @@ fun DoctorProfileScreen(
     }
 }
 
-// ── Stateless Content ─────────────────────────
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DoctorProfileContent(
@@ -175,7 +175,7 @@ fun DoctorProfileContent(
     Scaffold(
         containerColor = ScreenBg,
         topBar = {
-            // ── Green hero block (HomeTopBar style) ──
+            
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -291,7 +291,7 @@ fun DoctorProfileContent(
                 .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // About
+            
             doctor.about.validTextOrNull()?.let { about ->
                 Section(title = "About") {
                     Text(
@@ -582,7 +582,7 @@ private fun HeroMeta(icon: ImageVector, text: String) {
     }
 }
 
-// ── Consult chip ───────────────────────────────
+
 @Composable
 private fun ConsultChip(type: String) {
     val (bg, fg) = when (type) {

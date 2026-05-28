@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 
-private val MediTextPlaceholder = Color(0xFF6B7280) // Darker placeholder for readability
+private val MediTextPlaceholder = Color(0xFF6B7280) 
 
 private val MediSearchGray = Color(0xFFF3F4F6)
 
@@ -40,9 +40,9 @@ fun SearchBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp)) // WhatsApp style pill shape
-            .background(MediSearchGray) // Solid gray background
-            // Removed the border completely to match WhatsApp
+            .clip(RoundedCornerShape(24.dp)) 
+            .background(MediSearchGray) 
+            
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)

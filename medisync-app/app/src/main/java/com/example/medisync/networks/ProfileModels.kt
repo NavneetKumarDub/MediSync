@@ -67,7 +67,7 @@ data class DoctorAvailabilityRequest(
     val end_time: String,
     val slot_duration_minutes: Int
 )
-// Add these at the bottom of ProfileModels.kt
+
 data class DoctorSearchResult(
     @SerializedName("doctor_id")         val doctorId        : Int    = 0,
     @SerializedName("doctor_name")       val doctorName      : String = "",
@@ -150,14 +150,14 @@ data class AvailabilityResponse(
     val availability: List<AvailabilitySlot>
 )
 
-// ── Request ──────────────────────────────────────────────
+
 
 data class BookAppointmentRequest(
     @SerializedName("slotId") val slotId: Int
 )
 
 data class BookAppointmentResponse(
-    val appointment: ApptDetails?, // Make these nullable just in case
+    val appointment: ApptDetails?, 
     val doctor: DocDetails?,
     @SerializedName("roomId") val roomId: Int? = null
 )
@@ -170,8 +170,8 @@ data class ApptDetails(
     @SerializedName("start_time") val startTime: String?,
     val date: String?,
 
-    // CRITICAL FIX: Postgres numeric/decimal types often return as Strings.
-    // Change this to String? to prevent crashes. You can convert it to Double later if needed.
+    
+    
     val fee: String?
 )
 
@@ -188,15 +188,15 @@ data class PatientSnapshot(
     @SerializedName("profile_photo") val profilePhoto: String? = null
 )
 
-// ── WebSocket push payload (doctor side) ─────────────────
-// Matches: sendToUser(doctorId, 'appointment:new', { appointment, patient, roomId })
+
+
 data class IncomingAppointment(
     val appointment: ApptDetails,
     val patient: PatientSnapshot,
     @SerializedName("roomId") val roomId: Int? = null
 )
 
-// ── Response from GET /api/appointments/patient ────────────
+
 data class AppointmentsResponse(
     val appointments: List<AppointmentItem>
 )
@@ -253,7 +253,7 @@ data class RoomMetadataResponse(
 
 data class GetOrCreateRoomResponse(
     @SerializedName("roomId") val roomId: Int,
-    @SerializedName("isNew") val isNew: Boolean? // Nullable just to be safe
+    @SerializedName("isNew") val isNew: Boolean? 
 )
 data class GetOrCreateRoomRequest(
     @SerializedName("targetUserId") val targetUserId: Int
@@ -294,7 +294,7 @@ data class ChatMessage(
     @SerializedName("createdAt") val createdAt: String
 )
 
-//video call things
+
 data class VideoSignal(
     val type: String,
     val roomId: Int,

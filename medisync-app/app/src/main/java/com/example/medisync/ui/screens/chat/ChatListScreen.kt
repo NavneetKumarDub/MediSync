@@ -55,20 +55,20 @@ private val MediScreenNeutralBg = Color(0xFFFFFFFF)
 private val MediCardWhite = Color(0xFFFFFFFF)
 private val MediTopBarWhite = Color(0xFFFFFFFF)
 
-// Subtle gray for search bar and dividers
+
 private val MediSearchGray = Color(0xFFF3F4F6)
 private val MediDividerGray = Color(0xFFF0F2F5)
 
 private val MediTextDark = Color(0xFF111827)
 private val MediTextMuted = Color(0xFF6B7280)
-private val MediTextPlaceholder = Color(0xFF6B7280) // Darker placeholder for readability
+private val MediTextPlaceholder = Color(0xFF6B7280) 
 
-// Avatar colors
+
 private val MediSkyBlueSoftBg = Color(0xFFE1F5FE)
 private val MediSkyBlueText = Color(0xFF0288D1)
 private val AvtarColor = Color(0xFF3E505D)
 
-// Filter Chip colors (Using your natureGreen theme)
+
 private val MediChipActiveBg = natureGreen.copy(alpha = 0.1f)
 private val MediChipActiveBorder = natureGreen.copy(alpha = 0.3f)
 private val MediChipActiveText = natureGreen
@@ -76,7 +76,7 @@ private val MediChipIdleBg = Color(0xFFF3F4F6)
 private val MediChipIdleText = MediTextMuted
 private val MediActionBlue = Color(0xFF38BDF8)
 
-private val filterTabs = listOf("All", "Unread", "Favourites", "Groups") // Updated to match WhatsApp screenshot
+private val filterTabs = listOf("All", "Unread", "Favourites", "Groups") 
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -94,7 +94,7 @@ fun ChatListScreen(
     var activeFilter by remember { mutableStateOf("All") }
     var searchQuery by remember { mutableStateOf("") }
 
-    // avatar popup state
+    
     var showAvatarDialog by remember { mutableStateOf(false) }
     var selectedAvatarUrl by remember { mutableStateOf<String?>(null) }
     var selectedAvatarName by remember { mutableStateOf("") }
@@ -157,10 +157,10 @@ fun ChatListScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MediScreenNeutralBg) // Now solid white
+                    .background(MediScreenNeutralBg) 
                     .padding(innerPadding)
             ) {
-                // Removed the top divider to match WhatsApp
+                
                 Spacer(Modifier.height(8.dp))
                 SearchBar(
                     value = searchQuery,
@@ -186,7 +186,7 @@ fun ChatListScreen(
             }
         }
 
-        // Popup Avatar Dialog Box (unchanged, pure Box overlay)
+        
         if (showAvatarDialog) {
             Box(
                 modifier = Modifier
@@ -316,14 +316,14 @@ fun FilterRow(active: String, onSelect: (String) -> Unit) {
             val isActive = tab == active
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(24.dp)) // WhatsApp style pill shape
+                    .clip(RoundedCornerShape(24.dp)) 
                     .background(if (isActive) MediChipActiveBg else MediChipIdleBg)
                     .then(
                         if (isActive) Modifier.border(
                             width = 1.dp,
-                            color = MediChipActiveBorder, // Border only on active
+                            color = MediChipActiveBorder, 
                             shape = RoundedCornerShape(24.dp)
-                        ) else Modifier // No border on idle tabs
+                        ) else Modifier 
                     )
                     .clickable { onSelect(tab) }
                     .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -407,12 +407,12 @@ fun ChatItemCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MediCardWhite) // Solid white background, matches screen
+            .background(MediCardWhite) 
             .clickable { onClick() }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // tappable avatar
+        
         Box(
             modifier = Modifier
                 .size(50.dp)
@@ -470,32 +470,32 @@ fun formatChatTime(isoString: String?): String {
     if (isoString.isNullOrEmpty()) return ""
 
     return try {
-        // 1. Parse the exact UTC timestamp mathematically (Just like ChatScreen!)
+        
         val instant = Instant.parse(isoString)
 
-        // 2. Convert to the user's local timezone Date for comparison
+        
         val localDate = instant.atZone(ZoneId.systemDefault()).toLocalDate()
         val today = LocalDate.now(ZoneId.systemDefault())
 
-        // 3. Apply your custom logic with mathematical precision
+        
         when {
             localDate.isEqual(today) -> {
-                // Same day: Show "h:mm a" (e.g., 4:00 PM)
+                
                 val timeFormatter = DateTimeFormatter.ofPattern("h:mm a").withZone(ZoneId.systemDefault())
                 timeFormatter.format(instant)
             }
             localDate.isEqual(today.minusDays(1)) -> {
-                // Exactly one day ago
+                
                 "Yesterday"
             }
             else -> {
-                // Older dates
+                
                 val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yy").withZone(ZoneId.systemDefault())
                 dateFormatter.format(instant)
             }
         }
     } catch (e: Exception) {
-        "" // Clean fallback if the string is completely broken
+        "" 
     }
 }
 

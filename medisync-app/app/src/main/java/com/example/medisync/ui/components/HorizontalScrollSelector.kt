@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.medisync.ui.theme.natureGreen
 
-// ── COLORS ──
+
 private val ScrollChipSelected = Color.White
 private val ScrollChipUnselected = natureGreen
 private val ScrollChipSelectedText = Color(0xFF02608A)

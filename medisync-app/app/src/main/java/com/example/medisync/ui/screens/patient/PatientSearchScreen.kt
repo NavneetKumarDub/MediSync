@@ -30,7 +30,7 @@ import com.example.medisync.networks.SearchFilters
 import com.example.medisync.ui.components.SearchInputBar
 import kotlinx.coroutines.delay
 
-// ── Colors ────────────────────────────────────
+
 private val ScreenBackground  = Color(0xFFF6F7F9)
 private val CardBackground    = Color(0xFFFFFFFF)
 private val DividerCol        = Color(0xFFE4E7EC)
@@ -48,7 +48,7 @@ private val FilterIdleColor   = Color(0xFF6B7280)
 private val AvatarBg          = Color(0xFFE3F6FE)
 private val AvatarText        = ActionBlueText
 
-// ── Sample fallback ────────────────────────────
+
 val sampleDoctors = listOf(
     DoctorSearchResult(1,  "Dr. Ravi Sharma",   "General Physician",  8,  500.0,  "both",    "English, Hindi",          "Bangalore"),
     DoctorSearchResult(2,  "Dr. Anjali Sharma", "Cardiology",         12, 800.0,  "online",  "English, Hindi, Kannada", "Bangalore", "Experienced cardiologist"),
@@ -127,7 +127,7 @@ fun SearchScreen(
         isLoading = false
     }
 
-    // ── Filter bottom sheet — outside Scaffold ─
+    
     if (showFilters) {
         FilterBottomSheet(
             currentFilters = filters,
@@ -136,9 +136,9 @@ fun SearchScreen(
         )
     }
 
-    // ── Scaffold with topBar ───────────────────
-    // SearchInputBar in topBar works because
-    // we use BasicTextField inside — not TextField
+    
+    
+    
     Scaffold(
         containerColor = ScreenBackground,
         topBar = {
@@ -201,7 +201,7 @@ fun SearchScreen(
                     }
                 }
 
-                // Clear filters
+                
                 if (filtersActive) {
                     Row(
                         modifier = Modifier
@@ -230,7 +230,7 @@ fun SearchScreen(
             }
         }
     ) { paddingValues ->
-        // ── Content ───────────────────────────
+        
         when {
             isLoading -> {
                 Box(
@@ -285,8 +285,8 @@ fun SearchScreen(
             }
 
             else -> {
-                // ── LazyColumn directly in Scaffold content ──
-                // This gives LazyColumn proper bounded constraints ✅
+                
+                
                 LazyColumn(
                     modifier       = Modifier.padding(paddingValues),
                     contentPadding = PaddingValues(
@@ -355,7 +355,7 @@ fun DoctorCard(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment     = Alignment.Top
         ) {
-            // ── Avatar ────────────────────────
+            
             Box(
                 modifier         = Modifier
                     .size(52.dp)
@@ -376,12 +376,12 @@ fun DoctorCard(
                 )
             }
 
-            // ── Info ──────────────────────────
+            
             Column(
                 modifier            = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // Name + city
+                
                 Row(
                     modifier              = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -403,7 +403,7 @@ fun DoctorCard(
                     }
                 }
 
-                // Speciality
+                
                 if (!doctor.speciality.isNullOrEmpty()) {
                     Text(
                         text     = doctor.speciality,
@@ -412,7 +412,7 @@ fun DoctorCard(
                     )
                 }
 
-                // Chips
+                
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     modifier              = Modifier.padding(top = 4.dp)
@@ -457,7 +457,7 @@ fun DoctorCard(
     }
 }
 
-// ── Info Chip ──────────────────────────────────
+
 @Composable
 fun InfoChip(
     text     : String,
@@ -479,7 +479,7 @@ fun InfoChip(
     }
 }
 
-// ── Filter Bottom Sheet ────────────────────────
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilterBottomSheet(
@@ -615,7 +615,7 @@ fun FilterBottomSheet(
     }
 }
 
-// ── Filter Section ─────────────────────────────
+
 @Composable
 fun FilterSection(
     title  : String,
@@ -635,7 +635,7 @@ fun FilterSection(
     }
 }
 
-// ── Filter Chip ────────────────────────────────
+
 @Composable
 fun FilterChipItem(
     label     : String,

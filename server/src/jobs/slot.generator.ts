@@ -15,20 +15,20 @@ const buildLocalDateStr = (date: Date): string => {
 
 const parseUTCDateFromPg = (rawDate: any): Date => {
     if (rawDate instanceof Date) {
-        // pg returns DATE as midnight UTC — extract UTC parts to avoid IST shift
+        
         const y = rawDate.getUTCFullYear()
         const mo = rawDate.getUTCMonth()
         const d = rawDate.getUTCDate()
-        return new Date(y, mo, d) // local midnight, safe for getDay()
+        return new Date(y, mo, d) 
     }
-    // fallback: string like "2026-05-12"
+    
     const [y, m, d] = String(rawDate).split('T')[0].split('-').map(Number)
     return new Date(y, m - 1, d)
 }
 
 const generateSlotsForNextDay = async () => {
     try {
-        // Step 1: Get all doctors who have availability templates
+        
         const allDoctors = await db.query(
             `SELECT DISTINCT user_id FROM doctor_availability WHERE is_active = TRUE`
         )
@@ -44,7 +44,7 @@ const generateSlotsForNextDay = async () => {
             const doctorId = doctor.user_id
 
             try {
-                // Step 2: Get last slot date for this doctor
+                
                 const lastDateResult = await db.query(
                     `SELECT MAX(date) as last_date FROM appointment_slots WHERE doctor_id = $1`,
                     [doctorId]
@@ -53,7 +53,7 @@ const generateSlotsForNextDay = async () => {
                 let targetDate: Date
 
                 if (!lastDateResult.rows[0].last_date) {
-                    // No slots yet — start from tomorrow
+                    
                     const tomorrow = new Date()
                     tomorrow.setHours(0, 0, 0, 0)
                     tomorrow.setDate(tomorrow.getDate() + 1)
@@ -69,7 +69,7 @@ const generateSlotsForNextDay = async () => {
 
                 console.log(`[SlotGenerator] Doctor ${doctorId} — generating for ${targetDateStr} (${targetDay})`)
 
-                // Step 3: Get templates for this doctor for that day
+                
                 const templates = await db.query(
                     `SELECT
                         user_id,
@@ -90,7 +90,7 @@ const generateSlotsForNextDay = async () => {
                     continue
                 }
 
-                // Step 4: Insert slots
+                
                 let inserted = 0
                 let skipped  = 0
 

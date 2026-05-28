@@ -6,7 +6,7 @@ interface JwtPayload {
     role: 'doctor' | 'patient'
 }
 
-// Extend Express Request to include `user`
+
 declare global {
     namespace Express {
         interface Request {
@@ -22,7 +22,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
         return res.status(401).json({ error: 'Missing or invalid token' })
     }
 
-    const token = header.substring(7) // strip "Bearer "
+    const token = header.substring(7) 
 
     try {
         const payload = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload

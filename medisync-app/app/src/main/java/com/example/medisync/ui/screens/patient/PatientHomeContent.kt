@@ -25,7 +25,7 @@ import androidx.navigation.NavController
 import com.example.medisync.ui.components.BottomNavBar
 import com.example.medisync.ui.components.ConsultationCard
 import com.example.medisync.ui.components.FindDoctorSection
-//import com.example.medisync.ui.components.NextAppointmentCard
+
 import com.example.medisync.ui.navigation.NavItems
 import com.example.medisync.ui.screens.HomeTopBar
 import java.text.SimpleDateFormat

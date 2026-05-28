@@ -29,7 +29,7 @@ fun ConsultationCard(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Physical Appointment Card
+        
         Card(
             modifier = Modifier
                 .weight(1f)
@@ -45,7 +45,7 @@ fun ConsultationCard(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
 
-                // Title + subtitle top left
+                
                 Column(
                     modifier = Modifier
                         .align(Alignment.TopStart)
@@ -67,11 +67,11 @@ fun ConsultationCard(
                     )
                 }
 
-                // Doctor image bottom right
+                
                 Image(
                     painter = painterResource(
                         id = R.drawable.clinic
-                        // replace with your PNG name
+                        
                     ),
                     contentDescription = "Physical Appointment",
                     contentScale = ContentScale.Fit,
@@ -83,7 +83,7 @@ fun ConsultationCard(
             }
         }
 
-        // Instant Video Consult Card
+        
         Card(
             modifier = Modifier
                 .weight(1f)
@@ -99,7 +99,7 @@ fun ConsultationCard(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
 
-                // Title + subtitle top left
+                
                 Column(
                     modifier = Modifier
                         .align(Alignment.TopStart)
@@ -121,11 +121,11 @@ fun ConsultationCard(
                     )
                 }
 
-                // Phone/video image bottom right
+                
                 Image(
                     painter = painterResource(
                         id = R.drawable.onlinedoctor
-                        // replace with your PNG name
+                        
                     ),
                     contentDescription = "Video Consult",
                     contentScale = ContentScale.Fit,

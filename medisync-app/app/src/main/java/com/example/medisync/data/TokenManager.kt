@@ -10,7 +10,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
-// Single DataStore instance per app
+
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "medisync_prefs")
 
 object TokenManager {

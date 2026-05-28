@@ -22,7 +22,7 @@ class VideoWebSocketManager {
     private var webSocket: WebSocket? = null
     private val client = OkHttpClient()
 
-    // ViewModel observes this to react to incoming signals
+    
     private val _events = MutableSharedFlow<VideoSignalEvent>(extraBufferCapacity = 10)
     val events: SharedFlow<VideoSignalEvent> = _events.asSharedFlow()
 
@@ -35,7 +35,7 @@ class VideoWebSocketManager {
 
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 Log.d("VideoWS", "Connected to signaling server")
-                // Auto join the room once connected
+                
                 joinRoom(roomId)
             }
 
@@ -134,7 +134,7 @@ class VideoWebSocketManager {
         }
     }
 
-    // ─── Send Helpers ─────────────────────────────────────────────────────────
+    
 
     fun joinRoom(roomId: Int) {
         send(JSONObject().apply {

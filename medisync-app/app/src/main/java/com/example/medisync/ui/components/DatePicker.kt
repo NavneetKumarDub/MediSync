@@ -56,7 +56,7 @@ fun DatePicker(
                 color = if (value.isEmpty()) Color.LightGray else Color.Black,
                 fontSize = 14.sp,
                 modifier = Modifier.clickable {
-                    datePickerDialog.show()  // opens date picker on click
+                    datePickerDialog.show()  
                 }
             )
 

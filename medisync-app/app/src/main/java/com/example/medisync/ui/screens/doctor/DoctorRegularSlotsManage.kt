@@ -48,7 +48,7 @@ private val BlackText = Color(0xFF1A1A2E)
 private val BorderColor = Color(0xFFE5E7EB)
 private val ScrollChipUnselectedText = Color(0xFFCBEAF8)
 
-// ── DATA CLASS ──
+
 data class Slot(
     val id: Int,
     val day: String,
@@ -213,7 +213,7 @@ fun DoctorRegularSlotsManage(
                     }
                 }
 
-                // row 2 — duration + add button
+                
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -230,7 +230,7 @@ fun DoctorRegularSlotsManage(
                         )
                     }
 
-                    // ── ADD SLOT ──
+                    
                     Box(
                         modifier = Modifier
                             .size(50.dp)
@@ -373,7 +373,7 @@ fun DoctorRegularSlotsManage(
     }
 }
 
-// ── TIME HELPERS ──
+
 fun calculateEndTime(startTime: String, durationMinutes: Int): String {
     try {
         val parts = startTime.split(":")

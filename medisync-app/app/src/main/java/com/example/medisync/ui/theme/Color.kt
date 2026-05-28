@@ -26,17 +26,17 @@ val Iconselectedcolor = Color(0xFF96D2EE)
 
 val mylightGray = Color(0xFFE7E7E7)
 val mylittleDarkGray = Color(0xFFE5E7E7)
-//val natureGreen = Color(0xFF30B736)
+
 
 val natureGreen = Color(0xFF03A9F4)
 
 
-// Shadow colors — soft, matched to light gray background
-val ShadowAmbient = Color(0x26000000)   // 15% opacity black — ambient shadow
-val ShadowSpot    = Color(0x40000000)   // 25% opacity black — spot shadow
+
+val ShadowAmbient = Color(0x26000000)   
+val ShadowSpot    = Color(0x40000000)   
 
 
-// ── SlotPicker Colors ─────────────────────────
+
 val SlotScreenBg        = Color(0xFFF6F7F9)
 val SlotCardBg          = Color(0xFFFFFFFF)
 val SlotBluePrimary     = Color(0xFF03A9F4)
@@ -48,12 +48,12 @@ val SlotDividerColor    = Color(0xFFE4E7EC)
 val SlotChipUnselected  = Color(0x33FFFFFF)
 val SlotChipSelected    = Color(0xFFFFFFFF)
 
-///
+
 val SlotAvailableBg     = Color(0xFFFFFFFF)
 val SlotAvailableBorder = Color(0xFFE2E8F0)
 val SlotAvailableText   = Color(0xFF0F172A)
 
-val SlotSelectedBg      = Color(0xFF475569)   // slate-600 (grey, not black/blue)
+val SlotSelectedBg      = Color(0xFF475569)   
 val SlotSelectedText    = Color(0xFFFFFFFF)
 
 val SlotBookedBg        = Color(0xFFF1F5F9)

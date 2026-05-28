@@ -27,7 +27,7 @@ fun PatientNavigationScreen(
         selectedTab = 0
     }
 
-    // No Scaffold here — each tab manages its own
+    
     when (selectedTab) {
         0 -> HomeContent(
             navController = navController,
@@ -56,7 +56,7 @@ fun PatientNavigationScreen(
 
 
 
-// ── BOTTOM NAV ITEMS ──
+
 
 
 

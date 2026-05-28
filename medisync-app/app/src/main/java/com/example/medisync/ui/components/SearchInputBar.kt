@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.medisync.ui.theme.natureGreen
 
-// ── Colors ────────────────────────────────────
+
 private val IconTint      = Color(0xFFFFFFFF)
 private val IconBg        = Color(0x33FFFFFF)
 private val SearchFieldBg = Color(0xFFFFFFFF)
@@ -59,7 +59,7 @@ fun SearchInputBar(
                 bottom = 24.dp
             )
     ) {
-        // ── Row 1: Back + Title ───────────────
+        
         Row(
             modifier              = Modifier.fillMaxWidth(),
             verticalAlignment     = Alignment.CenterVertically,
@@ -94,9 +94,9 @@ fun SearchInputBar(
 
         Spacer(Modifier.height(16.dp))
 
-        // ── Row 2: Search bar ─────────────────
-        // Using BasicTextField instead of TextField
-        // to avoid measurement issues in topBar
+        
+        
+        
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -117,7 +117,7 @@ fun SearchInputBar(
             Box(
                 modifier = Modifier.weight(1f),
             ) {
-                // Hint text
+                
                 if (query.isEmpty()) {
                     Text(
                         text     = "Search doctors, specialities...",
@@ -125,7 +125,7 @@ fun SearchInputBar(
                         color    = HintColor
                     )
                 }
-                // Actual input
+                
                 BasicTextField(
                     value         = query,
                     onValueChange = onQueryChange,
@@ -143,7 +143,7 @@ fun SearchInputBar(
                 )
             }
 
-            // Clear button
+            
             if (query.isNotEmpty()) {
                 IconButton(
                     onClick  = { onQueryChange("") },

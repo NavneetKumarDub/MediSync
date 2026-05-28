@@ -30,7 +30,7 @@ fun SlotGrid(
                         modifier   = Modifier.weight(1f)
                     )
                 }
-                // Fill empty spaces in last row
+                
                 repeat(3 - rowSlots.size) {
                     Spacer(modifier = Modifier.weight(1f))
                 }

@@ -63,12 +63,12 @@ fun ProfileRow(
                         singleLine = true,
                         textStyle = TextStyle(
                             fontSize = 15.sp,
-                            textAlign = TextAlign.End  // text aligns to right
+                            textAlign = TextAlign.End  
                         ),
                         modifier = Modifier.widthIn(
                             min = 80.dp,
                             max = 250.dp
-                        )  // starts small, grows till 200dp
+                        )  
                     )
 
             }

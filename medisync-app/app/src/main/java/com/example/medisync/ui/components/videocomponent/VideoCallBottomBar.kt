@@ -194,27 +194,26 @@ fun CallControlButton(
     }
 }
 
-//@Preview(showBackground = true, showSystemUi = true)
-//@Composable
-//fun VideoCallBottomBarPreview() {
-//    MaterialTheme {
-//        Box(
-//            modifier = Modifier
-//                .fillMaxSize()
-//                .background(Color.DarkGray),
-//            contentAlignment = Alignment.Center
-//        ) {
-//            Text(text = "Doctor's Video Feed Here", color = Color.LightGray)
-//
-//            VideoCallBottomBar(
-//                isMicOn = true,
-//                isVideoOn = false,
-//                onMicToggle = {},
-//                onVideoToggle = {},
-//                onEndCall = {},
-//                onFlipCamera = {},
-//                modifier = Modifier.align(Alignment.BottomCenter)
-//            )
-//        }
-//    }
-//}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

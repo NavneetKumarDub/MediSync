@@ -57,7 +57,7 @@ fun DoctorClinicLocationScreen(
 
     var token by remember { mutableStateOf<String?>(null) }
     var selectedLatLng by remember {
-        mutableStateOf(LatLng(12.9716, 77.5946)) // Bangalore default
+        mutableStateOf(LatLng(12.9716, 77.5946)) 
     }
     var address by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(true) }

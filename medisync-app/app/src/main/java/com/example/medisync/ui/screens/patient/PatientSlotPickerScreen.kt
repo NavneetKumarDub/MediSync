@@ -278,7 +278,7 @@ private fun SlotSectionHeader(
                     color    = SlotTextHint
                 )
             }
-            // Neutral grey pill — no longer theme blue
+            
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))

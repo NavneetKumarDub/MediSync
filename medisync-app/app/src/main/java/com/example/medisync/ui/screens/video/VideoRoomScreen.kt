@@ -454,7 +454,7 @@ fun VideoRoomScreen(
                 }
             }
 
-            // LAYER 4: Bottom Bar
+            
             AnimatedVisibility(
                 visible = isControlsVisible && shouldShowFullCallUi,
                 enter = fadeIn() + slideInVertically(initialOffsetY = { it }),

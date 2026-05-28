@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 
-// ── COLORS ──
+
 private val SlotCardBackground = Color(0xFFFFFFFF)
 private val SlotCardGreen = Color(0xFF2E7D32)
 private val SlotCardGray = Color(0xFF6B7280)
@@ -40,7 +40,7 @@ fun SlotCard(
     var offsetX by remember { mutableStateOf(0f) }
     val maxSlide = -200f
 
-    // when isOpen changes from outside — update offsetX
+    
     LaunchedEffect(isOpen) {
         offsetX = if (isOpen) maxSlide else 0f
     }
@@ -52,7 +52,7 @@ fun SlotCard(
             .clip(RoundedCornerShape(12.dp))
     ) {
 
-        // ── DELETE BACKGROUND ──
+        
         Box(
             modifier = Modifier
                 .fillMaxHeight()
@@ -70,7 +70,7 @@ fun SlotCard(
             )
         }
 
-        // ── CARD ──
+        
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -96,14 +96,14 @@ fun SlotCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
 
-            // ── INDEX ──
+            
             Text(
                 text = index.toString(),
                 fontSize = 14.sp,
                 color = SlotCardGray
             )
 
-            // ── DETAILS ──
+            
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -133,7 +133,7 @@ fun SlotCard(
 }
 
 
-// ── DETAIL CHIP ──
+
 @Composable
 fun DetailChip(
     text: String,

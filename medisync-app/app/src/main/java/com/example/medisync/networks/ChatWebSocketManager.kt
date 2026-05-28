@@ -27,11 +27,11 @@ object ChatWebSocketManager {
     private var reconnectAttempts = 0
     private var manuallyDisconnected = false
 
-    // Public state
+    
     private val _state = MutableStateFlow(State.DISCONNECTED)
     val state: StateFlow<State> = _state
 
-    // Public event stream — ViewModels filter by type
+    
     private val _events = MutableSharedFlow<ServerEvent>(
         replay = 0,
         extraBufferCapacity = 64

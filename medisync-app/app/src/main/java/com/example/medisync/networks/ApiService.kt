@@ -100,7 +100,7 @@ interface ApiService {
         @Body request:VerifyOtpRequest
     ):VerifyOtpResponse
 
-    // ApiService.kt — add
+    
     @POST("api/appointments/book")
     suspend fun bookAppointment(
         @Header("Authorization") token: String,
@@ -142,21 +142,21 @@ interface ApiService {
         @Query("since") lastTimestamp: String? = null
     ): Response<List<MessageDto>>
 
-    // Get slots for a day
+    
     @GET("api/slots/regular")
     suspend fun getRegularSlots(
         @Header("Authorization") token: String,
         @Query("day") day: String
     ): RegularSlotsResponse
 
-    // Add slot
+    
     @POST("api/slots/regular")
     suspend fun addRegularSlot(
         @Header("Authorization") token: String,
         @Body request: AddSlotRequest
     ): AddSlotResponse
 
-    // Delete slot
+    
     @DELETE("api/slots/regular/{slotId}")
     suspend fun deleteRegularSlot(
         @Header("Authorization") token: String,

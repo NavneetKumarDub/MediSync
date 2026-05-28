@@ -4,12 +4,12 @@ import { URL } from 'url'
 import * as crypto from 'crypto'
 import { VideoSignal } from '../types/video.types'
 
-// ─── Maps ─────────────────────────────────────────────────────────────────────
+
 
 const socketToWsMap = new Map<string, WebSocket>()
 const roomToSocketsMap = new Map<number, Set<string>>()
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 
 const safeSend = (ws: WebSocket, payload: object): void => {
     if (ws.readyState === WebSocket.OPEN) {
@@ -46,7 +46,7 @@ const leaveRoom = (socketId: string, roomId: number): void => {
     }
 }
 
-// ─── Signaling Handler ────────────────────────────────────────────────────────
+
 
 const handleVideoSignaling = (ws: WebSocket): void => {
     const socketId = crypto.randomUUID()
@@ -169,7 +169,7 @@ const handleVideoSignaling = (ws: WebSocket): void => {
     })
 }
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
+
 
 export const initVideoWebSocket = (server: Server): void => {
     const wss = new WebSocketServer({ noServer: true })

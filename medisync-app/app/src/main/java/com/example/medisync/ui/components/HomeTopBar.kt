@@ -22,9 +22,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// ─────────────────────────────────────────────
-//  Colors
-// ─────────────────────────────────────────────
+
+
+
 val TopBarText    = Color(0xFF0288D1)
 val SearchBarBg   = Color(0xEEFFFFFF)
 val SearchHint    = Color(0xFF9CA3AF)
@@ -32,9 +32,9 @@ private val HeaderGlassTop = Color(0xFF03A9F4)
 private val HeaderFadeMid = Color(0xFF78D7FF)
 private val HeaderFadeBottom = Color(0xFFF7FCFF)
 
-// ─────────────────────────────────────────────
-//  HomeTopBar
-// ─────────────────────────────────────────────
+
+
+
 @Composable
 fun HomeTopBar(
     location            : String = "Bangalore",
@@ -63,7 +63,7 @@ fun HomeTopBar(
                 bottom = 20.dp
             )
     ) {
-        // ── Profile + Search ──────────────────────────
+        
         Row(
             modifier              = Modifier.fillMaxWidth(),
             verticalAlignment     = Alignment.CenterVertically,
@@ -122,9 +122,9 @@ fun HomeTopBar(
     }
 }
 
-// ─────────────────────────────────────────────
-//  Preview
-// ─────────────────────────────────────────────
+
+
+
 @Preview(showBackground = true, backgroundColor = 0xFFF6F7F9)
 @Composable
 fun HomeTopBarPreview() {

@@ -54,7 +54,7 @@ fun FindDoctorSection(
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
 
-        // Header
+        
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -76,7 +76,7 @@ fun FindDoctorSection(
         }
 
         Spacer(modifier = Modifier.height(14.dp))
-        // Grid using Column + Row instead of LazyVerticalGrid
+        
         val rows = specialityList.chunked(4)
         Column(
             verticalArrangement = Arrangement.spacedBy(14.dp),

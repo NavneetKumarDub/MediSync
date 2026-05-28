@@ -12,7 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// ── COLORS ──
+
 private val ModeRadioGreen = Color(0xFF080908)
 private val ModeRadioGray = Color(0xFF6B7280)
 

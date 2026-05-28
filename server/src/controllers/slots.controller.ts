@@ -1,7 +1,7 @@
 import { Request, Response } from 'express'
 import db from '../config/db'
 
-// ── Get available dates (next 30 days that have slots) ──
+
 export const getDoctorAvailableDates = async (req: Request, res: Response) => {
     const { doctorId } = req.params
     console.log("Inside get doctor available dates controller : ",doctorId)
@@ -25,7 +25,7 @@ export const getDoctorAvailableDates = async (req: Request, res: Response) => {
     }
 }
 
-// ── Get slots for a specific date ──────────────
+
 export const getDoctorSlots = async (req: Request, res: Response) => {
     console.log("Inside get doctor slots controller")
     const { doctorId } = req.params

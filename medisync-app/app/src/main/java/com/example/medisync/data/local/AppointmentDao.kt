@@ -17,7 +17,7 @@ interface AppointmentDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAppointments(appointments: List<AppointmentEntity>)
 
-    // Delete: Clears the cache on logout
+    
     @Query("DELETE FROM appointments_table")
     suspend fun clearAll()
 

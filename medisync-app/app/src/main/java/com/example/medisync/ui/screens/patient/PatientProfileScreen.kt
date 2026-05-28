@@ -619,7 +619,7 @@ fun PatientProfileScreen(
                         .fillMaxWidth(0.65f)
                         .wrapContentHeight()
                         .offset(y = (0).dp)
-                        .clickable(enabled = false) {}, // Prevent clicks on card from closing
+                        .clickable(enabled = false) {}, 
                     shape = RoundedCornerShape(4.dp),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E)),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)

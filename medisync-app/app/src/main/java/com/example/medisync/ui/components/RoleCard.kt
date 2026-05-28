@@ -21,10 +21,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 private val MgMid         = Color(0xFF4A7C6F)
-private val MgBorder      = Color(0xFFB8D4CE)   // deeper border for contrast
+private val MgBorder      = Color(0xFFB8D4CE)   
 private val TextPrimary   = Color(0xFF1C3A34)
 private val TextSecondary = Color(0xFF6B8F89)
-private val ScreenBg      = Color(0xFFEEF5F3)   // same as screen background
+private val ScreenBg      = Color(0xFFEEF5F3)   
 
 @Composable
 fun RoleCard(
@@ -56,7 +56,7 @@ fun RoleCard(
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
 
-        // Icon circle
+        
         Box(
             modifier = Modifier
                 .size(48.dp)
@@ -72,7 +72,7 @@ fun RoleCard(
             )
         }
 
-        // Text
+        
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
@@ -88,7 +88,7 @@ fun RoleCard(
             )
         }
 
-        // Check circle
+        
         Box(
             modifier = Modifier
                 .size(22.dp)

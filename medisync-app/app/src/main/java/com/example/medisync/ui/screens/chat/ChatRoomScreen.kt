@@ -54,7 +54,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-// ── WhatsApp-style color palette with your blue accent ──
+
 private val ChatBg         = Color(0xFFF2FAFF)
 private val MyBubble       = Color(0xFFE5F5FF)
 private val MyBubbleText   = Color(0xFF111B21)
@@ -295,7 +295,7 @@ fun ChatScreen(
                 )
             }
 
-            // 2. Put the DateChip at the END of the code, so it renders at the TOP of the screen!
+            
             item { DateChip("Today") }
         }
     }
