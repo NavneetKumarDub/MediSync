@@ -36,6 +36,7 @@ import com.example.medisync.data.TokenManager
 import com.example.medisync.networks.ProfileModels
 import com.example.medisync.networks.RetrofitInstance
 import kotlinx.coroutines.launch
+import com.example.medisync.ui.navigation.safePopBackStack
 
 @Composable
 fun RegisterScreen(
@@ -53,7 +54,7 @@ fun RegisterScreen(
     Scaffold(containerColor = AuthBg) { padding ->
         AuthScreenFrame(
             showBack = true,
-            onBack = { navController.popBackStack() }
+            onBack = { navController.safePopBackStack() }
         ) {
             Column(
                 modifier = Modifier

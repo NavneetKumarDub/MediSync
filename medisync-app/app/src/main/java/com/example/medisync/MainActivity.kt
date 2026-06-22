@@ -55,6 +55,7 @@ import com.example.medisync.ui.screens.patient.SearchScreen
 import com.example.medisync.ui.screens.patient.SlotPickerScreen
 import com.example.medisync.ui.screens.video.VideoRoomPermissionGate
 import com.example.medisync.ui.theme.MediSyncTheme
+import com.example.medisync.ui.navigation.safePopBackStack
 
 class MainActivity : ComponentActivity() {
 
@@ -325,7 +326,7 @@ class MainActivity : ComponentActivity() {
                             navController = navController,
                             roomId = roomId,
                             onNavigateBack = {
-                                navController.popBackStack()
+                                navController.safePopBackStack()
                             }
                         )
                     }

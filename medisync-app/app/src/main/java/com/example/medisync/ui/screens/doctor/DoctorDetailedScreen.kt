@@ -44,6 +44,7 @@ import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
+import com.example.medisync.ui.navigation.safePopBackStack
 
 
 private val ScreenBg    = Color(0xFFE7F0F4)
@@ -141,7 +142,7 @@ fun DoctorProfileScreen(
                     modifier           = Modifier.size(48.dp)
                 )
                 Text(text = error ?: "Something went wrong", color = TextSecondary, fontSize = 14.sp)
-                TextButton(onClick = { navController.popBackStack() }) {
+                TextButton(onClick = { navController.safePopBackStack() }) {
                     Text(text = "Go Back", color = natureGreen)
                 }
             }
@@ -151,7 +152,7 @@ fun DoctorProfileScreen(
             doctor       = doctor!!,
             ratingAverage = ratingAverage,
             ratingCount = ratingCount,
-            onBackClick  = { navController.popBackStack() },
+            onBackClick  = { navController.safePopBackStack() },
             onBookClick  = { id ->
                 val encodedName = Uri.encode(doctor!!.doctorName)
                 navController.navigate("slotPicker/$id/$encodedName")

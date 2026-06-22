@@ -53,6 +53,7 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import com.example.medisync.ui.navigation.safePopBackStack
 
 
 private val ChatBg         = Color(0xFFF2FAFF)
@@ -203,7 +204,7 @@ fun ChatScreen(
                 name = otherUserName,
                 subtitle = if (uiState.isConnected) "Online" else "",
                 photoUrl = photoUrl,
-                onBack = { navController.popBackStack() },
+                onBack = { navController.safePopBackStack() },
                 onJoin = {
                     val intent = Intent(context, VideoCallActivity::class.java).apply {
                         putExtra("roomId", roomId)

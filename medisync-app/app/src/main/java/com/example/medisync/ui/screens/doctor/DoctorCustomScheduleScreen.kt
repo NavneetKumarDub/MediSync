@@ -55,6 +55,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import com.example.medisync.ui.navigation.safePopBackStack
 
 private val CalendarBg      = natureGreen
 private val BottomBarBg     = Color(0xFFFFFFFF)
@@ -196,7 +197,7 @@ fun DoctorCustomScheduleScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { navController.popBackStack() }) {
+                        IconButton(onClick = { navController.safePopBackStack() }) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
                         }
                         Text(

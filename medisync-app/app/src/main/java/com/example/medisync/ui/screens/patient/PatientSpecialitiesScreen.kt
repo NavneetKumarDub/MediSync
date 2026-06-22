@@ -44,6 +44,7 @@ import coil.compose.AsyncImage
 import coil.decode.SvgDecoder
 import com.example.medisync.ui.components.SearchBar
 import com.example.medisync.ui.components.Speciality
+import com.example.medisync.ui.navigation.safePopBackStack
 
 private val SpecialityScreenBg = Color.White
 private val SpecialityText = Color(0xFF2F333A)
@@ -99,7 +100,7 @@ fun PatientSpecialitiesScreen(navController: NavController) {
         Spacer(Modifier.height(20.dp))
 
         IconButton(
-            onClick = { navController.popBackStack() },
+            onClick = { navController.safePopBackStack() },
             modifier = Modifier
                 .padding(horizontal = 16.dp)
                 .size(40.dp)

@@ -56,6 +56,7 @@ import com.google.firebase.auth.PhoneAuthProvider
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.example.medisync.ui.navigation.safePopBackStack
 
 @Composable
 fun OtpScreen(
@@ -88,7 +89,7 @@ fun OtpScreen(
     Scaffold(containerColor = AuthBg) { padding ->
         AuthScreenFrame(
             showBack = true,
-            onBack = { navController.popBackStack() }
+            onBack = { navController.safePopBackStack() }
         ) {
             Column(
                 modifier = Modifier

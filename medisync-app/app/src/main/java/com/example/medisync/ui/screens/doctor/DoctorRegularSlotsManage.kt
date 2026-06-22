@@ -38,6 +38,7 @@ import com.example.medisync.ui.components.SlotCard
 import com.example.medisync.ui.components.TimePicker
 import com.example.medisync.ui.theme.natureGreen
 import kotlinx.coroutines.launch
+import com.example.medisync.ui.navigation.safePopBackStack
 
 private val PageBackground = Color(0xFFF9FAFB)
 private val BottomBarBackground = Color(0xFFFFFFFF)
@@ -134,7 +135,7 @@ fun DoctorRegularSlotsManage(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { navController.popBackStack() }) {
+                        IconButton(onClick = { navController.safePopBackStack() }) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
                         }
                         Text(

@@ -50,6 +50,7 @@ import java.net.SocketTimeoutException
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.emptyList
+import com.example.medisync.ui.navigation.safePopBackStack
 
 
 fun formatTime(time: String): String = try {
@@ -189,7 +190,7 @@ fun SlotPickerScreen(
         snackbarHostState = snackbarHostState,
         onDateSelected    = { selectedDate = it },
         onSlotSelected    = { selectedSlot = it },
-        onBackClick       = { navController.popBackStack() },
+        onBackClick       = { navController.safePopBackStack() },
         onConfirmClick    = { _, slotId ->
             if (isBooking) return@SlotPickerContent
             scope.launch {
@@ -209,7 +210,7 @@ fun SlotPickerScreen(
                             val app = context.applicationContext as MediSyncApplication
                             app.appointmentRepository.syncPatientAppointments(context)
 
-                            navController.popBackStack()
+                            navController.safePopBackStack()
                         }
                         res.code() == 409 -> {
                             snackbarHostState.showSnackbar(

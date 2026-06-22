@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.medisync.ui.theme.natureGreen
+import com.example.medisync.ui.navigation.safePopBackStack
 
 @Composable
 fun SelectRoleScreen(
@@ -52,7 +53,7 @@ fun SelectRoleScreen(
     Scaffold(containerColor = AuthBg) { padding ->
         AuthScreenFrame(
             showBack = true,
-            onBack = { navController.popBackStack() }
+            onBack = { navController.safePopBackStack() }
         ) {
             Column(
                 modifier = Modifier

@@ -97,6 +97,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import com.example.medisync.ui.navigation.safePopBackStack
 
 private val ScreenBg = Color(0xFFE7F0F4)
 private val Accent = natureGreen
@@ -168,7 +169,7 @@ fun PatientAppointmentDetailScreen(
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
+                        IconButton(onClick = { navController.safePopBackStack() }) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
                         }
                     },

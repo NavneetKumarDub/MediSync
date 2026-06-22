@@ -59,6 +59,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import com.example.medisync.ui.navigation.safePopBackStack
 
 private val ErrorRed = Color(0xFFDC2626)
 private val AvtarColor = Color(0xFF3E505D)
@@ -359,7 +360,7 @@ fun DoctorProfileScreen(
                     verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { navController.safePopBackStack() }) {
                         Icon(
                             imageVector        = Icons.Default.ArrowBack,
                             contentDescription = "Back",
@@ -535,7 +536,7 @@ fun DoctorProfileScreen(
                                             updatedAt = System.currentTimeMillis()
                                         )
                                     )
-                                    navController.popBackStack()
+                                    navController.safePopBackStack()
                                 } catch (e: Exception) {
                                     errorMessage = e.message ?: "Failed to save"
                                 } finally {

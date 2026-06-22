@@ -29,6 +29,7 @@ import com.example.medisync.networks.RetrofitInstance
 import com.example.medisync.networks.SearchFilters
 import com.example.medisync.ui.components.SearchInputBar
 import kotlinx.coroutines.delay
+import com.example.medisync.ui.navigation.safePopBackStack
 
 
 private val ScreenBackground  = Color(0xFFF6F7F9)
@@ -148,7 +149,7 @@ fun SearchScreen(
                 SearchInputBar(
                     query          = query,
                     onQueryChange  = { query = it },
-                    onBackClick    = { navController.popBackStack() },
+                    onBackClick    = { navController.safePopBackStack() },
                     focusRequester = focusRequester
                 )
 

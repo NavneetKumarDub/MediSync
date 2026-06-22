@@ -36,6 +36,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.Alignment
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
+import com.example.medisync.ui.navigation.safePopBackStack
 
 
 private val ScreenBg = Color(0xFFE7F0F4)
@@ -131,7 +132,7 @@ fun DoctorClinicLocationScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { navController.safePopBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -296,7 +297,7 @@ fun DoctorClinicLocationScreen(
                                         )
 
                                         if (res.isSuccessful) {
-                                            navController.popBackStack()
+                                            navController.safePopBackStack()
                                         } else {
                                             error = "Failed to save clinic location"
                                         }

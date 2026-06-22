@@ -77,6 +77,7 @@ import com.example.medisync.ui.theme.natureGreen
 import com.example.medisync.viewmodels.PatientAiChatMessage
 import com.example.medisync.viewmodels.PatientAiChatViewModel
 import kotlinx.coroutines.launch
+import com.example.medisync.ui.navigation.safePopBackStack
 
 private val AiScreenBg = Color(0xFFFBFCFE)
 private val AiBubbleBg = Color(0xFFF1F6FA)
@@ -96,7 +97,7 @@ fun PatientAiChatScreen(
     navController: NavController
 ) {
     PatientAiChatContent(
-        onBackClick = { navController.popBackStack() }
+        onBackClick = { navController.safePopBackStack() }
     )
 }
 
