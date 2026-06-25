@@ -2,6 +2,17 @@ import { Request, Response } from 'express'
 import minioClient, { BUCKETS, publicMinioClient } from '../config/minio'
 import db from '../config/db'
 
+const buildPublicObjectUrl = (bucket: string, key: string) => {
+    const useSSL = (process.env.MINIO_PUBLIC_USE_SSL || process.env.MINIO_USE_SSL) === 'true'
+    const host = process.env.MINIO_PUBLIC_HOST || process.env.MINIO_ENDPOINT || 'localhost'
+    const port = Number(process.env.MINIO_PUBLIC_PORT || process.env.MINIO_PORT || 9000)
+    const protocol = useSSL ? 'https' : 'http'
+    const showPort = (useSSL && port !== 443) || (!useSSL && port !== 80)
+    const encodedKey = key.split('/').map(encodeURIComponent).join('/')
+
+    return `${protocol}://${host}${showPort ? `:${port}` : ''}/${bucket}/${encodedKey}`
+}
+
 export const getPresignedUploadUrl = async (req: Request, res: Response) => {
     try {
         const { userId, fileName, fileType } = req.body
@@ -14,11 +25,14 @@ export const getPresignedUploadUrl = async (req: Request, res: Response) => {
         const extension = fileName.split('.').pop()
         const key = `users/${userId}/avatar_${timestamp}.${extension}`
 
-      const uploadUrl = await publicMinioClient.presignedPutObject(
-            BUCKETS.PROFILE_PHOTOS,
-            key,
-            15 * 60
-        )
+        const uploadUrl = buildPublicObjectUrl(BUCKETS.PROFILE_PHOTOS, key)
+
+        // Revert after demo:
+        // const uploadUrl = await publicMinioClient.presignedPutObject(
+        //     BUCKETS.PROFILE_PHOTOS,
+        //     key,
+        //     15 * 60
+        // )
         
 
         return res.status(200).json({
@@ -68,11 +82,7 @@ export const getProfilePhotoUrl = async (req: Request, res: Response) => {
 
         const key = result.rows[0].profile_photo_key
 
-        const viewUrl = await publicMinioClient.presignedGetObject(
-            BUCKETS.PROFILE_PHOTOS,
-            key,
-            60 * 60
-        )
+        const viewUrl = buildPublicObjectUrl(BUCKETS.PROFILE_PHOTOS, key)
 
         return res.status(200).json({ viewUrl })
 
@@ -132,11 +142,14 @@ export const getChatFileUploadUrl = async (req: Request, res: Response) => {
         const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_')
         const key = `chat/${roomId}/${userId}_${timestamp}_${safeName}`
 
-        const uploadUrl = await publicMinioClient.presignedPutObject(
-            BUCKETS.MEDICAL_RECORDS,
-            key,
-            15 * 60
-        )
+        const uploadUrl = buildPublicObjectUrl(BUCKETS.MEDICAL_RECORDS, key)
+
+        // Revert after demo:
+        // const uploadUrl = await publicMinioClient.presignedPutObject(
+        //     BUCKETS.MEDICAL_RECORDS,
+        //     key,
+        //     15 * 60
+        // )
 
         return res.status(200).json({
             uploadUrl,
@@ -179,11 +192,14 @@ export const getChatFileViewUrl = async (req: Request, res: Response) => {
             return res.status(403).json({ message: 'Access denied' })
         }
 
-        const viewUrl = await publicMinioClient.presignedGetObject(
-            BUCKETS.MEDICAL_RECORDS,
-            key,
-            5 * 60
-        )
+        const viewUrl = buildPublicObjectUrl(BUCKETS.MEDICAL_RECORDS, key)
+
+        // Revert after demo:
+        // const viewUrl = await publicMinioClient.presignedGetObject(
+        //     BUCKETS.MEDICAL_RECORDS,
+        //     key,
+        //     5 * 60
+        // )
 
         return res.status(200).json({ viewUrl })
     } catch (error) {

@@ -32,6 +32,7 @@ export const getPersonalProfile = async (req: Request, res: Response) => {
 }
 
 export const updatePersonalProfile = async (req: Request, res: Response) => {
+    console.log("Updating personal profile with data:", req.body)
     const { userId } = req.params
     const { name, email, gender, dob, blood_group, marital_status, height, weight, emergency_contact } = req.body
     try {
