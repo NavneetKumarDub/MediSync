@@ -51,6 +51,7 @@ import com.example.medisync.data.TokenManager
 import com.example.medisync.networks.RetrofitInstance
 import com.example.medisync.ui.components.AppDrawerItem
 import com.example.medisync.ui.components.AppSideDrawer
+import com.example.medisync.utils.FileCacheManager
 
 @Composable
 fun HomeContent(
@@ -65,20 +66,12 @@ fun HomeContent(
     val scope = rememberCoroutineScope()
 
     val context = LocalContext.current
-    var profilePhotoUrl by remember { mutableStateOf<String?>(null) }
+    var token by remember { mutableStateOf("") }
 
     LaunchedEffect(userId) {
-        val token = TokenManager.getToken(context)
-        if (token != null && userId != 0) {
-            try {
-                profilePhotoUrl = RetrofitInstance.api
-                    .getProfilePhotoUrl("Bearer $token", userId)
-                    .viewUrl
-            } catch (e: Exception) {
-                profilePhotoUrl = null
-            }
-        }
+        token = TokenManager.getToken(context) ?: ""
     }
+
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -86,7 +79,9 @@ fun HomeContent(
             AppSideDrawer(
                 name = name,
                 phone = phone,
-                photoUrl = profilePhotoUrl,
+                userId = userId,
+                photoKey = null,
+                token = token,
                 items = listOf(
                     AppDrawerItem(
                         label = "Appointments",

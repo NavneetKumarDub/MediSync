@@ -18,7 +18,7 @@ data class ChatInboxEntity(
     val displayName: String,
 
     @ColumnInfo(name = "photo_url")
-    val photoUrl: String?,
+    val profilePhotoKey: String?,
 
     @ColumnInfo(name = "last_message")
     val lastMessage: String?,

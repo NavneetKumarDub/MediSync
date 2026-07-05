@@ -2,7 +2,8 @@ package com.example.medisync.networks
 
 data class RegisterResponse(
     val message: String,
-    val user: UserData?
+    val user: UserData?,
+    val token: String
 )
 
 data class UserData(

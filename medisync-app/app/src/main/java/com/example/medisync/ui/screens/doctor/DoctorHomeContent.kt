@@ -45,6 +45,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import com.example.medisync.utils.FileCacheManager
 
 private val DoctorHomeBg = Color(0xFFF6F8FA)
 private val CardBg = Color.White
@@ -78,24 +79,13 @@ fun DoctorHomeContent(
         }
     }
 
-    var profilePhotoUrl by remember { mutableStateOf<String?>(null) }
+    var token by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         appointmentViewModel.fetchDoctorAppointments(context)
+        token = TokenManager.getToken(context) ?: ""
     }
 
-    LaunchedEffect(userId) {
-        val token = TokenManager.getToken(context)
-        if (token != null && userId != 0) {
-            try {
-                profilePhotoUrl = RetrofitInstance.api
-                    .getProfilePhotoUrl("Bearer $token", userId)
-                    .viewUrl
-            } catch (e: Exception) {
-                profilePhotoUrl = null
-            }
-        }
-    }
 
     val homeData = remember(doctorAppointments) { DoctorHomeData.from(doctorAppointments) }
 
@@ -105,7 +95,9 @@ fun DoctorHomeContent(
             AppSideDrawer(
                 name = "Dr. ${name.toDisplayName()}",
                 phone = phone,
-                photoUrl = profilePhotoUrl,
+                userId = userId,
+                photoKey = null,
+                token = token,
                 items = listOf(
                     AppDrawerItem(
                         label = "Clinic Location",

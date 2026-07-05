@@ -16,8 +16,9 @@ data class AppointmentEntity(
     val time: String,
     val displayName: String,
     val subtitle: String,
-    val photoUrl: String?,
 
+    @ColumnInfo(name = "photoUrl")
+    val profilePhotoKey: String?,
 
     @ColumnInfo(name = "room_id")
     val roomId: Int?,

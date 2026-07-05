@@ -444,7 +444,8 @@ data class GetDatesWithSlotsResponse(
 )
 
 data class ProfilePhotoResponse(
-    val viewUrl: String
+    val viewUrl: String,
+    val photoKey: String
 )
 
 data class PresignedUrlRequest(

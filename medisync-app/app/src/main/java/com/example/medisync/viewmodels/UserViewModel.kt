@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.medisync.data.TokenManager
 import com.example.medisync.networks.RetrofitInstance
+import com.example.medisync.utils.FileCacheManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,8 +47,16 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
                 val context = getApplication<Application>().applicationContext
                 val token = "Bearer ${TokenManager.getToken(context) ?: ""}"
                 _isPhotoLoading.value = true
-                val response = RetrofitInstance.api.getProfilePhotoUrl(token,userId)
-                _profilePhotoUrl.value = response.viewUrl
+                val response = RetrofitInstance.api.getProfilePhotoUrl(token, userId)
+                val file = FileCacheManager.getOrDownloadFile(
+                    context = context,
+                    fileKey = "my_profile_photo_$userId",
+                    fileName = "my_profile_$userId.jpg",
+                    fileType = "image/jpeg",
+                    forceRefresh = false
+                ) { response.viewUrl }
+                _profilePhotoUrl.value = FileCacheManager
+                    .contentUri(context, file).toString()
             } catch (e: Exception) {
                 _profilePhotoUrl.value = null
             } finally {
@@ -55,6 +64,7 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
 
     fun updateProfilePhotoUrl(url: String?) {
         _profilePhotoUrl.value = url

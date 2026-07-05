@@ -1,5 +1,6 @@
 package com.example.medisync.ui.screens.appointment
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -78,6 +79,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.medisync.MediSyncApplication
+import com.example.medisync.ui.components.ProfilePhoto
 import com.example.medisync.data.TokenManager
 import com.example.medisync.data.local.AppointmentEntity
 import com.example.medisync.networks.DoctorDetail
@@ -142,8 +144,10 @@ fun PatientAppointmentDetailScreen(
         }
     }
 
+    var token by remember { mutableStateOf("") }
     LaunchedEffect(appointment?.id) {
         userRole = TokenManager.getRole(context) ?: "patient"
+        token = TokenManager.getToken(context).orEmpty()
         if (appointment != null) {
             viewModel.loadRatingData(context)
         }
@@ -185,8 +189,9 @@ fun PatientAppointmentDetailScreen(
                     onClick = {
                         val roomId = appt.roomId ?: return@ChatBottomBar
                         val encodedName = Uri.encode(appt.displayName)
-                        val encodedPhoto = Uri.encode(appt.photoUrl ?: "")
-                        navController.navigate("chat/$roomId?name=$encodedName&photoUrl=$encodedPhoto")
+                        val encodedPhoto = Uri.encode(appt.profilePhotoKey ?: "")
+                        val otherUserId = if (isPatientView) appt.doctorId else appt.patientId
+                        navController.navigate("chat/$roomId?name=$encodedName&photoUrl=$encodedPhoto&otherUserId=$otherUserId")
                     }
                 )
             }
@@ -235,7 +240,7 @@ fun PatientAppointmentDetailScreen(
                 ) {
                     Spacer(Modifier.height(28.dp))
 
-                    DoctorHeader(appt)
+                    DoctorHeader(appt, isPatientView, token)
 
                     Spacer(Modifier.height(28.dp))
 
@@ -280,7 +285,7 @@ fun PatientAppointmentDetailScreen(
 }
 
 @Composable
-private fun DoctorHeader(appt: AppointmentEntity) {
+private fun DoctorHeader(appt: AppointmentEntity, isPatientView: Boolean, token: String) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxWidth()
@@ -292,23 +297,13 @@ private fun DoctorHeader(appt: AppointmentEntity) {
                 .background(Color.White.copy(alpha = 0.92f)),
             contentAlignment = Alignment.Center
         ) {
-            if (!appt.photoUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = profilePhotoModel(appt.photoUrl),
-                    contentDescription = appt.displayName,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(116.dp)
-                        .clip(CircleShape)
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    tint = Accent,
-                    modifier = Modifier.size(54.dp)
-                )
-            }
+            ProfilePhoto(
+                userId = if (isPatientView) appt.doctorId else appt.patientId,
+                photoKey = appt.profilePhotoKey,
+                token = token,
+                name = appt.displayName,
+                size = 116.dp
+            )
         }
 
         Spacer(Modifier.height(12.dp))
@@ -412,6 +407,7 @@ private fun ClinicLocationSection(
     }
 }
 
+@SuppressLint("UnrememberedMutableState")
 @Composable
 private fun ClinicMapPreview(
     latitude: Double,
@@ -706,7 +702,7 @@ private fun profilePhotoModel(photoUrl: String?): String? {
     return if (photoUrl.startsWith("http")) {
         photoUrl
     } else {
-        "${RetrofitInstance.MINIO_BASE_URL}$photoUrl"
+        null
     }
 }
 

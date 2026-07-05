@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -28,6 +29,7 @@ import com.example.medisync.data.TokenManager
 import com.example.medisync.data.local.AppointmentEntity
 import com.example.medisync.networks.RetrofitInstance
 import com.example.medisync.ui.components.AppointmentCard
+import com.example.medisync.ui.components.ProfilePhoto
 import com.example.medisync.ui.components.BottomNavBar
 import com.example.medisync.ui.components.SearchBar
 import com.example.medisync.ui.navigation.NavItems
@@ -93,15 +95,19 @@ fun AppointmentListScreen(
     val today   = LocalDate.now()
 
     var userRole           by remember { mutableStateOf("patient") }
+    var token by remember { mutableStateOf("") }
     var activeFilter       by remember { mutableStateOf("All") }
     var searchQuery        by remember { mutableStateOf("") }
     var showAvatarDialog   by remember { mutableStateOf(false) }
-    var selectedAvatarUrl  by remember { mutableStateOf<String?>(null) }
+    var selectedAvatarPhotoKey by remember { mutableStateOf<String?>(null) }
     var selectedAvatarName by remember { mutableStateOf("") }
+    var selectedAvatarUserId by remember { mutableStateOf<Int?>(null) }
     var selectedAvatarAppointmentId by remember { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(Unit) {
         userRole = TokenManager.getRole(context) ?: "patient"
+        token = TokenManager.getToken(context) ?: ""
+
         if (viewModel.appointments.isEmpty()) {
             viewModel.isLoading = true  
         }
@@ -176,9 +182,11 @@ fun AppointmentListScreen(
                 } else {
                     AppointmentLazyList(
                         list         = filteredList,
+                        token = token,
                         onAvatarClick = { appt ->
                             selectedAvatarName = appt.displayName
-                            selectedAvatarUrl = appt.photoUrl
+                            selectedAvatarPhotoKey = appt.profilePhotoKey
+                            selectedAvatarUserId = appt.doctorId ?: appt.patientId
                             selectedAvatarAppointmentId = appt.id
                             showAvatarDialog = true
                         },
@@ -190,10 +198,12 @@ fun AppointmentListScreen(
             }
         }
 
-        if (showAvatarDialog) {
+        if (showAvatarDialog && selectedAvatarUserId != null) {
             AvatarPopup(
                 name      = selectedAvatarName,
-                url       = selectedAvatarUrl,
+                userId    = selectedAvatarUserId!!,
+                photoKey  = selectedAvatarPhotoKey,
+                token     = token,
                 onDismiss = { showAvatarDialog = false },
                 onInfoClick = {
                     val appointmentId = selectedAvatarAppointmentId
@@ -268,6 +278,7 @@ fun FilterRow(active: String, onSelect: (String) -> Unit) {
 @Composable
 fun AppointmentLazyList(
     list          : List<AppointmentEntity>,
+    token :String,
     onAvatarClick : (AppointmentEntity) -> Unit,
     onCardClick   : (AppointmentEntity) -> Unit
 ) {
@@ -280,7 +291,8 @@ fun AppointmentLazyList(
             items(list, key = { it.id }) { appt ->
                 AppointmentCard(
                     appt         = appt,
-                    onAvatarClick = { _, _ -> onAvatarClick(appt) },
+                    token = token,
+                    onAvatarClick = { onAvatarClick(appt) },
                     onClick       = { onCardClick(appt) }
                 )
             }
@@ -291,7 +303,9 @@ fun AppointmentLazyList(
 @Composable
 fun AvatarPopup(
     name: String,
-    url: String?,
+    userId: Int,
+    photoKey: String?,
+    token: String,
     onDismiss: () -> Unit,
     onInfoClick: () -> Unit
 ) {
@@ -313,26 +327,15 @@ fun AvatarPopup(
         ) {
             Column {
                 Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f)) {
-                    if (url != null) {
-                        AsyncImage(
-                            model = "${RetrofitInstance.MINIO_BASE_URL}${url}",
-                            contentDescription = null,
-                            contentScale       = ContentScale.Crop,
-                            modifier           = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        Box(
-                            Modifier.fillMaxSize().background(Color(0xFFE1F5FE)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                name.take(1).uppercase(),
-                                fontSize   = 100.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color      = Color(0xFF0288D1)
-                            )
-                        }
-                    }
+                    ProfilePhoto(
+                        userId = userId,
+                        photoKey = photoKey,
+                        token = token,
+                        name = name,
+                        size = 200.dp,
+                        shape = RectangleShape,
+                        modifier = Modifier.fillMaxSize()
+                    )
                     Box(
                         Modifier.fillMaxWidth()
                             .background(Color.Black.copy(alpha = 0.25f))

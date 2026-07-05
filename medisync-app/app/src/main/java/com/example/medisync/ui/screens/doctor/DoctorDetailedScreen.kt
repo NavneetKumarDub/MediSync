@@ -94,13 +94,16 @@ fun DoctorProfileScreen(
     var doctor       by remember { mutableStateOf<DoctorDetail?>(null) }
     var ratingAverage by remember { mutableStateOf(0.0) }
     var ratingCount by remember { mutableIntStateOf(0) }
-    var isLoading    by remember { mutableStateOf(true) }
-    var error        by remember { mutableStateOf<String?>(null) }
+    var token by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(doctorId) {
         try {
-            val token = "Bearer ${TokenManager.getToken(context)}"
-            val profileRes = RetrofitInstance.api.getDoctorProfile(token,doctorId)
+            val rawToken = TokenManager.getToken(context) ?: ""
+            token = rawToken
+            val bearerToken = "Bearer $rawToken"
+            val profileRes = RetrofitInstance.api.getDoctorProfile(bearerToken,doctorId)
             if (profileRes.isSuccessful) {
                 doctor = profileRes.body()?.doctor
             } else {
@@ -152,6 +155,7 @@ fun DoctorProfileScreen(
             doctor       = doctor!!,
             ratingAverage = ratingAverage,
             ratingCount = ratingCount,
+            token = token,
             onBackClick  = { navController.safePopBackStack() },
             onBookClick  = { id ->
                 val encodedName = Uri.encode(doctor!!.doctorName)
@@ -168,6 +172,7 @@ fun DoctorProfileContent(
     doctor      : DoctorDetail,
     ratingAverage: Double,
     ratingCount: Int,
+    token: String,
     onBackClick : () -> Unit,
     onBookClick : (Int) -> Unit
 ) {
@@ -214,8 +219,10 @@ fun DoctorProfileContent(
                     verticalAlignment     = Alignment.CenterVertically
                 ) {
                     DoctorHeroAvatar(
+                        userId   = doctor.doctorId,
                         name     = formattedDoctorName(doctor.doctorName),
                         photoUrl = doctor.profilePhoto,
+                        token    = token,
                         size     = 68.dp
                     )
 
@@ -384,38 +391,19 @@ fun DoctorProfileContent(
 
 @Composable
 private fun DoctorHeroAvatar(
+    userId: Int,
     name: String,
     photoUrl: String?,
+    token: String,
     size: androidx.compose.ui.unit.Dp
 ) {
-    Box(
-        modifier = Modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.92f)),
-        contentAlignment = Alignment.Center
-    ) {
-        if (!photoUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = profilePhotoModel(photoUrl),
-                contentDescription = name,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-        } else {
-            Text(
-                text = name
-                    .split(" ")
-                    .filter { it.isNotBlank() }
-                    .take(2)
-                    .joinToString("") { it.first().uppercase() }
-                    .ifBlank { "DR" },
-                color = natureGreen,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
+    ProfilePhoto(
+        userId = userId,
+        photoKey = photoUrl,
+        token = token,
+        name = name,
+        size = size
+    )
 }
 
 @Composable
@@ -520,7 +508,7 @@ private fun profilePhotoModel(photoUrl: String?): String? {
     return if (photoUrl.startsWith("http")) {
         photoUrl
     } else {
-        "${RetrofitInstance.MINIO_BASE_URL}$photoUrl"
+        null
     }
 }
 
@@ -613,6 +601,7 @@ fun DoctorProfilePreview() {
         doctor       = previewDoctor,
         ratingAverage = 4.8,
         ratingCount = 23,
+        token = "fake-token",
         onBackClick  = { },
         onBookClick  = { }
     )

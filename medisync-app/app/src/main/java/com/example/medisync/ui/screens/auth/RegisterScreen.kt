@@ -134,6 +134,7 @@ fun RegisterScreen(
                                     )
                                 )
                                 val userId = response.user?.id ?: 0
+                                TokenManager.saveToken(context, response.token)
                                 TokenManager.saveUserId(context, userId)
                                 TokenManager.saveRole(context, role)
                                 TokenManager.saveName(context, name.trim())

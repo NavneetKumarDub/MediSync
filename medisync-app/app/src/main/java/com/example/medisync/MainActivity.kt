@@ -294,7 +294,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable(
-                        route = "chat/{roomId}?name={name}&photoUrl={photoUrl}",
+                        route = "chat/{roomId}?name={name}&photoUrl={photoUrl}&otherUserId={otherUserId}",
                         arguments = listOf(
                             navArgument("roomId") { type = NavType.IntType },
                             navArgument("name") {
@@ -304,20 +304,27 @@ class MainActivity : ComponentActivity() {
                             navArgument("photoUrl") {
                                 type = NavType.StringType
                                 nullable = true
+                            },
+                            navArgument("otherUserId") {
+                                type = NavType.IntType
+                                defaultValue = 0
                             }
                         )
                     ) { backStackEntry ->
                         val roomId = backStackEntry.arguments?.getInt("roomId") ?: 0
                         val otherUserName = backStackEntry.arguments?.getString("name") ?: "Unknown User"
                         val photoUrl = backStackEntry.arguments?.getString("photoUrl")
+                        val otherUserId = backStackEntry.arguments?.getInt("otherUserId") ?: 0
 
                         ChatScreen(
                             navController = navController,
                             roomId = roomId,
                             otherUserName = otherUserName,
-                            photoUrl = photoUrl
+                            photoUrl = photoUrl,
+                            otherUserId = otherUserId
                         )
                     }
+
 
                     composable("video_room/{roomId}") { backStackEntry ->
                         val roomId = backStackEntry.arguments?.getString("roomId")?.toIntOrNull() ?: 0

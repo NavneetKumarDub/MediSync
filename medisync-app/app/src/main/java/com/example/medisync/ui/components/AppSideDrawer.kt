@@ -22,12 +22,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import com.example.medisync.networks.RetrofitInstance
 
 data class AppDrawerItem(
     val label: String,
@@ -37,7 +34,6 @@ data class AppDrawerItem(
 
 private val DrawerBg = Color.White
 private val AccentBlue = Color(0xFF2A9DF4)
-private val SoftBlue = Color(0xFFE7F0F4)
 private val TextDark = Color(0xFF111B21)
 private val TextMuted = Color(0xFF6B7280)
 
@@ -45,7 +41,9 @@ private val TextMuted = Color(0xFF6B7280)
 fun AppSideDrawer(
     name: String,
     phone: String,
-    photoUrl: String?,
+    userId: Int,            // ADDED
+    photoKey: String?,      // CHANGED from photoUrl
+    token: String,          // ADDED
     items: List<AppDrawerItem>,
     onProfileClick: () -> Unit,
     onLogoutClick: () -> Unit
@@ -58,7 +56,9 @@ fun AppSideDrawer(
         DrawerProfileHeader(
             name = name,
             phone = phone,
-            photoUrl = photoUrl,
+            userId = userId,
+            photoKey = photoKey,
+            token = token,
             onClick = onProfileClick
         )
 
@@ -131,7 +131,9 @@ fun AppSideDrawer(
 private fun DrawerProfileHeader(
     name: String,
     phone: String,
-    photoUrl: String?,
+    userId: Int,
+    photoKey: String?,
+    token: String,
     onClick: () -> Unit
 ) {
     Surface(
@@ -147,7 +149,12 @@ private fun DrawerProfileHeader(
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                ProfileAvatar(photoUrl = photoUrl, name = name)
+                ProfileAvatar(
+                    userId = userId,
+                    photoKey = photoKey,
+                    token = token,
+                    name = name
+                )
 
                 Spacer(Modifier.width(12.dp))
 
@@ -176,16 +183,15 @@ private fun DrawerProfileHeader(
                     tint = TextMuted
                 )
             }
-
-
-
         }
     }
 }
 
 @Composable
 private fun ProfileAvatar(
-    photoUrl: String?,
+    userId: Int,
+    photoKey: String?,
+    token: String,
     name: String
 ) {
     Box(
@@ -195,22 +201,14 @@ private fun ProfileAvatar(
             .background(AccentBlue.copy(alpha = 0.14f)),
         contentAlignment = Alignment.Center
     ) {
-        if (!photoUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = photoUrl,
-                contentDescription = "Profile photo",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(CircleShape)
-            )
-        } else {
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = null,
-                tint = AccentBlue,
-                modifier = Modifier.size(30.dp)
-            )
-        }
+        // Use the new offline-capable component!
+        ProfilePhoto(
+            userId = userId,
+            photoKey = photoKey,
+            token = token,
+            name = name,
+            size = 58.dp,
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }

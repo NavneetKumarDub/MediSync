@@ -15,6 +15,9 @@ interface ChatInboxDao {
     @Query("SELECT * FROM chat_inbox_table ORDER BY last_message_time DESC")
     fun getAllChats(): Flow<List<ChatInboxEntity>>
 
+    @Query("SELECT * FROM chat_inbox_table ORDER BY last_message_time DESC")
+    suspend fun getAllChatsOnce(): List<ChatInboxEntity>
+
     @Query("SELECT MAX(updated_at) FROM chat_inbox_table")
     suspend fun getLastSyncTimestamp(): String?
 

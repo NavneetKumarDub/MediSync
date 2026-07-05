@@ -22,25 +22,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
 import androidx.lifecycle.viewmodel.compose.viewModel
+
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import coil.compose.AsyncImage
 import com.example.medisync.data.TokenManager
 import com.example.medisync.ui.components.BottomNavBar
 import com.example.medisync.ui.components.SearchBar
+import com.example.medisync.viewmodels.ChatInboxViewModel
 import com.example.medisync.ui.navigation.NavItems
 import com.example.medisync.ui.theme.natureGreen
-import com.example.medisync.viewmodels.ChatInboxViewModel
 import com.example.medisync.data.local.ChatInboxEntity
-import com.example.medisync.networks.RetrofitInstance
+import com.example.medisync.ui.components.ProfilePhoto
 
 import java.text.SimpleDateFormat
 import java.time.Instant
@@ -93,18 +93,21 @@ fun ChatListScreen(
     val context = LocalContext.current
     var activeFilter by remember { mutableStateOf("All") }
     var searchQuery by remember { mutableStateOf("") }
+    var token by remember { mutableStateOf("") }
 
     
     var showAvatarDialog by remember { mutableStateOf(false) }
-    var selectedAvatarUrl by remember { mutableStateOf<String?>(null) }
+    var selectedAvatarPhotoKey by remember { mutableStateOf<String?>(null) }
     var selectedAvatarName by remember { mutableStateOf("") }
     var selectedAvatarRoomId by remember { mutableStateOf<Int?>(null) }
+    var selectedAvatarUserId by remember { mutableStateOf<Int?>(null) }
 
     val chats by viewModel.inboxChats.collectAsState()
     LaunchedEffect(Unit) {
-        val token = TokenManager.getToken(context)
-        if (token != null) {
-            viewModel.triggerSync(token)
+        val t = TokenManager.getToken(context)
+        if (t != null) {
+            token = t
+            viewModel.triggerSync(t)
         }
     }
 
@@ -175,10 +178,12 @@ fun ChatListScreen(
                 ChatList(
                     list = list,
                     navController = navController,
+                    token = token,
                     onAvatarClick = { chat ->
                         selectedAvatarRoomId = chat.roomId
                         selectedAvatarName = chat.displayName
-                        selectedAvatarUrl = chat.photoUrl
+                        selectedAvatarPhotoKey = chat.profilePhotoKey
+                        selectedAvatarUserId = chat.otherUserId
                         showAvatarDialog = true
                     }
                 )
@@ -212,11 +217,14 @@ fun ChatListScreen(
                                 .aspectRatio(1f)
                                 .background(AvtarColor)
                         ) {
-                            if (selectedAvatarUrl != null) {
-                                AsyncImage(
-                                    model = "${RetrofitInstance.MINIO_BASE_URL}$selectedAvatarUrl",
-                                    contentDescription = "Profile Photo",
-                                    contentScale = ContentScale.Crop,
+                            if (selectedAvatarUserId != null) {
+                                ProfilePhoto(
+                                    userId = selectedAvatarUserId,
+                                    photoKey = selectedAvatarPhotoKey,
+                                    token = token,
+                                    name = selectedAvatarName,
+                                    size = 200.dp,
+                                    shape = RectangleShape,
                                     modifier = Modifier.fillMaxSize()
                                 )
                             } else {
@@ -263,11 +271,12 @@ fun ChatListScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 modifier = Modifier.clickable {
                                     val roomId = selectedAvatarRoomId
-                                    if (roomId != null) {
+                                    val otherUserId = selectedAvatarUserId
+                                    if (roomId != null && otherUserId != null) {
                                         showAvatarDialog = false
                                         val encodedName = Uri.encode(selectedAvatarName)
-                                        val encodedUrl = Uri.encode(selectedAvatarUrl)
-                                        navController.navigate("chat/$roomId?name=$encodedName&photoUrl=$encodedUrl")
+                                        val encodedUrl = Uri.encode(selectedAvatarPhotoKey ?: "")
+                                        navController.navigate("chat/$roomId?name=$encodedName&photoUrl=$encodedUrl&otherUserId=$otherUserId")
                                     }
                                 }
                             ) {
@@ -345,6 +354,7 @@ fun FilterRow(active: String, onSelect: (String) -> Unit) {
 fun ChatList(
     list: List<ChatInboxEntity>,
     navController: NavController,
+    token: String,
     onAvatarClick: (ChatInboxEntity) -> Unit
 ) {
     if (list.isEmpty()) {
@@ -384,12 +394,13 @@ fun ChatList(
             itemsIndexed(list, key = { _, chat -> chat.roomId }) { index, chat ->
                 ChatItemCard(
                     chat = chat,
+                    token = token,
                     onAvatarClick = { onAvatarClick(chat) },
                     onClick = {
                         val encodedName = Uri.encode(chat.displayName)
-                        val encodedUrl = Uri.encode(chat.photoUrl)
+                        val encodedUrl = Uri.encode(chat.profilePhotoKey ?: "")
 
-                        navController.navigate("chat/${chat.roomId}?name=$encodedName&photoUrl=$encodedUrl")
+                        navController.navigate("chat/${chat.roomId}?name=$encodedName&photoUrl=$encodedUrl&otherUserId=${chat.otherUserId}")
                     }
                 )
             }
@@ -401,6 +412,7 @@ fun ChatList(
 @Composable
 fun ChatItemCard(
     chat: ChatInboxEntity,
+    token: String,
     onAvatarClick: () -> Unit,
     onClick: () -> Unit
 ) {
@@ -421,21 +433,13 @@ fun ChatItemCard(
                 .clickable { onAvatarClick() },
             contentAlignment = Alignment.Center
         ) {
-            if (chat.photoUrl != null) {
-                AsyncImage(
-                    model = "${RetrofitInstance.MINIO_BASE_URL}${chat.photoUrl}",
-                    contentDescription = "Avatar",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Text(
-                    text = chat.displayName.take(1).uppercase(),
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MediSkyBlueText
-                )
-            }
+            ProfilePhoto(
+                userId = chat.otherUserId,
+                photoKey = chat.profilePhotoKey,
+                token = token,
+                name = chat.displayName,
+                size = 50.dp
+            )
         }
 
         Spacer(modifier = Modifier.width(16.dp))
@@ -458,8 +462,6 @@ fun ChatItemCard(
             color = MediTextMuted,
             fontSize = 12.sp,
         )
-
-
     }
 }
 

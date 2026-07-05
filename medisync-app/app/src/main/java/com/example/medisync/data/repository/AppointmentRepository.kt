@@ -49,7 +49,7 @@ class AppointmentRepository(
                         time = item.startTime ?: "No Time",
                         displayName = item.displayName ?: "Unknown",
                         subtitle = item.speciality ?: "Patient",
-                        photoUrl = item.profilePhoto,
+                        profilePhotoKey = item.profilePhoto,
                         roomId = item.roomId,
                         doctorId = item.doctorId,
                         patientId = item.patientId,

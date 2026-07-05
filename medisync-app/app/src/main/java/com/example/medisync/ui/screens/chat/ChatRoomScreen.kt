@@ -46,7 +46,6 @@ import com.example.medisync.MediSyncApplication
 import com.example.medisync.VideoCallActivity
 import com.example.medisync.data.TokenManager
 import com.example.medisync.data.local.ChatMessageEntity
-import com.example.medisync.networks.RetrofitInstance
 import com.example.medisync.viewmodels.ChatViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -54,6 +53,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import com.example.medisync.ui.navigation.safePopBackStack
+import com.example.medisync.ui.components.ProfilePhoto
 
 
 private val ChatBg         = Color(0xFFF2FAFF)
@@ -78,7 +78,8 @@ fun ChatScreen(
     navController: NavController,
     roomId: Int,
     otherUserName: String,
-    photoUrl: String? = null
+    photoUrl: String? = null,
+    otherUserId: Int = 0
 ) {
     val context = LocalContext.current
     val listState = rememberLazyListState()
@@ -204,6 +205,8 @@ fun ChatScreen(
                 name = otherUserName,
                 subtitle = if (uiState.isConnected) "Online" else "",
                 photoUrl = photoUrl,
+                otherUserId = otherUserId,
+                token = myToken.orEmpty(),
                 onBack = { navController.safePopBackStack() },
                 onJoin = {
                     val intent = Intent(context, VideoCallActivity::class.java).apply {
@@ -339,6 +342,8 @@ private fun ChatTopBar(
     name: String,
     subtitle: String,
     photoUrl: String?,
+    otherUserId: Int,
+    token: String,
     onBack: () -> Unit,
     onJoin: () -> Unit = {}
 ) {
@@ -357,14 +362,13 @@ private fun ChatTopBar(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
 
-                if (!photoUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = "${RetrofitInstance.MINIO_BASE_URL}$photoUrl",
-                        contentDescription = "Profile Picture",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
+                if (otherUserId > 0) {
+                    ProfilePhoto(
+                        userId = otherUserId,
+                        photoKey = photoUrl,
+                        token = token,
+                        name = name,
+                        size = 38.dp
                     )
                 } else {
                     Box(

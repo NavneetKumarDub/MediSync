@@ -9,6 +9,9 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
 import com.example.medisync.data.repository.PatientRecordsRepository
+import okhttp3.OkHttpClient
+import com.example.medisync.data.repository.ProfilePhotoRepository
+import com.example.medisync.utils.ProfilePhotoFileStore
 
 class MediSyncApplication : Application() {
 
@@ -35,7 +38,13 @@ class MediSyncApplication : Application() {
     }
 
     val database by lazy { MediSyncDatabase.getDatabase(this) }
-
+    val profilePhotoRepository by lazy {
+        ProfilePhotoRepository(
+            api = RetrofitInstance.api,
+            dao = database.profilePhotoCacheDao(),
+            fileStore = ProfilePhotoFileStore(applicationContext)
+        )
+    }
     val appointmentRepository by lazy {
         AppointmentRepository(
             apiService = RetrofitInstance.api,
@@ -48,7 +57,7 @@ class MediSyncApplication : Application() {
 
     val chatInboxRepository by lazy {
         ChatInboxRepository(
-            chatDao = database.chatInboxDao() ,
+            chatDao = database.chatInboxDao(),
             chatMessageDao = database.chatMessageDao(),
             api = RetrofitInstance.api
         )
