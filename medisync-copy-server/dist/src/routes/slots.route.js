@@ -1,0 +1,17 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const slots_controller_1 = require("../controllers/slots.controller");
+const auth_middleware_1 = require("../middlewares/auth.middleware");
+const router = (0, express_1.Router)();
+router.use(auth_middleware_1.authMiddleware);
+router.post('/regular', slots_controller_1.addRegularSlot);
+router.delete('/regular/:slotId', slots_controller_1.deleteRegularSlot);
+router.get('/regular', slots_controller_1.getRegularSlots);
+router.get('/custom/dates', slots_controller_1.getDatesWithSlots);
+router.get('/custom', slots_controller_1.getSlotsByDate);
+router.post('/custom', slots_controller_1.createCustomSlot);
+router.delete('/custom/:slotId', slots_controller_1.deleteCustomSlot);
+router.get('/:doctorId/dates', slots_controller_1.getDoctorAvailableDates);
+router.get('/:doctorId/slots', slots_controller_1.getDoctorSlots);
+exports.default = router;

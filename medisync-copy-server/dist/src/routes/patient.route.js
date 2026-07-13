@@ -1,0 +1,14 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const patient_controller_1 = require("../controllers/patient.controller");
+const auth_middleware_1 = require("../middlewares/auth.middleware");
+const router = (0, express_1.Router)();
+router.use(auth_middleware_1.authMiddleware);
+router.get('/personal/:userId', patient_controller_1.getPersonalProfile);
+router.put('/personal/:userId', patient_controller_1.updatePersonalProfile);
+router.get('/medical/:userId', patient_controller_1.getMedicalProfile);
+router.put('/medical/:userId', patient_controller_1.updateMedicalProfile);
+router.get('/lifestyle/:userId', patient_controller_1.getLifestyleProfile);
+router.put('/lifestyle/:userId', patient_controller_1.updateLifestyleProfile);
+exports.default = router;

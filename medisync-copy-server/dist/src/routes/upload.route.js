@@ -1,0 +1,14 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const upload_controller_1 = require("../controllers/upload.controller");
+const auth_middleware_1 = require("../middlewares/auth.middleware");
+const router = (0, express_1.Router)();
+router.use(auth_middleware_1.authMiddleware);
+router.post('/presigned-url', upload_controller_1.getUploadUrl);
+router.post('/confirm', upload_controller_1.confirmProfilePhotoUpload);
+router.get('/profile/:userId', upload_controller_1.getProfilePhotoUrl);
+router.delete('/profile/:userId', upload_controller_1.deleteProfilePhoto);
+router.post('/chat-file/presigned-url', upload_controller_1.getChatFileUploadUrl);
+router.get('/chat-file/view-url', upload_controller_1.getChatFileViewUrl);
+exports.default = router;

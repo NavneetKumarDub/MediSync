@@ -1,0 +1,67 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.saveFcmToken = exports.registerUser = void 0;
+const db_1 = __importDefault(require("../config/db"));
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const createUserToken = (user) => jsonwebtoken_1.default.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '30d' });
+const registerUser = async (req, res) => {
+    const { phone, name, role } = req.body;
+    console.log("register user body:", req.body);
+    if (!phone || !name || !role) {
+        res.status(400).json({ message: "All fields are required" });
+        return;
+    }
+    try {
+        const existing = await db_1.default.query(`SELECT * FROM users WHERE phone = $1`, [phone]);
+        if (existing.rows.length > 0) {
+            const updated = await db_1.default.query(`UPDATE users
+                   SET name = $1, role = $2
+                 WHERE phone = $3
+             RETURNING *`, [name, role, phone]);
+            res.json({
+                message: "User profile completed",
+                user: updated.rows[0],
+                token: createUserToken(updated.rows[0])
+            });
+            return;
+        }
+        const result = await db_1.default.query(`INSERT INTO users (phone, name, role)
+             VALUES ($1, $2, $3)
+             RETURNING *`, [phone, name, role]);
+        res.json({
+            message: "User registered successfully",
+            user: result.rows[0],
+            token: createUserToken(result.rows[0])
+        });
+    }
+    catch (error) {
+        console.error("registerUser error:", error);
+        res.status(500).json({ message: "Server error" });
+    }
+};
+exports.registerUser = registerUser;
+const saveFcmToken = async (req, res) => {
+    const userId = req.user.id;
+    const { token, platform = 'android' } = req.body;
+    if (!token) {
+        return res.status(400).json({ message: 'FCM token is required' });
+    }
+    try {
+        await db_1.default.query(`INSERT INTO user_fcm_tokens (user_id, token, platform, updated_at)
+             VALUES ($1, $2, $3, NOW())
+             ON CONFLICT (token)
+             DO UPDATE SET 
+                user_id = EXCLUDED.user_id,
+                platform = EXCLUDED.platform,
+                updated_at = NOW()`, [userId, token, platform]);
+        res.json({ message: 'FCM token saved' });
+    }
+    catch (error) {
+        console.error('saveFcmToken error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+exports.saveFcmToken = saveFcmToken;

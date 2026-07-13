@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const rating_controller_1 = require("../controllers/rating.controller");
+const auth_middleware_1 = require("../middlewares/auth.middleware");
+const router = (0, express_1.Router)();
+router.use(auth_middleware_1.authMiddleware);
+router.post('/', rating_controller_1.submitDoctorRating);
+router.get('/appointment/:appointmentId', rating_controller_1.getAppointmentRating);
+router.get('/doctor/:doctorId/summary', rating_controller_1.getDoctorRatingSummary);
+exports.default = router;
