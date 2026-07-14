@@ -19,13 +19,18 @@ interface ChatMessageDao {
     suspend fun upsertMessages(messages: List<ChatMessageEntity>)
 
     
-    @Query("UPDATE chat_messages_table SET isRead = 1 WHERE roomId = :roomId AND senderId != :myUserId")
+    @Query("UPDATE chat_messages_table SET status = 'READ' WHERE roomId = :roomId AND senderId != :myUserId")
     suspend fun markAllAsReadLocally(roomId: Int, myUserId: Int)
 
     
-    @Query("UPDATE chat_messages_table SET isRead = 1 WHERE id = :messageId")
+    @Query("UPDATE chat_messages_table SET status = 'READ' WHERE id = :messageId")
     suspend fun markSingleMessageAsRead(messageId: Int)
 
+    @Query("UPDATE chat_messages_table set status = :newStatus where clientTempId = :tempId")
+    suspend fun updateMessageStatusByTempId(tempId: String,newStatus:String)
+
+    @Query("UPDATE chat_messages_table SET status = :newStatus WHERE id = :messageId")
+    suspend fun updateMessageStatusById(messageId: Int, newStatus: String)
     @Query("SELECT MAX(sentAt) FROM chat_messages_table WHERE roomId = :roomId")
     suspend fun getLastSyncTimestamp(roomId: Int): String?
 

@@ -64,14 +64,13 @@ class ChatViewModel(
                 }
                 if (state == ChatWebSocketManager.State.CONNECTED) {
                     ChatWebSocketManager.send("chat:join", mapOf("roomId" to roomId))
+                    repository.syncMissingMessages(roomId, token)
+
                 }
             }
         }
 
 
-        viewModelScope.launch {
-            repository.syncMissingMessages(roomId, token)
-        }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -151,7 +150,7 @@ class ChatViewModel(
                     fileSize = fileSize,
                     saveAsReport = saveAsReport
                 )
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 android.util.Log.e("CHAT_FILE_UPLOAD", "Upload failed", e)
                 e.printStackTrace()
             }

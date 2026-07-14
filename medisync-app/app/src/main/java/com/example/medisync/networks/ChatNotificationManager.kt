@@ -78,7 +78,7 @@ class ChatNotificationManager(
                         fileName = fileName,
                         fileType = fileType,
                         fileSize = fileSize,
-                        isRead = false,
+                        status = "DELIVERED",
                         sentAt = sentAt,
                         updatedAt = sentAt
                     )
@@ -89,6 +89,15 @@ class ChatNotificationManager(
             "chat:read" -> {
                 val messageId = data["messageId"]?.jsonPrimitive?.int ?: return
                 repository.markMessageAsReadLocally(messageId)
+            }
+
+            "chat:ack" -> {
+                val clientTempId = data["clientTempId"]?.jsonPrimitive?.contentOrNull?:return
+                val messageId = data["messageId"]?.jsonPrimitive?.int?:return
+                val sentAt = data["sentAt"]?.jsonPrimitive?.content?:return
+
+                repository.updateMessageStatusByTempId(clientTempId, "SENT")
+                repository.reconcileMessageId(clientTempId,messageId,sentAt)
             }
         }
     }

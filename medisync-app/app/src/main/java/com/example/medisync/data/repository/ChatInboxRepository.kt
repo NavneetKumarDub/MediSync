@@ -97,7 +97,7 @@ class ChatInboxRepository(
             fileName = fileName,
             fileType = fileType,
             fileSize = fileSize,
-            isRead = true,
+            status = "PENDING",
             sentAt = now,
             updatedAt = now
         )
@@ -255,7 +255,7 @@ class ChatInboxRepository(
             roomId = roomId,
             senderId = myUserId,
             message = text,
-            isRead = true,
+            status = "PENDING",
             sentAt = java.time.Instant.now().toString(),
             updatedAt = java.time.Instant.now().toString()
         )
@@ -286,7 +286,7 @@ class ChatInboxRepository(
                         fileName = msg.fileName,
                         fileType = msg.fileType,
                         fileSize = msg.fileSize,
-                        isRead = msg.isRead,
+                        status = if(msg.isRead) "READ" else "DELIVERED",
                         sentAt = msg.sentAt
                     )
                 }
@@ -332,5 +332,13 @@ class ChatInboxRepository(
         }
 
         return response.body()!!.viewUrl
+    }
+
+    suspend fun updateMessageStatusByTempId(tempId: String, newStatus: String) {
+        chatMessageDao.updateMessageStatusByTempId(tempId, newStatus)
+    }
+
+    suspend fun updateMessageStatusById(messageId: Int, newStatus: String) {
+        chatMessageDao.updateMessageStatusById(messageId, newStatus)
     }
 }

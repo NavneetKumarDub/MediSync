@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.EmojiEmotions
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -273,7 +274,7 @@ fun ChatScreen(
                     isMine = isMine,
                     imageUrl = msg.fileKey?.let { imageUrls[it] },
                     onVisible = {
-                        if (!isMine && !msg.isRead) {
+                        if (!isMine && msg.status != "READ") {
                             chatViewModel.markAsRead(msg.id)
                         }
                     },
@@ -538,24 +539,30 @@ private fun MessageBubble(
                         )
                         if (isMine) {
                             Spacer(Modifier.width(4.dp))
-                            when {
-                                message.id < 0 -> Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = null,
+                            when (message.status) {
+                                "PENDING" -> Icon(
+                                    imageVector = Icons.Default.Schedule, // The Clock!
+                                    contentDescription = "Pending",
+                                    modifier = Modifier.size(13.dp),
+                                    tint = TimeTextMine
+                                )
+                                "SENT" -> Icon(
+                                    imageVector = Icons.Default.Check, // Single Tick
+                                    contentDescription = "Sent",
                                     modifier = Modifier.size(14.dp),
                                     tint = TimeTextMine
                                 )
-                                message.isRead -> Icon(
-                                    imageVector = Icons.Default.DoneAll,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(14.dp),
-                                    tint = ReadTick
-                                )
-                                else -> Icon(
-                                    imageVector = Icons.Default.DoneAll,
-                                    contentDescription = null,
+                                "DELIVERED" -> Icon(
+                                    imageVector = Icons.Default.DoneAll, // Double Tick
+                                    contentDescription = "Delivered",
                                     modifier = Modifier.size(14.dp),
                                     tint = TimeTextMine
+                                )
+                                "READ" -> Icon(
+                                    imageVector = Icons.Default.DoneAll, // Blue Double Tick
+                                    contentDescription = "Read",
+                                    modifier = Modifier.size(14.dp),
+                                    tint = ReadTick // The blue color!
                                 )
                             }
                         }

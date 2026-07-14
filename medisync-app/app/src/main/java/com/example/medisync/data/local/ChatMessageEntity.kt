@@ -16,7 +16,7 @@ data class ChatMessageEntity(
     val fileName: String? = null,
     val fileType: String? = null,
     val fileSize: Long? = null,
-    val isRead: Boolean,
     val sentAt: String,
-    val updatedAt: String? = null
+    val updatedAt: String? = null,
+    val status:String = "PENDING"
 )
