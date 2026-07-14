@@ -139,6 +139,12 @@ async function handleMessage(ws: Socket, type: string, data: any) {
             )
             console.log("inserted room message")
 
+            send(ws,'chat:ack',{
+                clientTempId:clientTempId,
+                messageId:r.rows[0].id,
+                sentAt:serverTimeUTC
+            })
+
             await db.query(
                 `UPDATE chat_rooms SET updated_at = $1 WHERE id = $2`,
                 [serverTimeUTC, data.roomId]
@@ -211,21 +217,24 @@ async function handleMessage(ws: Socket, type: string, data: any) {
                 await sendToUser(otherUserId, 'chat:message', payloadData)
 
                 if (!isUserOnline(otherUserId)) {
-                    await sendPushNotificationToUser({
-                        userId: otherUserId,
-                        title: 'New message',
-                        body: messageType === 'text'
-                            ? (text ?? 'New message')
-                            : `Sent ${fileName ?? 'a file'}`,
-                        dataOnly: true,
-                        data: {
-                            type: 'chat_message',
-                            roomId: String(data.roomId),
-                            senderId: String(uid),
-                            messageId: String(r.rows[0].id),
-                           
-                        }
-                    })
+                    try {
+                        await sendPushNotificationToUser({
+                            userId: otherUserId,
+                            title: 'New message',
+                            body: messageType === 'text'
+                                ? (text ?? 'New message')
+                                : `Sent ${fileName ?? 'a file'}`,
+                            dataOnly: true,
+                            data: {
+                                type: 'chat_message',
+                                roomId: String(data.roomId),
+                                senderId: String(uid),
+                                messageId: String(r.rows[0].id),
+                            }
+                        })
+                    } catch (fcmError) {
+                        console.error("[FCM] Failed to send push notification:", fcmError)
+                    }
                 }
             }
 
