@@ -107,7 +107,8 @@ fun ChatScreen(
             repository = app.chatInboxRepository,
             roomId = roomId,
             myUserId = myUserId!!,
-            token = myToken!!
+            token = myToken!!,
+            otherUserId = otherUserId
         )
     )
 
@@ -204,7 +205,7 @@ fun ChatScreen(
         topBar = {
             ChatTopBar(
                 name = otherUserName,
-                subtitle = if (uiState.isConnected) "Online" else "",
+                subtitle = uiState.otherUserStatusText,
                 photoUrl = photoUrl,
                 otherUserId = otherUserId,
                 token = myToken.orEmpty(),
@@ -220,7 +221,9 @@ fun ChatScreen(
         bottomBar = {
             ChatInputBar(
                 value = inputText,
-                onValueChange = { inputText = it },
+                onValueChange = {
+                    inputText = it
+                    chatViewModel.onUserTyping() },
                 onSend = {
                     val trimmed = inputText.trim()
                     if (trimmed.isNotBlank()) {

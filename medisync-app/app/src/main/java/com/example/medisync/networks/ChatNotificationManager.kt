@@ -63,9 +63,7 @@ class ChatNotificationManager(
                 val fileType = data["fileType"]?.jsonPrimitive?.contentOrNull
                 val fileSize = data["fileSize"]?.jsonPrimitive?.longOrNull
 
-                if (senderId == myUserId && clientTempId != null) {
-                    repository.reconcileMessageId(clientTempId, serverId, sentAt)
-                } else {
+                 if(senderId != myUserId) {
 
                     val incomingMessage = ChatMessageEntity(
                         id = serverId,
@@ -82,8 +80,46 @@ class ChatNotificationManager(
                         sentAt = sentAt,
                         updatedAt = sentAt
                     )
-                    repository.insertIncomingMessage(incomingMessage)
+                     repository.insertIncomingMessage(incomingMessage)
+                 }
+            }
+            "chat:ack" ->{
+                val roomId = data["roomId"]?.jsonPrimitive?.int ?: return
+                val clientTempId = data["clientTempId"]?.jsonPrimitive?.contentOrNull ?: return
+                val senderId = data["senderId"]?.jsonPrimitive?.int ?: return
+                val serverId = data["messageId"]?.jsonPrimitive?.int ?: return
+                val text = data["text"]?.jsonPrimitive?.contentOrNull
+                val sentAt = data["sentAt"]?.jsonPrimitive?.content ?: return
+
+                val messageType = data["messageType"]?.jsonPrimitive?.contentOrNull ?: "text"
+                val fileKey = data["fileKey"]?.jsonPrimitive?.contentOrNull
+                val fileName = data["fileName"]?.jsonPrimitive?.contentOrNull
+                val fileType = data["fileType"]?.jsonPrimitive?.contentOrNull
+                val fileSize = data["fileSize"]?.jsonPrimitive?.longOrNull
+
+                val rowsUpdated = repository.reconcileMessageId(clientTempId, serverId, sentAt)
+
+                if(rowsUpdated > 0){
+                    repository.updateMessageStatusByTempId(clientTempId,"SENT")
+                }else{
+                    val myOutgoingMessage = ChatMessageEntity(
+                        id = serverId,
+                        clientTempId = clientTempId,
+                        roomId = roomId,
+                        senderId = senderId, // This is me
+                        message = text,
+                        messageType = messageType ?: "text",
+                        fileKey = fileKey,
+                        fileName = fileName,
+                        fileType = fileType,
+                        fileSize = fileSize?.toLong(),
+                        status = "SENT", // Already sent by my other device
+                        sentAt = sentAt
+                    )
+                    repository.insertOutgoingMessage(myOutgoingMessage)
                 }
+
+
             }
 
             "chat:read" -> {
@@ -91,14 +127,7 @@ class ChatNotificationManager(
                 repository.markMessageAsReadLocally(messageId)
             }
 
-            "chat:ack" -> {
-                val clientTempId = data["clientTempId"]?.jsonPrimitive?.contentOrNull?:return
-                val messageId = data["messageId"]?.jsonPrimitive?.int?:return
-                val sentAt = data["sentAt"]?.jsonPrimitive?.content?:return
 
-                repository.updateMessageStatusByTempId(clientTempId, "SENT")
-                repository.reconcileMessageId(clientTempId,messageId,sentAt)
-            }
         }
     }
 }

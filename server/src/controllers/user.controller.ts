@@ -1,5 +1,12 @@
 import db from '../config/db';
 import { Request,Response } from 'express';
+import jwt from 'jsonwebtoken';
+
+const createUserToken = (user: { id: number; role: string }) => jwt.sign(
+    { id: user.id, role: user.role },
+    process.env.JWT_SECRET!,
+    { expiresIn: '30d' }
+);
 
 export const registerUser = async (req: Request, res: Response) => {
     const { phone, name, role } = req.body;
@@ -27,7 +34,8 @@ export const registerUser = async (req: Request, res: Response) => {
             );
             res.json({
                 message: "User profile completed",
-                user: updated.rows[0]
+                user: updated.rows[0],
+                token: createUserToken(updated.rows[0])
             });
             return;
         }
@@ -41,7 +49,8 @@ export const registerUser = async (req: Request, res: Response) => {
 
         res.json({
             message: "User registered successfully",
-            user: result.rows[0]
+            user: result.rows[0],
+            token: createUserToken(result.rows[0])
         });
     } catch (error) {
         console.error("registerUser error:", error);

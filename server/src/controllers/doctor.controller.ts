@@ -297,11 +297,13 @@ export const getDoctorProfile = async (req: Request, res: Response) => {
 }
 export const updateClinicLocation = async (req: Request, res: Response) => {
     try {
+        console.log('updateClinicLocation called with body:', req.body)
         const userId = (req as any).user.id
         const role = (req as any).user.role
         const { latitude, longitude, address } = req.body
 
         if (role !== 'doctor') {
+            console.log('Unauthorized role:', role)
             return res.status(403).json({ message: 'Only doctors can update clinic location' })
         }
 
@@ -310,6 +312,7 @@ export const updateClinicLocation = async (req: Request, res: Response) => {
             typeof longitude !== 'number' ||
             !address
         ) {
+            console.log('Invalid input:', { latitude, longitude, address })
             return res.status(400).json({
                 message: 'latitude, longitude and address are required'
             })

@@ -43,4 +43,9 @@ interface ChatMessageDao {
 
     
     @Query("UPDATE chat_messages_table SET id = :serverId, sentAt = :serverSentAt WHERE clientTempId = :tempId")
-    suspend fun reconcileMessageId(tempId: String, serverId: Int, serverSentAt: String)}
+    suspend fun reconcileMessageId(tempId: String, serverId: Int, serverSentAt: String): Int
+
+    @Query("SELECT * FROM chat_messages_table WHERE status = 'PENDING'")
+    suspend fun getAllPendingMessages(): List<ChatMessageEntity>
+}
+

@@ -249,6 +249,15 @@ class ChatInboxRepository(
         val localId = (System.currentTimeMillis() % Int.MAX_VALUE).toInt()
         val fingerprint = java.util.UUID.randomUUID().toString()
 
+        var now = java.time.Instant.now()
+        val lastDbTimeStr = chatMessageDao.getLastSyncTimestamp(roomId)
+        if(lastDbTimeStr != null){
+            val lastDbTime = java.time.Instant.parse(lastDbTimeStr)
+            if(now.isBefore(lastDbTime)){
+                now = lastDbTime.plusMillis(1)
+            }
+        }
+        val finalSenAt = now.toString()
         val tempMessage = ChatMessageEntity(
             id = localId,
             clientTempId = fingerprint,
@@ -256,8 +265,8 @@ class ChatInboxRepository(
             senderId = myUserId,
             message = text,
             status = "PENDING",
-            sentAt = java.time.Instant.now().toString(),
-            updatedAt = java.time.Instant.now().toString()
+            sentAt = finalSenAt,
+            updatedAt = finalSenAt
         )
         chatMessageDao.insertMessage(tempMessage)
 
@@ -300,8 +309,8 @@ class ChatInboxRepository(
             Log.e("ChatRepository", "Network offline or unreachable during sync: ${e.message}")
         }
     }
-    suspend fun reconcileMessageId(tempId: String, serverId: Int, serverSentAt: String) {
-        chatMessageDao.reconcileMessageId(tempId, serverId, serverSentAt)
+    suspend fun reconcileMessageId(tempId: String, serverId: Int, serverSentAt: String): Int {
+        return chatMessageDao.reconcileMessageId(tempId, serverId, serverSentAt)
     }
     suspend fun insertIncomingMessage(message: ChatMessageEntity) {
         chatMessageDao.insertOrIgnoreMessage(message)
@@ -312,6 +321,17 @@ class ChatInboxRepository(
             message = message.message ?: message.fileName ?: "File",
             time = message.sentAt,
             incrementBy = increment
+        )
+    }
+
+    suspend fun insertOutgoingMessage(message: ChatMessageEntity) {
+        chatMessageDao.insertOrIgnoreMessage(message)
+        
+        chatDao.updateInboxSnippet(
+            roomId = message.roomId,
+            message = message.message ?: message.fileName ?: "File",
+            time = message.sentAt,
+            incrementBy = 0 // Never add an unread badge for your own messages!
         )
     }
 
@@ -340,5 +360,25 @@ class ChatInboxRepository(
 
     suspend fun updateMessageStatusById(messageId: Int, newStatus: String) {
         chatMessageDao.updateMessageStatusById(messageId, newStatus)
+    }
+    suspend fun resendAllPendingMessages(){
+        val pendingMessages = chatMessageDao.getAllPendingMessages()
+        val messageByRoom = pendingMessages.groupBy { it.roomId }
+        for((roomId,messages) in messageByRoom){
+            ChatWebSocketManager.send("chat:join",mapOf("roomId" to roomId))
+            kotlinx.coroutines.delay(500)
+
+            for (msg in messages) {
+                if (msg.messageType == "text" && msg.message != null) {
+                    ChatWebSocketManager.send("chat:message", mapOf(
+                        "roomId" to roomId,
+                        "text" to msg.message,
+                        "clientTempId" to msg.clientTempId,
+                        "messageType" to "text"
+                    ))
+                }
+            }
+        }
+
     }
 }

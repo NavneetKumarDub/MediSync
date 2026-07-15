@@ -95,11 +95,11 @@ async function handleMessage(ws: Socket, type: string, data: any) {
 
         case 'chat:message': {
             console.log("inside websocket chat message event")
-            const channel = `chat:room:${data.roomId}`
-            if (!ws.channels.has(channel)) {
-                console.log("returning error: Join room first")
-                return send(ws, 'error', { message: 'Join room first' })
-            }
+            // const channel = `chat:room:${data.roomId}`
+            // if (!ws.channels.has(channel)) {
+            //     console.log("returning error: Join room first")
+            //     return send(ws, 'error', { message: 'Join room first' })
+            // }
             const clientTempId = data.clientTempId;
 
             const serverTimeUTC = new Date().toISOString();
@@ -139,16 +139,13 @@ async function handleMessage(ws: Socket, type: string, data: any) {
             )
             console.log("inserted room message")
 
-            send(ws,'chat:ack',{
-                clientTempId:clientTempId,
-                messageId:r.rows[0].id,
-                sentAt:serverTimeUTC
-            })
+            
 
-            await db.query(
-                `UPDATE chat_rooms SET updated_at = $1 WHERE id = $2`,
+           const roomRes = await db.query(
+                `UPDATE chat_rooms SET updated_at = $1 WHERE id = $2 
+                RETURNING patient_id, doctor_id`,
                 [serverTimeUTC, data.roomId]
-            )
+            );
             await publisher.del(`chat:history:${data.roomId}`)
 
             const payloadData = {
@@ -165,15 +162,10 @@ async function handleMessage(ws: Socket, type: string, data: any) {
                 sentAt: serverTimeUTC,
             }
 
-            await publisher.publish(channel, JSON.stringify({
-                type: 'chat:message',
-                data: payloadData
-            }));
+             await sendToUser(uid, 'chat:ack', payloadData);
 
-            const roomRes = await db.query(
-                `SELECT patient_id, doctor_id FROM chat_rooms WHERE id = $1`,
-                [data.roomId]
-            );
+
+           
             
             if (roomRes.rows.length > 0) {
                 const room = roomRes.rows[0]
@@ -217,6 +209,7 @@ async function handleMessage(ws: Socket, type: string, data: any) {
                 await sendToUser(otherUserId, 'chat:message', payloadData)
 
                 if (!isUserOnline(otherUserId)) {
+                    // WRAP THIS IN A TRY/CATCH:
                     try {
                         await sendPushNotificationToUser({
                             userId: otherUserId,
@@ -240,16 +233,42 @@ async function handleMessage(ws: Socket, type: string, data: any) {
 
             break
         }
+        case 'chat:subscribe_presence':{
+            const targetId = data.userId;
+            if(!targetId) return;
+            await subscribe(ws,`presence:${targetId}`)
+            const isOnline = isUserOnline(targetId);
+            send(ws,'chat:presence', { userId: targetId, isOnline })
+            break
 
+        }
+
+        case 'chat:unsubscribe_presence':{
+            const targetId = data.userId;
+            if(!targetId) return;
+            await unsubscribe(ws,`presence:${targetId}`)
+            break
+        }
+        case 'chat:typing':{
+            const targetId = data.targetUserId;
+            if(!targetId) return;
+            await sendToUser(targetId,'chat:typing',{ roomId: data.roomId ,userId:uid,isTyping:data.isTyping})
+            break
+        }
         case 'chat:read': {
-            await db.query(
-                `UPDATE chat_messages SET is_read = true WHERE id = $1 AND room_id = $2`,
+            const r = await db.query(
+                `UPDATE chat_messages SET is_read = true WHERE id = $1 AND room_id = $2
+                 returning sender_id`,
                 [data.messageId, data.roomId]
             )
-            await publisher.publish(`chat:room:${data.roomId}`, JSON.stringify({
-                type: 'chat:read',
-                data: { messageId: data.messageId },
-            }))
+            if(r.rows.length>0){
+                const originalSenderId = r.rows[0].sender_id;
+                await sendToUser(originalSenderId,'chat:read',{
+                    messageId: data.messageId,
+                    roomId:data.roomId
+                })
+            }
+           
             break
         }
 
@@ -300,7 +319,13 @@ export function initChatWebSocket(server: Server) {
     wss.on('connection', async (ws: Socket) => {
         const uid = ws.userId
 
-        if (!userSockets.has(uid)) userSockets.set(uid, new Set())
+        if (!userSockets.has(uid)){ 
+            userSockets.set(uid, new Set())
+            await publisher.publish(`presence:${uid}`,JSON.stringify({
+                type:'chat:presence',
+                data:{userId:uid,isOnline:true}
+            }))
+        }
         userSockets.get(uid)!.add(ws)
 
         await subscribe(ws, `user:${uid}`)
@@ -321,7 +346,13 @@ export function initChatWebSocket(server: Server) {
         ws.on('close', async () => {
             for (const ch of [...ws.channels]) await unsubscribe(ws, ch)
             userSockets.get(uid)?.delete(ws)
-            if (userSockets.get(uid)?.size === 0) userSockets.delete(uid)
+            if (userSockets.get(uid)?.size === 0) {
+                userSockets.delete(uid)
+                await publisher.publish(`presence:${uid}`, JSON.stringify({
+                    type: 'chat:presence',
+                    data: { userId: uid, isOnline: false }
+                }))
+            }
         })
     })
 
