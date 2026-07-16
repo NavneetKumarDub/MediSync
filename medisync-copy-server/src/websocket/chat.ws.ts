@@ -100,8 +100,7 @@ async function handleMessage(ws: Socket, type: string, data: any) {
             //     console.log("returning error: Join room first")
             //     return send(ws, 'error', { message: 'Join room first' })
             // }
-            const clientTempId = data.clientTempId;
-
+            const messageId = data.messageId;   
             const serverTimeUTC = new Date().toISOString();
 
             const messageType = data.messageType ?? 'text'
@@ -113,6 +112,7 @@ async function handleMessage(ws: Socket, type: string, data: any) {
 
             const r = await db.query(
                 `INSERT INTO chat_messages (
+                    id,
                     room_id,
                     sender_id,
                     message,
@@ -123,9 +123,10 @@ async function handleMessage(ws: Socket, type: string, data: any) {
                     file_size,
                     sent_at
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,$10)
                 RETURNING id`,
                 [
+                    messageId,
                     data.roomId,
                     uid,
                     text,
@@ -137,7 +138,7 @@ async function handleMessage(ws: Socket, type: string, data: any) {
                     serverTimeUTC
                 ]
             )
-            console.log("inserted room message")
+            console.log("inserted room message : ",text)
 
             
 
@@ -150,7 +151,6 @@ async function handleMessage(ws: Socket, type: string, data: any) {
 
             const payloadData = {
                 messageId: r.rows[0].id,
-                clientTempId,
                 roomId: data.roomId,
                 senderId: uid,
                 text,
@@ -318,6 +318,8 @@ export function initChatWebSocket(server: Server) {
 
     wss.on('connection', async (ws: Socket) => {
         const uid = ws.userId
+
+        console.log(`User ${uid} connected via WebSocket`)
 
         if (!userSockets.has(uid)){ 
             userSockets.set(uid, new Set())

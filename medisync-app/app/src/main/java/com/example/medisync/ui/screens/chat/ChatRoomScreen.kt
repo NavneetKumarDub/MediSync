@@ -146,8 +146,7 @@ fun ChatScreen(
             saveAsReport = false
         }
     }
-
-    val lastMessageId = messages.lastOrNull()?.clientTempId ?: messages.lastOrNull()?.id?.toString()
+    val lastMessageId = messages.lastOrNull()?.id
     LaunchedEffect(lastMessageId) {
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(0)
@@ -252,7 +251,7 @@ fun ChatScreen(
         ) {
             val reversedList = messages.reversed()
 
-            items(reversedList, key = { it.clientTempId ?: it.id.toString() }) { msg ->
+            items(reversedList, key = { it.id}) { msg ->
                 val fileKey = msg.fileKey
 
                 LaunchedEffect(fileKey) {

@@ -29,7 +29,7 @@ import java.util.concurrent.CancellationException
 
 data class MessageDto(
     @SerializedName("id")
-    val id: Int,
+    val id: String,
 
     @SerializedName("roomId")
     val roomId: Int,
@@ -80,15 +80,13 @@ class ChatInboxRepository(
         fileKey: String,
         saveAsReport: Boolean
     ) {
-        val localId = (System.currentTimeMillis() % Int.MAX_VALUE).toInt()
-        val fingerprint = java.util.UUID.randomUUID().toString()
+        val messageId = java.util.UUID.randomUUID().toString()
         val now = java.time.Instant.now().toString()
 
         val messageType = if (fileType.startsWith("image/")) "image" else "file"
 
         val tempMessage = ChatMessageEntity(
-            id = localId,
-            clientTempId = fingerprint,
+            id = messageId,
             roomId = roomId,
             senderId = myUserId,
             message = null,
@@ -109,7 +107,7 @@ class ChatInboxRepository(
             mapOf(
                 "roomId" to roomId,
                 "text" to null,
-                "clientTempId" to fingerprint,
+                "messageId" to messageId,
                 "messageType" to messageType,
                 "fileKey" to fileKey,
                 "fileName" to fileName,
@@ -246,8 +244,7 @@ class ChatInboxRepository(
 
     @RequiresApi(Build.VERSION_CODES.O)
     suspend fun sendMessage(roomId: Int, myUserId: Int, text: String) {
-        val localId = (System.currentTimeMillis() % Int.MAX_VALUE).toInt()
-        val fingerprint = java.util.UUID.randomUUID().toString()
+        val messageId = java.util.UUID.randomUUID().toString() // Universal ID
 
         var now = java.time.Instant.now()
         val lastDbTimeStr = chatMessageDao.getLastSyncTimestamp(roomId)
@@ -259,8 +256,7 @@ class ChatInboxRepository(
         }
         val finalSenAt = now.toString()
         val tempMessage = ChatMessageEntity(
-            id = localId,
-            clientTempId = fingerprint,
+            id = messageId,
             roomId = roomId,
             senderId = myUserId,
             message = text,
@@ -273,7 +269,7 @@ class ChatInboxRepository(
         ChatWebSocketManager.send("chat:message", mapOf(
             "roomId" to roomId,
             "text" to text,
-            "clientTempId" to fingerprint,
+            "messageId" to messageId,
             "messageType" to "text"
         ))
     }
@@ -309,9 +305,7 @@ class ChatInboxRepository(
             Log.e("ChatRepository", "Network offline or unreachable during sync: ${e.message}")
         }
     }
-    suspend fun reconcileMessageId(tempId: String, serverId: Int, serverSentAt: String): Int {
-        return chatMessageDao.reconcileMessageId(tempId, serverId, serverSentAt)
-    }
+
     suspend fun insertIncomingMessage(message: ChatMessageEntity) {
         chatMessageDao.insertOrIgnoreMessage(message)
         val increment = if (ChatSession.activeRoomId == message.roomId) 0 else 1
@@ -323,7 +317,12 @@ class ChatInboxRepository(
             incrementBy = increment
         )
     }
-
+    suspend fun updateMessageStatusById(messageId: String, newStatus: String): Int {
+        return chatMessageDao.updateMessageStatusById(messageId, newStatus)
+    }
+    suspend fun upsertMessage(message: ChatMessageEntity) {
+        chatMessageDao.insertMessage(message)
+    }
     suspend fun insertOutgoingMessage(message: ChatMessageEntity) {
         chatMessageDao.insertOrIgnoreMessage(message)
         
@@ -335,9 +334,7 @@ class ChatInboxRepository(
         )
     }
 
-    suspend fun markMessageAsReadLocally(messageId: Int) {
-        chatMessageDao.markSingleMessageAsRead(messageId)
-    }
+
     suspend fun getChatFileViewUrl(
         token: String,
         key: String
@@ -354,31 +351,53 @@ class ChatInboxRepository(
         return response.body()!!.viewUrl
     }
 
-    suspend fun updateMessageStatusByTempId(tempId: String, newStatus: String) {
-        chatMessageDao.updateMessageStatusByTempId(tempId, newStatus)
+    suspend fun markMessageAsReadLocally(messageId: String) {
+        chatMessageDao.markSingleMessageAsRead(messageId)
     }
+//    suspend fun resendAllPendingMessages(){
+//        val pendingMessages = chatMessageDao.getAllPendingMessages()
+//        val messageByRoom = pendingMessages.groupBy { it.roomId }
+//        for((roomId,messages) in messageByRoom){
+//            ChatWebSocketManager.send("chat:join",mapOf("roomId" to roomId))
+//            kotlinx.coroutines.delay(500)
+//
+//            for (msg in messages) {
+//                if (msg.messageType == "text" && msg.message != null) {
+//                    ChatWebSocketManager.send("chat:message", mapOf(
+//                        "roomId" to roomId,
+//                        "text" to msg.message,
+//                        "messageId" to msg.id,
+//                        "messageType" to "text"
+//                    ))
+//                }
+//            }
+//        }
+//
+//    }
+        suspend fun resendAllPendingMessages(){
+            val pendingMessages = chatMessageDao.getAllPendingMessages()
+            val messageByRoom = pendingMessages.groupBy { it.roomId }
+            for((roomId,messages) in messageByRoom){
+                ChatWebSocketManager.send("chat:join",mapOf("roomId" to roomId))
+                kotlinx.coroutines.delay(500)
 
-    suspend fun updateMessageStatusById(messageId: Int, newStatus: String) {
-        chatMessageDao.updateMessageStatusById(messageId, newStatus)
-    }
-    suspend fun resendAllPendingMessages(){
-        val pendingMessages = chatMessageDao.getAllPendingMessages()
-        val messageByRoom = pendingMessages.groupBy { it.roomId }
-        for((roomId,messages) in messageByRoom){
-            ChatWebSocketManager.send("chat:join",mapOf("roomId" to roomId))
-            kotlinx.coroutines.delay(500)
-
-            for (msg in messages) {
-                if (msg.messageType == "text" && msg.message != null) {
-                    ChatWebSocketManager.send("chat:message", mapOf(
-                        "roomId" to roomId,
-                        "text" to msg.message,
-                        "clientTempId" to msg.clientTempId,
-                        "messageType" to "text"
-                    ))
+                for (msg in messages) {
+                    // Check if it's a text OR if it has a fileKey (for images/files)
+                    if (msg.message != null || msg.fileKey != null) {
+                        ChatWebSocketManager.send("chat:message", mapOf(
+                            "roomId" to roomId,
+                            "text" to msg.message,
+                            "messageId" to msg.id,
+                            "messageType" to msg.messageType,
+                            "fileKey" to msg.fileKey,
+                            "fileName" to msg.fileName,
+                            "fileType" to msg.fileType,
+                            "fileSize" to msg.fileSize,
+                            // saveAsReport isn't stored in entity, but we can pass false for retries or add it to db if needed
+                            "saveAsReport" to false
+                        ))
+                    }
                 }
             }
         }
-
-    }
 }

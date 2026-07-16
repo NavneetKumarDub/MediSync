@@ -77,10 +77,11 @@ class ChatViewModel(
                     )
                 }
                 if (state == ChatWebSocketManager.State.CONNECTED) {
-                    android.util.Log.d("ChatLifecycle", "WebSocket CONNECTED! Joining room and resending pending messages...")
+                    android.util.Log.d("connected", "WebSocket CONNECTED! Joining room and resending pending messages...")
                     ChatWebSocketManager.send("chat:join", mapOf("roomId" to roomId))
+                    delay(1000)
                     repository.syncMissingMessages(roomId, token)
-                    repository.resendAllPendingMessages()
+
                     ChatWebSocketManager.send("chat:subscribe_presence", mapOf("userId" to otherUserId))
 
 
@@ -215,7 +216,7 @@ class ChatViewModel(
             }
         }
     }
-    fun markAsRead(messageId: Int) {
+    fun markAsRead(messageId: String) {
         ChatWebSocketManager.send("chat:read", mapOf(
             "roomId" to roomId,
             "messageId" to messageId

@@ -23,7 +23,7 @@ class ChatNotificationManager(
     private val context: Context 
     ) {
     private var listeningJob: Job? = null
-    private var myUserId: Int? = null 
+    private var myUserId: Int? = null
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun startListening(scope: CoroutineScope) {
@@ -31,6 +31,23 @@ class ChatNotificationManager(
 
         listeningJob = scope.launch {
             myUserId = TokenManager.getUserId(context)
+
+            // 1. Concurrently listen to connection state for retries
+            launch {
+                ChatWebSocketManager.state.collect { state ->
+                    if (state == ChatWebSocketManager.State.CONNECTED) {
+                        val token = TokenManager.getToken(context)
+                        if (token != null) {
+                            // Re-sync the inbox to catch missing messages globally
+                            repository.syncChats(token)
+                            // Retry pending messages globally!
+                            repository.resendAllPendingMessages()
+                        }
+                    }
+                }
+            }
+
+            // 2. Listen to incoming WebSocket events
             ChatWebSocketManager.events
                 .filter { it.type.startsWith("chat:") }
                 .collect { event ->
@@ -51,9 +68,8 @@ class ChatNotificationManager(
         when (event.type) {
             "chat:message" -> {
                 val roomId = data["roomId"]?.jsonPrimitive?.int ?: return
-                val clientTempId = data["clientTempId"]?.jsonPrimitive?.contentOrNull
                 val senderId = data["senderId"]?.jsonPrimitive?.int ?: return
-                val serverId = data["messageId"]?.jsonPrimitive?.int ?: return
+                val serverId = data["messageId"]?.jsonPrimitive?.content ?: return
                 val text = data["text"]?.jsonPrimitive?.contentOrNull
                 val sentAt = data["sentAt"]?.jsonPrimitive?.content ?: return
 
@@ -67,7 +83,6 @@ class ChatNotificationManager(
 
                     val incomingMessage = ChatMessageEntity(
                         id = serverId,
-                        clientTempId = clientTempId,
                         roomId = roomId,
                         senderId = senderId,
                         message = text,
@@ -84,10 +99,10 @@ class ChatNotificationManager(
                  }
             }
             "chat:ack" ->{
+                Log.d("Chatack","inside chat:ack")
                 val roomId = data["roomId"]?.jsonPrimitive?.int ?: return
-                val clientTempId = data["clientTempId"]?.jsonPrimitive?.contentOrNull ?: return
                 val senderId = data["senderId"]?.jsonPrimitive?.int ?: return
-                val serverId = data["messageId"]?.jsonPrimitive?.int ?: return
+                val serverId = data["messageId"]?.jsonPrimitive?.content ?: return
                 val text = data["text"]?.jsonPrimitive?.contentOrNull
                 val sentAt = data["sentAt"]?.jsonPrimitive?.content ?: return
 
@@ -97,33 +112,31 @@ class ChatNotificationManager(
                 val fileType = data["fileType"]?.jsonPrimitive?.contentOrNull
                 val fileSize = data["fileSize"]?.jsonPrimitive?.longOrNull
 
-                val rowsUpdated = repository.reconcileMessageId(clientTempId, serverId, sentAt)
+                repository.updateMessageStatusById(serverId, "SENT")
 
-                if(rowsUpdated > 0){
-                    repository.updateMessageStatusByTempId(clientTempId,"SENT")
-                }else{
-                    val myOutgoingMessage = ChatMessageEntity(
-                        id = serverId,
-                        clientTempId = clientTempId,
-                        roomId = roomId,
-                        senderId = senderId, // This is me
-                        message = text,
-                        messageType = messageType ?: "text",
-                        fileKey = fileKey,
-                        fileName = fileName,
-                        fileType = fileType,
-                        fileSize = fileSize?.toLong(),
-                        status = "SENT", // Already sent by my other device
-                        sentAt = sentAt
-                    )
-                    repository.insertOutgoingMessage(myOutgoingMessage)
-                }
+
+                val myMessage = ChatMessageEntity(
+                    id = serverId,
+                    roomId = roomId,
+                    senderId = senderId,
+                    message = text,
+                    messageType = messageType,
+                    fileKey = fileKey,
+                    fileName = fileName,
+                    fileType = fileType,
+                    fileSize = fileSize,
+                    status = "SENT",
+                    sentAt = sentAt,
+                    updatedAt = sentAt
+                )
+
+                repository.upsertMessage(myMessage)
 
 
             }
 
             "chat:read" -> {
-                val messageId = data["messageId"]?.jsonPrimitive?.int ?: return
+                val messageId = data["messageId"]?.jsonPrimitive?.content ?: return
                 repository.markMessageAsReadLocally(messageId)
             }
 
