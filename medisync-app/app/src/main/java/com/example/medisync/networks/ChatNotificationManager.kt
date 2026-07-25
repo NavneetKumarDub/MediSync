@@ -15,6 +15,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
 import kotlinx.serialization.json.longOrNull
 import java.time.Instant
 
@@ -67,6 +68,8 @@ class ChatNotificationManager(
 
         when (event.type) {
             "chat:message" -> {
+                Log.d("Chatmessage","inside chat:message")
+
                 val roomId = data["roomId"]?.jsonPrimitive?.int ?: return
                 val senderId = data["senderId"]?.jsonPrimitive?.int ?: return
                 val serverId = data["messageId"]?.jsonPrimitive?.content ?: return
@@ -78,6 +81,7 @@ class ChatNotificationManager(
                 val fileName = data["fileName"]?.jsonPrimitive?.contentOrNull
                 val fileType = data["fileType"]?.jsonPrimitive?.contentOrNull
                 val fileSize = data["fileSize"]?.jsonPrimitive?.longOrNull
+                val syncVersion = data["syncVersion"]?.jsonPrimitive?.long ?: 0L
 
                  if(senderId != myUserId) {
 
@@ -93,7 +97,8 @@ class ChatNotificationManager(
                         fileSize = fileSize,
                         status = "DELIVERED",
                         sentAt = sentAt,
-                        updatedAt = sentAt
+                        updatedAt = sentAt,
+                        syncVersion = syncVersion
                     )
                      repository.insertIncomingMessage(incomingMessage)
                  }
@@ -111,8 +116,9 @@ class ChatNotificationManager(
                 val fileName = data["fileName"]?.jsonPrimitive?.contentOrNull
                 val fileType = data["fileType"]?.jsonPrimitive?.contentOrNull
                 val fileSize = data["fileSize"]?.jsonPrimitive?.longOrNull
+                val syncVersion = data["syncVersion"]?.jsonPrimitive?.long ?: 0L
 
-                repository.updateMessageStatusById(serverId, "SENT")
+              //  repository.updateMessageStatusById(serverId, "SENT")
 
 
                 val myMessage = ChatMessageEntity(
@@ -127,7 +133,8 @@ class ChatNotificationManager(
                     fileSize = fileSize,
                     status = "SENT",
                     sentAt = sentAt,
-                    updatedAt = sentAt
+                    updatedAt = sentAt,
+                    syncVersion = syncVersion
                 )
 
                 repository.upsertMessage(myMessage)

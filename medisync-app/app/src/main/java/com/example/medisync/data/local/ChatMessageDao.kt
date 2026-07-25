@@ -30,9 +30,11 @@ interface ChatMessageDao {
 
     @Query("UPDATE chat_messages_table SET status = :newStatus WHERE id = :messageId")
     suspend fun updateMessageStatusById(messageId: String, newStatus: String): Int // Add ': Int' here
-    @Query("SELECT MAX(sentAt) FROM chat_messages_table WHERE roomId = :roomId and status != 'PENDING'")
-    suspend fun getLastSyncTimestamp(roomId: Int): String?
+    @Query("SELECT MAX(syncVersion) FROM chat_messages_table WHERE roomId = :roomId and status != 'PENDING'")
+    suspend fun getLastSyncVersion(roomId: Int): Long?
 
+    @Query("SELECT MAX(sentAt) FROM chat_messages_table WHERE roomId = :roomId")
+    suspend fun getLastSentAt(roomId: Int): String?
     
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertOrIgnoreMessage(message: ChatMessageEntity)

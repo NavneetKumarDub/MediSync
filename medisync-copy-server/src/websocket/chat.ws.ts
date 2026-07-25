@@ -124,7 +124,7 @@ async function handleMessage(ws: Socket, type: string, data: any) {
                     sent_at
                 )
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,$10)
-                RETURNING id`,
+                RETURNING id, sync_version`,
                 [
                     messageId,
                     data.roomId,
@@ -160,6 +160,7 @@ async function handleMessage(ws: Socket, type: string, data: any) {
                 fileType,
                 fileSize,
                 sentAt: serverTimeUTC,
+                syncVersion: r.rows[0].sync_version
             }
 
              await sendToUser(uid, 'chat:ack', payloadData);

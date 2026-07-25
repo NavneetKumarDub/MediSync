@@ -14,8 +14,8 @@ CREATE TABLE IF NOT EXISTS users
     role              VARCHAR(10),
     profile_photo_key VARCHAR(500),
     status            VARCHAR(20)  DEFAULT 'active',
-    created_at        TIMESTAMP    DEFAULT NOW(),
-    updated_at        TIMESTAMP    DEFAULT NOW()
+    created_at        TIMESTAMPTZ    DEFAULT NOW(),
+    updated_at        TIMESTAMPTZ    DEFAULT NOW()
 );
 
 DROP TRIGGER IF EXISTS trg_update_modtime ON users;
@@ -34,8 +34,8 @@ CREATE TABLE IF NOT EXISTS patient_personal
     weight            VARCHAR(10),
     emergency_contact VARCHAR(10),
     profile_photo     TEXT,
-    created_at        TIMESTAMP DEFAULT NOW(),
-    updated_at        TIMESTAMP DEFAULT NOW()
+    created_at        TIMESTAMPTZ DEFAULT NOW(),
+    updated_at        TIMESTAMPTZ DEFAULT NOW()
 );
 
 DROP TRIGGER IF EXISTS trg_update_modtime ON patient_personal;
@@ -51,8 +51,8 @@ CREATE TABLE IF NOT EXISTS patient_medical
     chronic_diseases    TEXT,
     injuries            TEXT,
     surgeries           TEXT,
-    created_at          TIMESTAMP DEFAULT NOW(),
-    updated_at          TIMESTAMP DEFAULT NOW()
+    created_at          TIMESTAMPTZ DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ DEFAULT NOW()
 );
 
 DROP TRIGGER IF EXISTS trg_update_modtime ON patient_medical;
@@ -67,8 +67,8 @@ CREATE TABLE IF NOT EXISTS patient_lifestyle
     activity_level  VARCHAR(50),
     food_preference VARCHAR(50),
     occupation      VARCHAR(100),
-    created_at      TIMESTAMP DEFAULT NOW(),
-    updated_at      TIMESTAMP DEFAULT NOW()
+    created_at      TIMESTAMPTZ DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
 DROP TRIGGER IF EXISTS trg_update_modtime ON patient_lifestyle;
@@ -84,8 +84,8 @@ CREATE TABLE IF NOT EXISTS doctor_personal
     marital_status VARCHAR(20),
     profile_photo  TEXT,
     about          TEXT,
-    created_at     TIMESTAMP DEFAULT NOW(),
-    updated_at     TIMESTAMP DEFAULT NOW()
+    created_at     TIMESTAMPTZ DEFAULT NOW(),
+    updated_at     TIMESTAMPTZ DEFAULT NOW()
 );
 
 DROP TRIGGER IF EXISTS trg_update_modtime ON doctor_personal;
@@ -103,8 +103,8 @@ CREATE TABLE IF NOT EXISTS doctor_professional
     languages         TEXT,
     consultation_fee  NUMERIC(10, 2),
     consultation_type VARCHAR(20) DEFAULT 'both',
-    created_at        TIMESTAMP DEFAULT NOW(),
-    updated_at        TIMESTAMP DEFAULT NOW()
+    created_at        TIMESTAMPTZ DEFAULT NOW(),
+    updated_at        TIMESTAMPTZ DEFAULT NOW()
 );
 
 DROP TRIGGER IF EXISTS trg_update_modtime ON doctor_professional;
@@ -119,8 +119,8 @@ CREATE TABLE IF NOT EXISTS doctor_clinic (
     pincode VARCHAR(20),
     latitude DOUBLE PRECISION,
     longitude DOUBLE PRECISION,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT unique_doctor_clinic_user UNIQUE (user_id)
 );
@@ -143,8 +143,8 @@ CREATE TABLE IF NOT EXISTS doctor_availability
     consultation_type     VARCHAR(20)    NOT NULL DEFAULT 'Offline',
     consultation_fee      NUMERIC(10, 2) NOT NULL DEFAULT 0,
     is_active             BOOLEAN        DEFAULT TRUE,
-    created_at            TIMESTAMP      DEFAULT CURRENT_TIMESTAMP,
-    updated_at            TIMESTAMP      DEFAULT CURRENT_TIMESTAMP
+    created_at            TIMESTAMPTZ      DEFAULT CURRENT_TIMESTAMP,
+    updated_at            TIMESTAMPTZ      DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_doctor_availability_user_id
@@ -162,8 +162,8 @@ CREATE TABLE IF NOT EXISTS doctor_schedule_settings
     user_id      INTEGER REFERENCES users ON DELETE CASCADE UNIQUE,
     window_days  INTEGER     DEFAULT 30,
     booking_mode VARCHAR(20) DEFAULT 'auto',
-    created_at   TIMESTAMP   DEFAULT NOW(),
-    updated_at   TIMESTAMP   DEFAULT NOW()
+    created_at   TIMESTAMPTZ   DEFAULT NOW(),
+    updated_at   TIMESTAMPTZ   DEFAULT NOW()
 );  
 
 DROP TRIGGER IF EXISTS trg_update_modtime ON doctor_schedule_settings;
@@ -177,8 +177,8 @@ CREATE TABLE IF NOT EXISTS appointments
     slot_id    INTEGER,
     status     VARCHAR(20) DEFAULT 'accepted',
     type       VARCHAR(20),
-    created_at TIMESTAMP   DEFAULT NOW(),
-    updated_at TIMESTAMP   DEFAULT NOW()
+    created_at TIMESTAMPTZ   DEFAULT NOW(),
+    updated_at TIMESTAMPTZ   DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS appointment_slots
@@ -194,8 +194,8 @@ CREATE TABLE IF NOT EXISTS appointment_slots
     consultation_type     VARCHAR(20)    DEFAULT 'Offline',
     status                VARCHAR(20)    DEFAULT 'available',
     appointment_id        INTEGER REFERENCES appointments,
-    created_at            TIMESTAMP      DEFAULT NOW(),
-    updated_at            TIMESTAMP      DEFAULT NOW(),
+    created_at            TIMESTAMPTZ      DEFAULT NOW(),
+    updated_at            TIMESTAMPTZ      DEFAULT NOW(),
     UNIQUE (doctor_id, date, start_time)
 );
 
@@ -218,8 +218,8 @@ CREATE TABLE IF NOT EXISTS chat_rooms
     patient_id     INTEGER   NOT NULL REFERENCES users ON DELETE CASCADE,
     doctor_id      INTEGER   NOT NULL REFERENCES users ON DELETE CASCADE,
     appointment_id INTEGER REFERENCES appointments ON DELETE SET NULL,
-    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at     TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at     TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT unique_patient_doctor UNIQUE (patient_id, doctor_id)
 );
 
@@ -238,14 +238,30 @@ CREATE TABLE IF NOT EXISTS chat_messages
     file_type    TEXT,
     file_size    BIGINT,
     is_read      BOOLEAN   DEFAULT FALSE,
-    sent_at      TIMESTAMP DEFAULT NOW(),
-    updated_at   TIMESTAMP DEFAULT NOW(),
+    sync_version BIGSERIAL,
+    sent_at      TIMESTAMPTZ DEFAULT NOW(),
+    updated_at   TIMESTAMPTZ DEFAULT NOW(),
 
     CONSTRAINT chat_messages_content_check CHECK (
         message IS NOT NULL
         OR file_key IS NOT NULL
     )
 );
+
+CREATE OR REPLACE FUNCTION update_chat_message_sync_version()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.sync_version = nextval(pg_get_serial_sequence('chat_messages', 'sync_version'));
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_chat_message_sync ON chat_messages;
+CREATE TRIGGER trg_chat_message_sync
+BEFORE UPDATE ON chat_messages
+FOR EACH ROW
+EXECUTE PROCEDURE update_chat_message_sync_version();
+
 DROP TRIGGER IF EXISTS trg_update_modtime ON chat_messages;
 CREATE TRIGGER trg_update_modtime
 BEFORE UPDATE ON chat_messages
@@ -264,8 +280,8 @@ CREATE TABLE IF NOT EXISTS doctor_slot_settings
     consultation_fee      NUMERIC(10, 2) NOT NULL DEFAULT 0,
     consultation_type     VARCHAR(20)    NOT NULL DEFAULT 'Offline',
     is_active             BOOLEAN        NOT NULL DEFAULT TRUE,
-    created_at            TIMESTAMP               DEFAULT CURRENT_TIMESTAMP,
-    updated_at            TIMESTAMP               DEFAULT CURRENT_TIMESTAMP
+    created_at            TIMESTAMPTZ               DEFAULT CURRENT_TIMESTAMP,
+    updated_at            TIMESTAMPTZ               DEFAULT CURRENT_TIMESTAMP
 );
 
 DROP TRIGGER IF EXISTS trg_update_modtime ON doctor_slot_settings;
@@ -276,8 +292,8 @@ CREATE TABLE if not exists user_fcm_tokens (
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   token TEXT NOT NULL UNIQUE,
   platform TEXT DEFAULT 'android',
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_user_fcm_tokens_user_id
 ON user_fcm_tokens(user_id);
@@ -295,7 +311,7 @@ CREATE TABLE IF NOT EXISTS medical_reports (
     file_name TEXT NOT NULL,
     file_type TEXT,
     file_size BIGINT,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_medical_reports_patient_id
 ON medical_reports(patient_id);
@@ -313,8 +329,8 @@ CREATE TABLE IF NOT EXISTS doctor_ratings (
     rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
     comment TEXT,
 
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
 
     CONSTRAINT unique_rating_per_appointment UNIQUE (appointment_id)
 );

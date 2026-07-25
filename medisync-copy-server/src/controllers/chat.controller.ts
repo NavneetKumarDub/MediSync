@@ -183,7 +183,7 @@ export const getInbox = async (req: Request, res: Response) => {
 
 export const getRoomMessages = async (req: Request, res: Response) => {
     const { roomId } = req.params;
-    const lastSync = (req.query.since as string) || '1970-01-01T00:00:00Z';
+    const lastSyncVersion = parseInt((req.query.since as string) || '0', 10);
 
         console.log("inside getroom message id : ",roomId)
 
@@ -204,11 +204,12 @@ export const getRoomMessages = async (req: Request, res: Response) => {
                 file_type AS "fileType",
                 file_size AS "fileSize",
                 is_read AS "isRead",
+                sync_version AS "syncVersion",
                 sent_at AS "sentAt"
             FROM chat_messages 
-            WHERE room_id = $1 AND sent_at > $2
-            ORDER BY sent_at ASC`,
-            [roomId, lastSync]
+            WHERE room_id = $1 AND sync_version > $2
+            ORDER BY sync_version ASC`,
+            [roomId, lastSyncVersion]
         );
 
         return res.status(200).json(messagesRes.rows);

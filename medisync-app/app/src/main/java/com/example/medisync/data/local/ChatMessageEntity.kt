@@ -17,5 +17,6 @@ data class ChatMessageEntity(
     val fileSize: Long? = null,
     val sentAt: String,
     val updatedAt: String? = null,
-    val status:String = "PENDING"
+    val status:String = "PENDING",
+    val syncVersion: Long = 0L
 )

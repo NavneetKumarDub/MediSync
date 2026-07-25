@@ -59,7 +59,10 @@ data class MessageDto(
     val isRead: Boolean,
 
     @SerializedName("sentAt")
-    val sentAt: String
+    val sentAt: String,
+
+    @SerializedName("syncVersion")
+    val syncVersion: Long? = null
 )
 
 class ChatInboxRepository(
@@ -247,7 +250,7 @@ class ChatInboxRepository(
         val messageId = java.util.UUID.randomUUID().toString() // Universal ID
 
         var now = java.time.Instant.now()
-        val lastDbTimeStr = chatMessageDao.getLastSyncTimestamp(roomId)
+        val lastDbTimeStr = chatMessageDao.getLastSentAt(roomId)
         if(lastDbTimeStr != null){
             val lastDbTime = java.time.Instant.parse(lastDbTimeStr)
             if(now.isBefore(lastDbTime)){
@@ -275,9 +278,9 @@ class ChatInboxRepository(
     }
     suspend fun syncMissingMessages(roomId: Int , token: String) {
         try {
-            val lastTimestamp = chatMessageDao.getLastSyncTimestamp(roomId)
+            val lastSyncVersion = chatMessageDao.getLastSyncVersion(roomId) ?: 0L
 
-            val response = api.getRoomMessages("Bearer $token",roomId, lastTimestamp)
+            val response = api.getRoomMessages("Bearer $token",roomId, lastSyncVersion.toString())
 
             if (response.isSuccessful && response.body() != null) {
                 val newMessages = response.body()!!.map { msg ->
@@ -292,7 +295,8 @@ class ChatInboxRepository(
                         fileType = msg.fileType,
                         fileSize = msg.fileSize,
                         status = if(msg.isRead) "READ" else "DELIVERED",
-                        sentAt = msg.sentAt
+                        sentAt = msg.sentAt,
+                        syncVersion = msg.syncVersion ?: 0L
                     )
                 }
                 if (newMessages.isNotEmpty()) {
